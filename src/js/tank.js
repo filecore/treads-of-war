@@ -270,6 +270,47 @@ export class Tank {
     camera.lookAt(this._camLook);
   }
 
+  // ── LAN networking: state serialisation ──────────────────────────────────────
+
+  /** Returns a compact snapshot for transmission over the network. */
+  getState() {
+    return {
+      x:  this.position.x,
+      y:  this.position.y,
+      z:  this.position.z,
+      h:  this.heading,
+      ty: this.turretYaw,
+      ge: this.gunElevation,
+      hp: this.hp,
+      al: this.alive ? 1 : 0,
+      ls: this.leftSpeed,
+      rs: this.rightSpeed,
+      rt: this.reloadTimer,
+    };
+  }
+
+  /**
+   * Applies a received network snapshot to this tank and updates the mesh.
+   * Used by the client to position all remote tanks from host state.
+   */
+  applyState(s) {
+    this.position.x   = s.x;
+    this.position.y   = s.y;
+    this.position.z   = s.z;
+    this.heading      = s.h;
+    this.turretYaw    = s.ty;
+    this.gunElevation = s.ge;
+    this.hp           = s.hp;
+    this.alive        = s.al === 1;
+    this.leftSpeed    = s.ls;
+    this.rightSpeed   = s.rs;
+    this.reloadTimer  = s.rt;
+    // Sync mesh
+    this._orient();
+    this.mesh.position.copy(this.position);
+    this.turretGroup.rotation.y = this.turretYaw;
+  }
+
   // ── Destroyed state — call once when tank.alive becomes false ────────────────
   setDestroyed() {
     // Turret blown off; hull remains as wreckage

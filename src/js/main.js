@@ -18,6 +18,7 @@ import {
 } from './modes.js';
 import { AudioManager }        from './audio.js';
 import { DIFFICULTY }          from './config.js';
+import { Net, LAN_SNAP_HZ }   from './net.js';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const ASSIST_RANGE       = 80;   // world units — aim assist activates within this distance
@@ -693,7 +694,7 @@ function _factionLabel(f, plural = false) {
   if (f === 'mercenary') return 'Mercs';
   return 'Axis';  // german — same in both forms
 }
-const MODE_LIST = [MODES.ARCADE, MODES.ATTRITION, MODES.STRATEGY];
+const MODE_LIST = [MODES.ARCADE, MODES.ATTRITION, MODES.STRATEGY, 'LAN'];
 
 // Arcade state
 let _arcadeClass     = 0;  // 0=light, 1=medium, 2=medium-heavy, 3=heavy
@@ -1195,6 +1196,208 @@ function startStrategyBattle() {
   _demoAI     = _demoActive ? new AIController(player, player.position.x, player.position.z) : null;
 }
 
+// ─── LAN duel functions ────────────────────────────────────────────────────────
+
+function _cleanupLan() {
+  if (_lanNet)  { _lanNet.disconnect(); _lanNet = null; }
+  if (_lanPeer) { _lanPeer.dispose(scene); _lanPeer = null; }
+  _lanMode       = false;
+  _lanGameActive = false;
+  _lanStatus     = '';
+}
+
+async function startLanHost() {
+  _lanMode    = true;
+  _lanTankKey = ALL_TANKS[_selIdx];
+  _lanStatus  = 'Waiting for opponent…';
+  updateOverlay();
+
+  _lanNet = new Net();
+  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey); };
+  _lanNet.onPeerHello  = peerKey => { _initLanGame(peerKey); };
+  _lanNet.onDisconnect = () => { _endLanSession('Opponent disconnected.'); };
+
+  try {
+    await _lanNet.host('ws://localhost:8765');
+    _lanStatus = 'Signalling server reached — waiting for opponent…';
+    updateOverlay();
+  } catch (e) {
+    _lanStatus = `Error: ${e.message}`;
+    updateOverlay();
+  }
+}
+
+async function startLanClient(ip) {
+  _lanMode    = true;
+  _lanTankKey = ALL_TANKS[_selIdx];
+  _lanStatus  = `Connecting to ${ip}…`;
+  updateOverlay();
+
+  _lanNet = new Net();
+  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey); };
+  _lanNet.onPeerHello  = peerKey => { _initLanGame(peerKey); };
+  _lanNet.onDisconnect = () => { _endLanSession('Host disconnected.'); };
+
+  try {
+    await _lanNet.join(`ws://${ip}:8765`);
+    _lanStatus = 'Connected to signalling server — waiting for host…';
+    updateOverlay();
+  } catch (e) {
+    _lanStatus = `Error: ${e.message}`;
+    updateOverlay();
+  }
+}
+
+function _initLanGame(peerKey) {
+  clearCraters(); _resetSmoke(); _resetArtillery();
+  for (const e of enemies) e.dispose(scene);
+  enemies = []; aiControllers = [];
+  for (const w of wingmen) w.dispose(scene);
+  wingmen = []; wingmanAIs = [];
+
+  // Place player (local tank)
+  reinitPlayer(_lanTankKey);
+  const spawnZ = _lanNet.isHost() ? -30 : 30;
+  player.position.set(0, getAltitude(0, spawnZ) + 0.1, spawnZ);
+  player.heading = _lanNet.isHost() ? 0 : Math.PI;  // face centre
+
+  // Place peer tank (remote)
+  if (_lanPeer) { _lanPeer.dispose(scene); }
+  const peerZ = _lanNet.isHost() ? 30 : -30;
+  _lanPeer = new Tank(scene, peerKey, _lanNet.isHost());
+  _lanPeer.position.set(0, getAltitude(0, peerZ) + 0.1, peerZ);
+  _lanPeer.heading = _lanNet.isHost() ? Math.PI : 0;
+
+  allTanks = [player, _lanPeer];
+  combat.dispose();
+  _lanGameActive  = true;
+  _lanBroadTimer  = 0;
+  _demoActive     = false;
+  _demoAI         = null;
+
+  game.start();
+  if (hudMode)  hudMode.textContent  = 'LAN DUEL';
+  if (hudPhase) hudPhase.textContent = 'LAN DUEL';
+  _updateControlsHint();
+  updateOverlay();
+}
+
+function _endLanGame(won) {
+  _lanGameActive = false;
+  game.state = won ? STATES.VICTORY : STATES.GAME_OVER;
+  updateOverlay();
+}
+
+function _endLanSession(msg) {
+  _lanGameActive = false;
+  if (game.isPlaying) {
+    game.state = STATES.GAME_OVER;
+  }
+  _lanStatus = msg;
+  _cleanupLan();
+  game.state = STATES.LAN_LOBBY;
+  _lanMode   = true;  // keep lobby visible so user sees the message
+  updateOverlay();
+}
+
+// LAN game loop — called from animate() when _lanMode && _lanGameActive
+function _runLanFrame(dt) {
+  if (_lanNet.isHost()) {
+    // ── Host: drive own tank, apply client input to peer ───────────────────────
+    if (player.alive) {
+      player.update(dt, input);
+      player.updateCamera(camera, dt);
+      if (input.fire || input.fireOnce) {
+        const tip = combat.fire(player, _ammoType);
+        if (tip) { particles.muzzleFlash(tip.x, tip.y, tip.z); audio.playFire(); }
+      }
+    }
+
+    if (_lanPeer && _lanPeer.alive && _lanNet.clientInput) {
+      const ci = _lanNet.clientInput;
+      _lanPeer.update(dt, ci);
+      if (ci.fire || ci.fireOnce) {
+        const tip = combat.fire(_lanPeer);
+        if (tip) particles.muzzleFlash(tip.x, tip.y, tip.z);
+      }
+    }
+
+    // Combat: shells vs both tanks
+    const impacts = combat.update(dt, allTanks);
+    for (const imp of impacts) {
+      if (imp.penetrated) {
+        particles.explosion(imp.x, imp.y, imp.z);
+      } else {
+        particles.ricochet(imp.x, imp.y, imp.z);
+      }
+      if (imp.tank && !imp.tank.alive) imp.tank.setDestroyed();
+    }
+
+    // Broadcast snapshot at LAN_SNAP_HZ
+    _lanBroadTimer -= dt;
+    if (_lanBroadTimer <= 0) {
+      _lanBroadTimer = 1 / LAN_SNAP_HZ;
+      _lanNet.sendSnapshot({
+        p: player.getState(),
+        c: _lanPeer ? _lanPeer.getState() : null,
+      });
+    }
+
+    // End condition
+    if (_lanPeer && (!player.alive || !_lanPeer.alive)) {
+      _endLanGame(!player.alive === false);  // won if WE are still alive
+    }
+
+  } else {
+    // ── Client: send input, apply host snapshot ────────────────────────────────
+    _lanNet.sendInput(input);
+
+    const snap = _lanNet.consumeSnapshot();
+    if (snap) {
+      if (snap.p && _lanPeer) {
+        const wasAlive = _lanPeer.alive;
+        _lanPeer.applyState(snap.p);
+        if (wasAlive && !_lanPeer.alive) _lanPeer.setDestroyed();
+      }
+      if (snap.c) {
+        const wasAlive = player.alive;
+        player.applyState(snap.c);
+        if (wasAlive && !player.alive) player.setDestroyed();
+        // End condition: player dead → game over; peer dead → victory
+        if (!player.alive && wasAlive) _endLanGame(false);
+        if (_lanPeer && !_lanPeer.alive) _endLanGame(true);
+      }
+    }
+
+    if (player.alive) player.updateCamera(camera, dt);
+  }
+
+  particles.update(dt);
+}
+
+function lanLobbyHtml() {
+  return `
+    <div class="lan-lobby">
+      <div class="lan-section">
+        <div class="lan-section-title">Host a game</div>
+        <div class="lan-desc">Start <code>node signalling-server.js</code> in the project folder on this machine first, then click Host Game. Share your LAN IP with the other player.</div>
+        <button id="lan-host-btn" class="lan-btn">Host Game</button>
+      </div>
+      <div class="lan-divider">— or —</div>
+      <div class="lan-section">
+        <div class="lan-section-title">Join a game</div>
+        <div class="lan-desc">Enter the host's LAN IP address:</div>
+        <div class="lan-join-row">
+          <input id="lan-ip-input" class="lan-input" type="text" placeholder="192.168.0.x" />
+          <button id="lan-join-btn" class="lan-btn">Join</button>
+        </div>
+      </div>
+      <div class="lan-status">${_lanStatus}</div>
+      <div class="lan-back"><button id="lan-back-btn" class="lan-back-btn">← Back to menu</button></div>
+    </div>
+  `;
+}
+
 // ─── Between-battle advance ────────────────────────────────────────────────────
 function advanceAttritionBattle() {
   _attritionBattle++;
@@ -1422,6 +1625,15 @@ if (cbMercs) {
   });
 }
 
+// ─── LAN networking state ─────────────────────────────────────────────────────
+let _lanMode      = false;   // true while a LAN duel is set up or in progress
+let _lanNet       = null;    // Net instance
+let _lanPeer      = null;    // Tank controlled by the remote player
+let _lanBroadTimer= 0;       // countdown to next broadcast (host only)
+let _lanGameActive= false;   // true once both tanks are spawned and game is running
+let _lanTankKey   = null;    // this player's selected tank key for LAN
+let _lanStatus    = '';      // display string for lobby screen
+
 // ─── Demo mode ────────────────────────────────────────────────────────────────
 // When enabled in Settings and no player input has been received, the AI drives
 // the player tank. First actual input from the player disables demo for the session.
@@ -1638,11 +1850,12 @@ function menuScreenHtml() {
   html += '<div class="menu-col">';
   html += '<div class="menu-section-label">BATTLE MODE</div>';
   html += '<div class="mode-select">';
-  const modeNames = ['Arcade', 'Attrition', 'Strategy'];
+  const modeNames = ['Arcade', 'Attrition', 'Strategy', 'LAN Duel'];
   const modeDescs = [
     'Endless waves \u00B7 Solo \u00B7 Tank upgrades by kills \u00B7 3 lives',
     'Fixed fleet of 5 \u00B7 Permanent losses \u00B7 Escalating enemy',
     'Budget purchase \u00B7 Objective capture \u00B7 AI buys too',
+    '1 vs 1 \u00B7 Local network \u00B7 Pick any tank \u00B7 Needs signalling-server.js',
   ];
   for (let i = 0; i < 3; i++) {
     const sel = i === _modeSelIdx;
@@ -1752,6 +1965,30 @@ function updateOverlay() {
   }
 
   overlay.className = 'overlay-visible';
+
+  if (s === STATES.LAN_LOBBY) {
+    overlayTitle.textContent = 'LAN DUEL';
+    overlaySub.textContent   = '1 vs 1 on your local network';
+    overlayScore.textContent = '';
+    overlayHint.textContent  = '';
+    if (overlayControls) {
+      overlayControls.innerHTML = lanLobbyHtml();
+      const btnHost = overlayControls.querySelector('#lan-host-btn');
+      const btnJoin = overlayControls.querySelector('#lan-join-btn');
+      const btnBack = overlayControls.querySelector('#lan-back-btn');
+      if (btnHost) btnHost.addEventListener('click', () => startLanHost());
+      if (btnJoin) btnJoin.addEventListener('click', () => {
+        const ip = overlayControls.querySelector('#lan-ip-input')?.value.trim() || '';
+        if (ip) startLanClient(ip);
+      });
+      if (btnBack) btnBack.addEventListener('click', () => {
+        _cleanupLan();
+        game.state = STATES.MENU;
+        updateOverlay();
+      });
+    }
+    return;
+  }
 
   if (s === STATES.PURCHASE) {
     overlayTitle.textContent = 'PURCHASE FLEET';
@@ -1890,7 +2127,11 @@ window.addEventListener('keydown', e => {
       _gameMode = MODE_LIST[_modeSelIdx];
       if (_gameMode === MODES.ARCADE)         startArcade();
       else if (_gameMode === MODES.ATTRITION) startAttrition();
-      else                                     startStrategyPurchase();
+      else if (_gameMode === MODES.STRATEGY)  startStrategyPurchase();
+      else {
+        // LAN Duel — go to lobby
+        game.state = STATES.LAN_LOBBY;
+      }
       updateOverlay();
     }
     return;
@@ -2578,6 +2819,15 @@ function animate(now) {
     return;
   }
 
+  // ── LAN duel game loop (takes over from normal loop when active) ─────────────
+  if (_lanMode && _lanGameActive) {
+    _runLanFrame(dt);
+    _sky.position.copy(camera.position);
+    renderer.render(scene, camera);
+    input.tick();
+    return;
+  }
+
   // ── Player ───────────────────────────────────────────────────────────────────
   // Engine pitch/volume follows player speed (or idles when dead/stopped)
   {
@@ -3158,16 +3408,16 @@ function animate(now) {
     fpsCount = 0;
     fpsTime  = now;
 
-    if (hudFps)     hudFps.textContent     = `${fps} fps`;
+    if (hudFps)     hudFps.textContent     = `${fps}`;
     if (hudPhase)   hudPhase.textContent  = `Wave ${game.wave} / ${game.totalWaves}`;
     if (hudSpeed)   hudSpeed.textContent   = `${player.speedKmh} km/h`;
     if (hudHeading) hudHeading.textContent = `${player.headingDeg}°`;
     if (hudPos)     hudPos.textContent     =
       `${Math.round(player.position.x)}, ${Math.round(player.position.y)}, ${Math.round(player.position.z)}`;
-    if (hudScore)   hudScore.textContent   = `Score: ${game.score}`;
+    if (hudScore)   hudScore.textContent   = `${game.score}`;
     if (hudEnemies) {
       const alive = enemies.filter(e => e.alive).length;
-      hudEnemies.textContent = `Enemies: ${alive} / ${enemies.length}`;
+      hudEnemies.textContent = `${alive} / ${enemies.length}`;
     }
 
     if (hudReload) {

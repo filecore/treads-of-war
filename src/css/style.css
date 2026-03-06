@@ -233,14 +233,6 @@ html, body {
   gap: 3px;
 }
 
-#hud-topright {
-  position: absolute;
-  top: 12px; right: 14px;
-  text-align: right;
-  font-size: 18px;
-  color: #FFFF00;
-  text-shadow: 0 1px 5px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.7);
-}
 
 #hud-bottomleft {
   position: absolute;
@@ -948,6 +940,91 @@ html, body {
   text-align: center;
   animation: blink 0.9s ease-in-out infinite;
 }
+
+/* ── LAN lobby ── */
+.lan-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+.lan-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lan-section-title {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: rgba(180, 210, 255, 0.70);
+  text-transform: uppercase;
+}
+.lan-desc {
+  font-size: 12px;
+  color: rgba(200, 200, 200, 0.55);
+  line-height: 1.5;
+}
+.lan-desc code {
+  color: rgba(180, 255, 180, 0.75);
+  font-family: 'Courier New', monospace;
+}
+.lan-join-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.lan-input {
+  flex: 1;
+  background: rgba(10, 15, 30, 0.80);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 3px;
+  color: rgba(200, 230, 255, 0.90);
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  padding: 5px 8px;
+  outline: none;
+}
+.lan-input:focus { border-color: rgba(100, 160, 255, 0.70); }
+.lan-btn {
+  background: rgba(30, 60, 120, 0.70);
+  border: 1px solid rgba(100, 160, 255, 0.40);
+  border-radius: 3px;
+  color: rgba(180, 220, 255, 0.90);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.10em;
+  padding: 6px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.lan-btn:hover { background: rgba(50, 90, 160, 0.80); }
+.lan-divider {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(150, 150, 150, 0.40);
+  letter-spacing: 0.10em;
+}
+.lan-status {
+  font-size: 12px;
+  color: rgba(180, 255, 180, 0.75);
+  letter-spacing: 0.06em;
+  min-height: 18px;
+}
+.lan-back {
+  margin-top: 4px;
+}
+.lan-back-btn {
+  background: none;
+  border: none;
+  color: rgba(160, 160, 160, 0.55);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  padding: 0;
+}
+.lan-back-btn:hover { color: rgba(200, 200, 200, 0.80); }
 
 /* ── Fleet HUD (top-centre) ── */
 #hud-fleet {

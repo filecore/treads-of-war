@@ -9,6 +9,7 @@ export const STATES = Object.freeze({
   VICTORY:        'VICTORY',
   PURCHASE:       'PURCHASE',        // Strategy mode — fleet purchase screen
   BATTLE_COMPLETE:'BATTLE_COMPLETE', // Attrition/Strategy — battle won, proceed
+  LAN_LOBBY:      'LAN_LOBBY',       // LAN duel — waiting for peer connection
 });
 
 export class GameManager {
