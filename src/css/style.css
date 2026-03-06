@@ -160,13 +160,22 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  max-height: 220px;
+  max-height: 340px;
   overflow-y: auto;
 }
 .cl-entry {
   font-size: 11px;
   color: rgba(180, 200, 240, 0.65);
-  line-height: 1.5;
+  line-height: 1.6;
+}
+.cl-entry code {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: rgba(140, 210, 255, 0.85);
+  background: rgba(0, 20, 50, 0.50);
+  padding: 1px 4px;
+  border-radius: 2px;
+  white-space: pre;
 }
 .cl-tag {
   color: rgba(100, 160, 255, 0.75);

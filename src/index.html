@@ -137,9 +137,26 @@
           <div class="cl-entry"><span class="cl-tag">Arcade</span> Solo mode — survive endless waves. Each 4 kills upgrades your tank class. You have 3 lives. Heavy class (wave 4+) adds one more enemy per wave.</div>
           <div class="cl-entry"><span class="cl-tag">Attrition</span> You start with a fixed fleet of 5 tanks — losses are permanent. Enemies escalate each battle. Tab switches your controlled tank. Last fleet standing wins.</div>
           <div class="cl-entry"><span class="cl-tag">Strategy</span> Before each battle, spend your budget on any mix of Allied, Soviet and Axis tanks. Enemies buy too. Capture and hold the objective ring for 60 seconds to win the battle. 7 battles total.</div>
-          <div class="cl-entry"><span class="cl-tag">LAN Duel</span> 1 v 1 against a friend on the same local network. Enable LAN Duel in Settings, then select it from the mode list. Both players pick their tank from the main menu first.</div>
-          <div class="cl-entry"><span class="cl-tag">LAN Setup</span> No installation required on player machines. A relay server runs permanently on the games server. Host clicks "Host Game" — a 4-character room code is generated (e.g. 7K3M). Share the code with your opponent. Client clicks "Find games" to see waiting rooms, or types the code and clicks "Join". Both players just open the game in a browser — nothing to install or run.</div>
-          <div class="cl-entry"><span class="cl-tag">LAN Notes</span> Room codes allow multiple concurrent games. Ping is shown in the HUD. Shot effects and hit/kill events are synchronised to both screens.</div>
+          <div class="cl-entry"><span class="cl-tag">LAN Duel</span> 1 v 1 tank battle against a friend — on your local network or over the internet. Requires a relay server running on the host server (see Server Admin below). Enable LAN Duel in Settings, then select it from the mode list. Nothing to install on player machines.</div>
+          <div class="cl-entry"><span class="cl-tag">LAN — Playing (Host)</span> Pick your tank on the main menu, then select LAN Duel and click <b>Host Game</b>. A 4-character room code appears (e.g. <code>7K3M</code>) — share it with your opponent by any means (chat, voice, text). Wait for them to join; the game starts automatically once they connect.</div>
+          <div class="cl-entry"><span class="cl-tag">LAN — Playing (Join)</span> Pick your tank, select LAN Duel, then click <b>Find games</b> to see open rooms on the server — click one to fill in the code. Or type the code your opponent gave you directly and click <b>Join</b>. Multiple games can run concurrently; room codes keep them separate.</div>
+          <div class="cl-entry"><span class="cl-tag">LAN — Notes</span> Ping is shown in the bottom-left HUD (Advanced Info on). Shot effects — muzzle flash, explosions, ricochets — are synchronised to both screens. Your opponent's tank name and HP bar appear above their vehicle. A Rematch button is shown at the end.</div>
+          <div class="cl-entry"><span class="cl-tag">Server Admin — Relay</span> LAN Duel requires a small WebSocket relay service (<code>relay/relay-server.js</code>, Node.js + ws). Add it to your games <code>docker-compose.yaml</code> alongside the nginx service:<br><br>
+<code>  relay:<br>
+&nbsp;&nbsp;build: ./relay<br>
+&nbsp;&nbsp;ports:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;- "8765:8765"<br>
+&nbsp;&nbsp;restart: unless-stopped</code><br><br>
+Then run <code>docker compose up -d --build relay</code> once. The deploy script keeps it updated on each deploy.</div>
+          <div class="cl-entry"><span class="cl-tag">Server Admin — NPM Proxy</span> To route the relay through your reverse proxy (no extra port exposed) add a WebSocket location to the Advanced config of your games proxy host in NPM:<br><br>
+<code>location /relay {<br>
+&nbsp;&nbsp;proxy_pass http://192.168.0.101:8765;<br>
+&nbsp;&nbsp;proxy_http_version 1.1;<br>
+&nbsp;&nbsp;proxy_set_header Upgrade $http_upgrade;<br>
+&nbsp;&nbsp;proxy_set_header Connection "upgrade";<br>
+&nbsp;&nbsp;proxy_read_timeout 3600;<br>
+}</code><br><br>
+Replace <code>192.168.0.101</code> with your server's LAN IP. All relay traffic then flows through ports 80/443 — no additional firewall rules needed. Works with both <code>ws://</code> (HTTP) and <code>wss://</code> (HTTPS) automatically.</div>
           <div class="cl-entry"><span class="cl-tag">Armour</span> Shells are resolved against front / side / rear armour zones. Approach angle determines the zone. A shot that cannot penetrate (firepower &lt; armour × 0.6) ricochets with a gold spark. Aim for flanks and rears of heavy tanks.</div>
           <div class="cl-entry"><span class="cl-tag">Damage</span> Below 50% HP: half speed. Below 25% HP: quarter speed, damage smoke. Below 12% HP: tracks wrecked — hull immobile but turret still operates.</div>
         </div>
