@@ -1246,12 +1246,15 @@ function _cleanupLan() {
   _lanRoomCode   = '';
 }
 
+// Relay server URL — same host that serves the game, port 8765
+const _relayUrl = `ws://${location.hostname}:8765`;
+
 async function startLanHost() {
   _lanMode       = true;
   _lanTankKey    = ALL_TANKS[_selIdx];
   _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
   _lanRoomCode   = _genRoomCode();
-  _lanStatus     = `Waiting for opponent… · Room: ${_lanRoomCode}`;
+  _lanStatus     = `Room ${_lanRoomCode} · Waiting for opponent…`;
   updateOverlay();
 
   _lanNet = new Net();
@@ -1261,21 +1264,19 @@ async function startLanHost() {
   _lanNet.onServerError = msg => { _lanStatus = `Error: ${msg}`; updateOverlay(); };
 
   try {
-    await _lanNet.host('ws://localhost:8765', _lanRoomCode);
-    _lanStatus = `Room ${_lanRoomCode} · Waiting for opponent…`;
-    updateOverlay();
+    await _lanNet.host(_relayUrl, _lanRoomCode);
   } catch (e) {
-    _lanStatus = `Error: ${e.message}`;
+    _lanStatus = `Cannot reach relay server (${e.message})`;
     updateOverlay();
   }
 }
 
-async function startLanClient(ip, roomCode) {
+async function startLanClient(roomCode) {
   _lanMode       = true;
   _lanTankKey    = ALL_TANKS[_selIdx];
   _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
   _lanRoomCode   = roomCode.toUpperCase().trim();
-  _lanStatus     = `Connecting to ${ip} · Room ${_lanRoomCode}…`;
+  _lanStatus     = `Joining room ${_lanRoomCode}…`;
   updateOverlay();
 
   _lanNet = new Net();
@@ -1285,11 +1286,11 @@ async function startLanClient(ip, roomCode) {
   _lanNet.onServerError = msg => { _lanStatus = `Error: ${msg}`; updateOverlay(); };
 
   try {
-    await _lanNet.join(`ws://${ip}:8765`, _lanRoomCode);
+    await _lanNet.join(_relayUrl, _lanRoomCode);
     _lanStatus = `Room ${_lanRoomCode} · Waiting for host…`;
     updateOverlay();
   } catch (e) {
-    _lanStatus = `Error: ${e.message}`;
+    _lanStatus = `Cannot reach relay server (${e.message})`;
     updateOverlay();
   }
 }
@@ -1561,20 +1562,19 @@ function lanLobbyHtml() {
       </div>
       <div class="lan-section">
         <div class="lan-section-title">Host a game</div>
-        <div class="lan-desc">Start <code>node signalling-server.js</code> in the project folder on this machine first, then click Host Game.</div>
+        <div class="lan-desc">Click Host Game — a room code is generated. Share it with your opponent.</div>
         <button id="lan-host-btn" class="lan-btn">Host Game</button>
       </div>
       <div class="lan-divider">— or —</div>
       <div class="lan-section">
         <div class="lan-section-title">Join a game</div>
         <div class="lan-scan-row">
-          <button id="lan-scan-btn" class="lan-btn lan-btn-sm">Scan LAN</button>
+          <button id="lan-scan-btn" class="lan-btn lan-btn-sm">Find games</button>
           <span id="lan-scan-status" class="lan-scan-status"></span>
         </div>
         <div id="lan-scan-results" class="lan-scan-results"></div>
-        <div class="lan-desc">Or enter manually:</div>
+        <div class="lan-desc">Or enter the room code:</div>
         <div class="lan-join-row">
-          <input id="lan-ip-input"   class="lan-input" type="text" placeholder="192.168.0.x" style="flex:2" />
           <input id="lan-code-input" class="lan-input lan-code-input" type="text" maxlength="4"
                  placeholder="CODE" value="${_lanRoomCode}" />
           <button id="lan-join-btn" class="lan-btn">Join</button>
@@ -1590,44 +1590,6 @@ function lanLobbyHtml() {
 function _genRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
-/** Use WebRTC ICE to discover our own LAN IP prefix (e.g. "192.168.0"). */
-async function _getLocalSubnet() {
-  try {
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    pc.createDataChannel('');
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    return new Promise(resolve => {
-      const done = result => { try { pc.close(); } catch { /**/ } resolve(result); };
-      pc.onicecandidate = e => {
-        if (!e.candidate) { done(null); return; }
-        const m = e.candidate.candidate.match(/(\d+\.\d+\.\d+)\.\d+/);
-        if (m) done(m[1]);
-      };
-      setTimeout(() => done(null), 2000);
-    });
-  } catch { return null; }
-}
-
-/** Scan a /24 subnet for a running signalling server. Returns array of {ip, name, hostWaiting}. */
-async function _scanForHosts(subnet) {
-  const TIMEOUT = 700;
-  const results = await Promise.all(
-    Array.from({ length: 254 }, (_, i) => i + 1).map(async last => {
-      const ip = `${subnet}.${last}`;
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), TIMEOUT);
-      try {
-        const r = await fetch(`http://${ip}:8765/discover`, { signal: ctrl.signal });
-        clearTimeout(t);
-        if (r.ok) { const j = await r.json(); return { ip, ...j }; }
-      } catch { clearTimeout(t); }
-      return null;
-    })
-  );
-  return results.filter(Boolean);
 }
 
 // ─── Between-battle advance ────────────────────────────────────────────────────
@@ -2235,11 +2197,9 @@ function updateOverlay() {
       const btnScan = overlayControls.querySelector('#lan-scan-btn');
       if (btnHost) btnHost.addEventListener('click', () => startLanHost());
       if (btnJoin) btnJoin.addEventListener('click', () => {
-        const ip   = overlayControls.querySelector('#lan-ip-input')?.value.trim()   || '';
         const code = overlayControls.querySelector('#lan-code-input')?.value.trim() || '';
-        if (!ip)   { _lanStatus = 'Enter the host IP address.';   updateOverlay(); return; }
         if (!code) { _lanStatus = 'Enter the 4-character room code.'; updateOverlay(); return; }
-        startLanClient(ip, code);
+        startLanClient(code);
       });
       if (btnBack) btnBack.addEventListener('click', () => {
         _cleanupLan();
@@ -2247,55 +2207,38 @@ function updateOverlay() {
         updateOverlay();
       });
       if (btnScan) btnScan.addEventListener('click', async () => {
-        const scanStatus = overlayControls.querySelector('#lan-scan-status');
+        const scanStatus  = overlayControls.querySelector('#lan-scan-status');
         const scanResults = overlayControls.querySelector('#lan-scan-results');
         btnScan.disabled = true;
-        if (scanStatus) scanStatus.textContent = 'Detecting subnet…';
-        if (scanResults) scanResults.innerHTML = '';
-
-        const subnet = await _getLocalSubnet();
-        if (!subnet) {
-          if (scanStatus) scanStatus.textContent = 'Could not detect LAN subnet.';
+        if (scanStatus)  scanStatus.textContent = 'Looking…';
+        if (scanResults) scanResults.innerHTML  = '';
+        try {
+          const r    = await fetch(`http://${location.hostname}:8765/discover`);
+          const data = await r.json();
+          const waitingRooms = (data.rooms || []);
           btnScan.disabled = false;
-          return;
-        }
-        if (scanStatus) scanStatus.textContent = `Scanning ${subnet}.0/24…`;
-
-        const hosts = await _scanForHosts(subnet);
-        btnScan.disabled = false;
-        if (hosts.length === 0) {
-          if (scanStatus) scanStatus.textContent = 'No servers found.';
-        } else {
-          // Flatten to one button per room (or one "no rooms" per server)
-          const entries = [];
-          for (const h of hosts) {
-            if (h.rooms && h.rooms.length > 0) {
-              for (const r of h.rooms) {
-                entries.push({ ip: h.ip, code: r.code, ready: true });
-              }
-            } else {
-              entries.push({ ip: h.ip, code: '', ready: false });
+          if (waitingRooms.length === 0) {
+            if (scanStatus) scanStatus.textContent = 'No games waiting.';
+          } else {
+            if (scanStatus) scanStatus.textContent =
+              `${waitingRooms.length} game${waitingRooms.length > 1 ? 's' : ''} waiting:`;
+            if (scanResults) {
+              scanResults.innerHTML = waitingRooms.map(g =>
+                `<button class="lan-scan-result lan-scan-result-ready" data-code="${g.code}">` +
+                `<span class="scan-code">${g.code}</span>` +
+                `</button>`
+              ).join('');
+              scanResults.querySelectorAll('.lan-scan-result').forEach(el => {
+                el.addEventListener('click', () => {
+                  const codeInput = overlayControls.querySelector('#lan-code-input');
+                  if (codeInput) codeInput.value = el.dataset.code;
+                });
+              });
             }
           }
-          const readyCount = entries.filter(e => e.ready).length;
-          if (scanStatus) scanStatus.textContent =
-            readyCount > 0 ? `${readyCount} game${readyCount > 1 ? 's' : ''} waiting:` : 'Server found — no host waiting:';
-          if (scanResults) {
-            scanResults.innerHTML = entries.map(e =>
-              `<button class="lan-scan-result${e.ready ? ' lan-scan-result-ready' : ''}"` +
-              ` data-ip="${e.ip}" data-code="${e.code}">` +
-              `${e.ip}${e.code ? `  <span class="scan-code">${e.code}</span>` : '  — no host yet'}` +
-              `</button>`
-            ).join('');
-            scanResults.querySelectorAll('.lan-scan-result').forEach(el => {
-              el.addEventListener('click', () => {
-                const ipInput   = overlayControls.querySelector('#lan-ip-input');
-                const codeInput = overlayControls.querySelector('#lan-code-input');
-                if (ipInput)   ipInput.value   = el.dataset.ip;
-                if (codeInput && el.dataset.code) codeInput.value = el.dataset.code;
-              });
-            });
-          }
+        } catch {
+          btnScan.disabled = false;
+          if (scanStatus) scanStatus.textContent = 'Relay server not reachable.';
         }
       });
     }
