@@ -1198,7 +1198,39 @@ function startStrategyBattle() {
 
 // ─── LAN duel functions ────────────────────────────────────────────────────────
 
+// Arena obstacles — symmetric cover objects spawned for LAN duel
+const _lanArenaObstacles = [];
+let   _lanArenaObstacleMat = null;
+
+function _addArenaObstacles() {
+  _lanArenaObstacleMat = new THREE.MeshLambertMaterial({ color: 0x9A8C7E });
+  // Symmetric across x=0 and z=0  [x, z, width, depth, height]
+  const configs = [
+    [  0,   0,  3, 10, 3.5],  // centre block — cuts line of fire between spawns
+    [ 14,   0,  3,  4, 3.0],  // left flank wall
+    [-14,   0,  3,  4, 3.0],  // right flank wall (mirror)
+    [  8,  15,  6,  2, 2.5],  // forward cover near client spawn (+z)
+    [ -8,  15,  6,  2, 2.5],
+    [  8, -15,  6,  2, 2.5],  // forward cover near host spawn (-z)
+    [ -8, -15,  6,  2, 2.5],
+  ];
+  for (const [x, z, w, d, h] of configs) {
+    const geo  = new THREE.BoxGeometry(w, h, d);
+    const mesh = new THREE.Mesh(geo, _lanArenaObstacleMat);
+    mesh.position.set(x, getAltitude(x, z) + h / 2, z);
+    scene.add(mesh);
+    _lanArenaObstacles.push(mesh);
+  }
+}
+
+function _removeArenaObstacles() {
+  for (const m of _lanArenaObstacles) { scene.remove(m); m.geometry.dispose(); }
+  _lanArenaObstacles.length = 0;
+  if (_lanArenaObstacleMat) { _lanArenaObstacleMat.dispose(); _lanArenaObstacleMat = null; }
+}
+
 function _cleanupLan() {
+  _removeArenaObstacles();
   if (_lanNametag) _lanNametag.style.display = 'none';
   if (_lanNet)  { _lanNet.disconnect(); _lanNet = null; }
   if (_lanPeer) { _lanPeer.dispose(scene); _lanPeer = null; }
@@ -1263,6 +1295,7 @@ async function startLanClient(ip, roomCode) {
 }
 
 function _initLanGame(peerKey) {
+  _removeArenaObstacles();  // clear any from a previous rematch
   clearCraters(); _resetSmoke(); _resetArtillery();
   for (const e of enemies) e.dispose(scene);
   enemies = []; aiControllers = [];
@@ -1285,6 +1318,7 @@ function _initLanGame(peerKey) {
 
   allTanks = [player, _lanPeer];
   combat.dispose();
+  _addArenaObstacles();
   _lanGameActive  = true;
   _lanBroadTimer  = 0;
   _lanEvents      = [];
@@ -2075,7 +2109,7 @@ function menuScreenHtml() {
     'Endless waves \u00B7 Solo \u00B7 Tank upgrades by kills \u00B7 3 lives',
     'Fixed fleet of 5 \u00B7 Permanent losses \u00B7 Escalating enemy',
     'Budget purchase \u00B7 Objective capture \u00B7 AI buys too',
-    ...(_lanEnabled ? ['1 vs 1 \u00B7 Local network \u00B7 Pick any tank \u00B7 Enable in Settings'] : []),
+    ...(_lanEnabled ? ['1 vs 1 \u00B7 Local network \u00B7 Pick any tank'] : []),
   ];
   // Clamp selection in case LAN was just disabled while on index 3
   if (_modeSelIdx >= modeNames.length) _modeSelIdx = modeNames.length - 1;
