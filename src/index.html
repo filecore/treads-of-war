@@ -106,6 +106,13 @@
           <span class="toggle-slider"></span>
         </span>
       </label>
+      <label class="settings-row">
+        <span class="settings-label">Enable LAN Duel mode</span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="cb-lan">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
 
       <div class="settings-diff">
         <span class="settings-label">Difficulty</span>
@@ -124,8 +131,24 @@
       </div>
 
       <details class="cl-details">
+        <summary class="cl-summary">Help &amp; FAQ</summary>
+        <div class="cl-body">
+          <div class="cl-entry"><span class="cl-tag">Controls</span> Simple (WASD): W/S forward/back, A/D turn, Q/E turret, Space/F fire, Tab ammo, V sight, G smoke, C artillery, P/Esc pause. Advanced (original): H/N left track fwd/rev, K/M right track fwd/rev.</div>
+          <div class="cl-entry"><span class="cl-tag">Arcade</span> Solo mode — survive endless waves. Each 4 kills upgrades your tank class. You have 3 lives. Heavy class (wave 4+) adds one more enemy per wave.</div>
+          <div class="cl-entry"><span class="cl-tag">Attrition</span> You start with a fixed fleet of 5 tanks — losses are permanent. Enemies escalate each battle. Tab switches your controlled tank. Last fleet standing wins.</div>
+          <div class="cl-entry"><span class="cl-tag">Strategy</span> Before each battle, spend your budget on any mix of Allied, Soviet and Axis tanks. Enemies buy too. Capture and hold the objective ring for 60 seconds to win the battle. 7 battles total.</div>
+          <div class="cl-entry"><span class="cl-tag">LAN Duel</span> 1 v 1 against a friend on the same local network. Enable LAN Duel in Settings, then select it from the mode list. Both players pick their tank from the main menu first.</div>
+          <div class="cl-entry"><span class="cl-tag">LAN Setup</span> The host machine needs Node.js. Install the relay once: <code>cd /path/to/conqueror &amp;&amp; npm install ws</code>. Before each session run: <code>node signalling-server.js</code>. Host clicks "Host Game". Client enters the host's LAN IP (e.g. 192.168.0.x) and clicks "Join". The WebRTC connection is established automatically — no internet required.</div>
+          <div class="cl-entry"><span class="cl-tag">LAN Notes</span> Only the host machine needs to run signalling-server.js. Both machines open the game in a browser at the host's LAN IP on port 53312. Ping is shown in the HUD during play (top-left). Shot effects (muzzle flash, explosions) are synchronised to both screens.</div>
+          <div class="cl-entry"><span class="cl-tag">Armour</span> Shells are resolved against front / side / rear armour zones. Approach angle determines the zone. A shot that cannot penetrate (firepower &lt; armour × 0.6) ricochets with a gold spark. Aim for flanks and rears of heavy tanks.</div>
+          <div class="cl-entry"><span class="cl-tag">Damage</span> Below 50% HP: half speed. Below 25% HP: quarter speed, damage smoke. Below 12% HP: tracks wrecked — hull immobile but turret still operates.</div>
+        </div>
+      </details>
+
+      <details class="cl-details">
         <summary class="cl-summary">Changelog</summary>
         <div class="cl-body">
+          <div class="cl-entry"><span class="cl-tag">Phase 41</span> LAN Duel mode: 1 v 1 over local network via WebRTC state broadcast. Host runs authoritative simulation at 60 fps, broadcasts tank states at 20 Hz; client runs local prediction for smooth movement with server correction. Shot effects (muzzle flash, explosions, ricochets) synchronised to both screens. Ping display in HUD. Requires Node.js signalling-server.js on host machine. Demo mode on by default; cancelled by any input. Mercs off by default. Strategy mode purchase expanded to all 12 main-faction tanks. FPS/score/enemies moved to advanced info block.</div>
           <div class="cl-entry"><span class="cl-tag">Phase 40</span> Faction selector added: Allies, Soviets, Axis — each with distinct tank roster, fleet compositions, and correct opposing enemies across all three modes. Axis campaign faces Allied/Soviet tanks; shop and Attrition fleets updated accordingly.</div>
           <div class="cl-entry"><span class="cl-tag">Phase 39</span> Collision radii tightened (tanks 0.85×, buildings max-edge). Phantom Sherman disposed on fleet-mode entry. Ammo HUD hidden in fleet modes. WAVE_COMPLETE handler guarded for Arcade. Strategy fleet capped at 8 player / 10 AI. AI slower: advance 5s, halt 1.2s, fire interval 6s. Mode name shown in bottom-left HUD.</div>
           <div class="cl-entry"><span class="cl-tag">Phase 38</span> Menu redesign: vehicle and battle mode now on one screen side-by-side. ◄/► selects tank, ▲/▼ or click selects mode, Enter starts. Settings panel shows full controls reference (updates per mode and simple/advanced setting). ← GAMES button moved clear of settings icon.</div>

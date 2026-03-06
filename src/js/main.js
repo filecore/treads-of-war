@@ -1204,6 +1204,10 @@ function _cleanupLan() {
   _lanMode       = false;
   _lanGameActive = false;
   _lanStatus     = '';
+  _lanEvents     = [];
+  _lanGameResult = null;
+  _lanRtt        = 0;
+  _lanLastSnapTs = 0;
 }
 
 async function startLanHost() {
@@ -1272,6 +1276,10 @@ function _initLanGame(peerKey) {
   combat.dispose();
   _lanGameActive  = true;
   _lanBroadTimer  = 0;
+  _lanEvents      = [];
+  _lanGameResult  = null;
+  _lanRtt         = 0;
+  _lanLastSnapTs  = 0;
   _demoActive     = false;
   _demoAI         = null;
 
@@ -1283,7 +1291,18 @@ function _initLanGame(peerKey) {
 }
 
 function _endLanGame(won) {
+  if (!_lanGameActive) return;  // guard against double-trigger
   _lanGameActive = false;
+  _lanGameResult = won ? 'h' : 'c';
+  // Host sends one final authoritative snapshot so client sees the result
+  if (_lanNet && _lanNet.isHost()) {
+    _lanNet.sendSnapshot({
+      p: player.getState(),
+      c: _lanPeer ? _lanPeer.getState() : null,
+      ev: [], ts: Date.now(), rtt: _lanRtt,
+      res: _lanGameResult,
+    });
+  }
   game.state = won ? STATES.VICTORY : STATES.GAME_OVER;
   updateOverlay();
 }
@@ -1301,7 +1320,7 @@ function _endLanSession(msg) {
 }
 
 // LAN game loop — called from animate() when _lanMode && _lanGameActive
-function _runLanFrame(dt) {
+function _runLanFrame(dt, now) {
   if (_lanNet.isHost()) {
     // ── Host: drive own tank, apply client input to peer ───────────────────────
     if (player.alive) {
@@ -1309,7 +1328,11 @@ function _runLanFrame(dt) {
       player.updateCamera(camera, dt);
       if (input.fire || input.fireOnce) {
         const tip = combat.fire(player, _ammoType);
-        if (tip) { particles.muzzleFlash(tip.x, tip.y, tip.z); audio.playFire(); }
+        if (tip) {
+          particles.muzzleFlash(tip.x, tip.y, tip.z);
+          audio.playFire();
+          _lanEvents.push({ t: 'fl', x: tip.x, y: tip.y, z: tip.z });
+        }
       }
     }
 
@@ -1318,17 +1341,22 @@ function _runLanFrame(dt) {
       _lanPeer.update(dt, ci);
       if (ci.fire || ci.fireOnce) {
         const tip = combat.fire(_lanPeer);
-        if (tip) particles.muzzleFlash(tip.x, tip.y, tip.z);
+        if (tip) {
+          particles.muzzleFlash(tip.x, tip.y, tip.z);
+          _lanEvents.push({ t: 'fl', x: tip.x, y: tip.y, z: tip.z });
+        }
       }
     }
 
-    // Combat: shells vs both tanks
+    // Combat: shells vs both tanks; collect events for client
     const impacts = combat.update(dt, allTanks);
     for (const imp of impacts) {
       if (imp.penetrated) {
         particles.explosion(imp.x, imp.y, imp.z);
+        _lanEvents.push({ t: 'ex', x: imp.x, y: imp.y, z: imp.z });
       } else {
         particles.ricochet(imp.x, imp.y, imp.z);
+        _lanEvents.push({ t: 'rc', x: imp.x, y: imp.y, z: imp.z });
       }
       if (imp.tank && !imp.tank.alive) imp.tank.setDestroyed();
     }
@@ -1337,42 +1365,100 @@ function _runLanFrame(dt) {
     _lanBroadTimer -= dt;
     if (_lanBroadTimer <= 0) {
       _lanBroadTimer = 1 / LAN_SNAP_HZ;
+      // RTT measurement: compute from client's echoed timestamp
+      if (_lanNet.clientEchoTs) {
+        _lanRtt = Math.round(Date.now() - _lanNet.clientEchoTs);
+        _lanNet.clientEchoTs = 0;
+      }
       _lanNet.sendSnapshot({
-        p: player.getState(),
-        c: _lanPeer ? _lanPeer.getState() : null,
+        p:   player.getState(),
+        c:   _lanPeer ? _lanPeer.getState() : null,
+        ev:  _lanEvents.splice(0),  // consume all pending events
+        res: _lanGameResult,
+        rtt: _lanRtt,
+        ts:  Date.now(),
       });
     }
 
-    // End condition
+    // End condition (host authoritative)
     if (_lanPeer && (!player.alive || !_lanPeer.alive)) {
-      _endLanGame(!player.alive === false);  // won if WE are still alive
+      _endLanGame(player.alive);
     }
 
   } else {
-    // ── Client: send input, apply host snapshot ────────────────────────────────
-    _lanNet.sendInput(input);
+    // ── Client: local prediction + send input + apply host snapshot ────────────
+
+    // Prediction: run local physics every frame for smooth own-tank movement
+    if (player.alive) player.update(dt, input);
+
+    // Send input with echo timestamp for host RTT measurement
+    _lanNet.sendInput(input, _lanLastSnapTs);
 
     const snap = _lanNet.consumeSnapshot();
     if (snap) {
+      _lanLastSnapTs = snap.ts ?? 0;
+
+      // Receive RTT measured by host
+      if (snap.rtt !== undefined) _lanRtt = snap.rtt;
+
+      // Play shot effects sent by host
+      if (snap.ev) {
+        for (const ev of snap.ev) {
+          if      (ev.t === 'fl') particles.muzzleFlash(ev.x, ev.y, ev.z);
+          else if (ev.t === 'ex') particles.explosion(ev.x, ev.y, ev.z);
+          else if (ev.t === 'rc') particles.ricochet(ev.x, ev.y, ev.z);
+        }
+      }
+
+      // Authoritative correction for own tank (snap to host state)
+      if (snap.c) {
+        const wasAlive = player.alive;
+        player.applyState(snap.c);
+        if (wasAlive && !player.alive) player.setDestroyed();
+      }
+
+      // Apply remote (host) tank state
       if (snap.p && _lanPeer) {
         const wasAlive = _lanPeer.alive;
         _lanPeer.applyState(snap.p);
         if (wasAlive && !_lanPeer.alive) _lanPeer.setDestroyed();
       }
-      if (snap.c) {
-        const wasAlive = player.alive;
-        player.applyState(snap.c);
-        if (wasAlive && !player.alive) player.setDestroyed();
-        // End condition: player dead → game over; peer dead → victory
-        if (!player.alive && wasAlive) _endLanGame(false);
-        if (_lanPeer && !_lanPeer.alive) _endLanGame(true);
-      }
+
+      // End condition: host authoritative via res field
+      if (snap.res) _endLanGame(snap.res === 'c');
     }
 
     if (player.alive) player.updateCamera(camera, dt);
   }
 
   particles.update(dt);
+
+  // ── LAN HUD (~2 Hz) ──────────────────────────────────────────────────────────
+  fpsCount++;
+  if (now - fpsTime >= 500) {
+    const fps = Math.round(fpsCount / ((now - fpsTime) / 1000));
+    fpsCount = 0; fpsTime = now;
+    if (hudFps)     hudFps.textContent  = `${fps}`;
+    if (hudMode)    hudMode.textContent = `LAN DUEL  ·  ${_lanRtt}ms`;
+    if (hudHp) {
+      const pct = Math.round(player.hp / player.maxHp * 100);
+      hudHp.textContent = `HP ${pct}%`;
+      hudHp.style.color = pct > 50 ? 'rgba(120,255,120,0.85)'
+                        : pct > 25 ? 'rgba(255,200,80,0.9)'
+                        :            'rgba(255,80,80,0.95)';
+    }
+    if (hudReload) {
+      if (player.reloadTimer >= player.reloadTime) {
+        hudReload.textContent = '● READY';
+        hudReload.style.color = 'rgba(120,255,120,0.85)';
+      } else {
+        const pct = Math.round(player.reloadTimer / player.reloadTime * 100);
+        hudReload.textContent = `◦ RELOADING ${pct}%`;
+        hudReload.style.color = 'rgba(180,180,180,0.5)';
+      }
+    }
+  }
+  updateMinimap();
 }
 
 function lanLobbyHtml() {
@@ -1625,14 +1711,29 @@ if (cbMercs) {
   });
 }
 
+// ─── LAN enabled toggle ───────────────────────────────────────────────────────
+let _lanEnabled = false;
+const cbLan = document.getElementById('cb-lan');
+if (cbLan) {
+  cbLan.checked = false;
+  cbLan.addEventListener('change', () => {
+    _lanEnabled = cbLan.checked;
+    updateOverlay();   // re-render menu to show/hide LAN Duel option
+  });
+}
+
 // ─── LAN networking state ─────────────────────────────────────────────────────
-let _lanMode      = false;   // true while a LAN duel is set up or in progress
-let _lanNet       = null;    // Net instance
-let _lanPeer      = null;    // Tank controlled by the remote player
-let _lanBroadTimer= 0;       // countdown to next broadcast (host only)
-let _lanGameActive= false;   // true once both tanks are spawned and game is running
-let _lanTankKey   = null;    // this player's selected tank key for LAN
-let _lanStatus    = '';      // display string for lobby screen
+let _lanMode       = false;  // true while a LAN duel is set up or in progress
+let _lanNet        = null;   // Net instance
+let _lanPeer       = null;   // Tank controlled by the remote player
+let _lanBroadTimer = 0;      // countdown to next broadcast (host only)
+let _lanGameActive = false;  // true once both tanks are spawned and game is running
+let _lanTankKey    = null;   // this player's selected tank key for LAN
+let _lanStatus     = '';     // display string for lobby screen
+let _lanEvents     = [];     // muzzle/explosion events pending next broadcast (host)
+let _lanGameResult = null;   // null | 'h' (host won) | 'c' (client won)
+let _lanRtt        = 0;      // round-trip time in ms (from host measurement)
+let _lanLastSnapTs = 0;      // client: ts of last received snapshot (echoed to host)
 
 // ─── Demo mode ────────────────────────────────────────────────────────────────
 // When enabled in Settings and no player input has been received, the AI drives
@@ -1850,14 +1951,16 @@ function menuScreenHtml() {
   html += '<div class="menu-col">';
   html += '<div class="menu-section-label">BATTLE MODE</div>';
   html += '<div class="mode-select">';
-  const modeNames = ['Arcade', 'Attrition', 'Strategy', 'LAN Duel'];
+  const modeNames = ['Arcade', 'Attrition', 'Strategy', ...(_lanEnabled ? ['LAN Duel'] : [])];
   const modeDescs = [
     'Endless waves \u00B7 Solo \u00B7 Tank upgrades by kills \u00B7 3 lives',
     'Fixed fleet of 5 \u00B7 Permanent losses \u00B7 Escalating enemy',
     'Budget purchase \u00B7 Objective capture \u00B7 AI buys too',
-    '1 vs 1 \u00B7 Local network \u00B7 Pick any tank \u00B7 Needs signalling-server.js',
+    ...(_lanEnabled ? ['1 vs 1 \u00B7 Local network \u00B7 Pick any tank \u00B7 Enable in Settings'] : []),
   ];
-  for (let i = 0; i < 3; i++) {
+  // Clamp selection in case LAN was just disabled while on index 3
+  if (_modeSelIdx >= modeNames.length) _modeSelIdx = modeNames.length - 1;
+  for (let i = 0; i < modeNames.length; i++) {
     const sel = i === _modeSelIdx;
     html += `<div class="mode-opt${sel ? ' mode-selected' : ''}" data-mode-idx="${i}">`;
     html += `<div class="mode-name">${sel ? '\u25B6 ' : ''}${modeNames[i]}</div>`;
@@ -2121,7 +2224,7 @@ window.addEventListener('keydown', e => {
       _modeSelIdx = Math.max(0, _modeSelIdx - 1);
       updateOverlay();
     } else if (e.code === 'ArrowDown') {
-      _modeSelIdx = Math.min(2, _modeSelIdx + 1);
+      _modeSelIdx = Math.min((_lanEnabled ? MODE_LIST.length : MODE_LIST.length - 1) - 1, _modeSelIdx + 1);
       updateOverlay();
     } else if (e.code === 'Enter' || e.code === 'Space') {
       _gameMode = MODE_LIST[_modeSelIdx];
@@ -2821,7 +2924,7 @@ function animate(now) {
 
   // ── LAN duel game loop (takes over from normal loop when active) ─────────────
   if (_lanMode && _lanGameActive) {
-    _runLanFrame(dt);
+    _runLanFrame(dt, now);
     _sky.position.copy(camera.position);
     renderer.render(scene, camera);
     input.tick();

@@ -35,6 +35,7 @@ export class Net {
 
     // Host side: last decoded input received from client
     this.clientInput   = null;
+    this.clientEchoTs  = 0;    // echo of snapshot timestamp from client (for RTT)
 
     // Client side: latest snapshot waiting to be consumed
     this._pendingSnap  = null;
@@ -64,8 +65,11 @@ export class Net {
     this._send({ t: 's', d: snap });
   }
 
-  /** Client → host: send local player input every frame. */
-  sendInput(inp) {
+  /**
+   * Client → host: send local player input every frame.
+   * echoTs: timestamp from the last received snapshot (for RTT measurement).
+   */
+  sendInput(inp, echoTs = 0) {
     this._send({
       t: 'i',
       d: {
@@ -77,6 +81,7 @@ export class Net {
         tr: inp.turretRight ? 1 : 0,
         fi: inp.fire        ? 1 : 0,
         fo: inp.fireOnce    ? 1 : 0,
+        e:  echoTs,
       },
     });
   }
@@ -128,6 +133,8 @@ export class Net {
         fire:        !!d.fi,  fireOnce:    !!d.fo,
         skipAccel: false,
       };
+      // Echo timestamp for RTT measurement
+      this.clientEchoTs = d.e ?? 0;
 
     } else if (msg.t === 'h') {
       // Hello: peer announced their tank type
