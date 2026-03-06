@@ -55,9 +55,9 @@ export class Net {
     await this._connect(sigUrl, false);
   }
 
-  /** Announce local tank type to peer. Call once after onConnect fires. */
-  sendHello(tankKey) {
-    this._send({ t: 'h', k: tankKey });
+  /** Announce local tank type and player name to peer. Call once after onConnect fires. */
+  sendHello(tankKey, name = '') {
+    this._send({ t: 'h', k: tankKey, n: name });
   }
 
   /** Host → client: broadcast authoritative game state. */
@@ -137,8 +137,8 @@ export class Net {
       this.clientEchoTs = d.e ?? 0;
 
     } else if (msg.t === 'h') {
-      // Hello: peer announced their tank type
-      if (this.onPeerHello) this.onPeerHello(msg.k);
+      // Hello: peer announced their tank type and name
+      if (this.onPeerHello) this.onPeerHello(msg.k, msg.n || '');
 
     } else if (msg.t === 'peer_gone') {
       this.connected = false;
