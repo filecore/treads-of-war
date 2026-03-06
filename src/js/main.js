@@ -1199,6 +1199,7 @@ function startStrategyBattle() {
 // ─── LAN duel functions ────────────────────────────────────────────────────────
 
 function _cleanupLan() {
+  if (_lanNametag) _lanNametag.style.display = 'none';
   if (_lanNet)  { _lanNet.disconnect(); _lanNet = null; }
   if (_lanPeer) { _lanPeer.dispose(scene); _lanPeer = null; }
   _lanMode       = false;
@@ -1206,6 +1207,7 @@ function _cleanupLan() {
   _lanStatus     = '';
   _lanEvents     = [];
   _lanGameResult = null;
+  _lanEndTimer   = -1;
   _lanRtt        = 0;
   _lanLastSnapTs = 0;
 }
@@ -1266,6 +1268,7 @@ function _initLanGame(peerKey) {
   player.heading = _lanNet.isHost() ? 0 : Math.PI;  // face centre
 
   // Place peer tank (remote)
+  _lanPeerTankKey = peerKey;
   if (_lanPeer) { _lanPeer.dispose(scene); }
   const peerZ = _lanNet.isHost() ? 30 : -30;
   _lanPeer = new Tank(scene, peerKey, _lanNet.isHost());
@@ -1278,6 +1281,7 @@ function _initLanGame(peerKey) {
   _lanBroadTimer  = 0;
   _lanEvents      = [];
   _lanGameResult  = null;
+  _lanEndTimer    = -1;
   _lanRtt         = 0;
   _lanLastSnapTs  = 0;
   _demoActive     = false;
@@ -1291,20 +1295,17 @@ function _initLanGame(peerKey) {
 }
 
 function _endLanGame(won) {
-  if (!_lanGameActive) return;  // guard against double-trigger
-  _lanGameActive = false;
+  if (_lanGameResult !== null) return;  // guard against double-trigger
   _lanGameResult = won ? 'h' : 'c';
-  // Host sends one final authoritative snapshot so client sees the result
   if (_lanNet && _lanNet.isHost()) {
-    _lanNet.sendSnapshot({
-      p: player.getState(),
-      c: _lanPeer ? _lanPeer.getState() : null,
-      ev: [], ts: Date.now(), rtt: _lanRtt,
-      res: _lanGameResult,
-    });
+    // Host: keep broadcasting res for 500 ms so UDP drops can't strand the client
+    _lanEndTimer = 0.5;
+  } else {
+    // Client: result came from host snapshot — end immediately
+    _lanGameActive = false;
+    game.state = won ? STATES.VICTORY : STATES.GAME_OVER;
+    updateOverlay();
   }
-  game.state = won ? STATES.VICTORY : STATES.GAME_OVER;
-  updateOverlay();
 }
 
 function _endLanSession(msg) {
@@ -1381,8 +1382,27 @@ function _runLanFrame(dt, now) {
     }
 
     // End condition (host authoritative)
-    if (_lanPeer && (!player.alive || !_lanPeer.alive)) {
+    if (_lanGameResult === null && _lanPeer && (!player.alive || !_lanPeer.alive)) {
       _endLanGame(player.alive);
+    }
+
+    // Wind-down: keep broadcasting res until timer expires, then transition
+    if (_lanEndTimer > 0) {
+      _lanEndTimer -= dt;
+      _lanBroadTimer -= dt;
+      if (_lanBroadTimer <= 0) {
+        _lanBroadTimer = 1 / LAN_SNAP_HZ;
+        _lanNet.sendSnapshot({
+          p: player.getState(), c: _lanPeer ? _lanPeer.getState() : null,
+          ev: [], ts: Date.now(), rtt: _lanRtt, res: _lanGameResult,
+        });
+      }
+      if (_lanEndTimer <= 0) {
+        _lanGameActive = false;
+        game.state = _lanGameResult === 'h' ? STATES.VICTORY : STATES.GAME_OVER;
+        updateOverlay();
+        return;
+      }
     }
 
   } else {
@@ -1432,6 +1452,33 @@ function _runLanFrame(dt, now) {
   }
 
   particles.update(dt);
+
+  // ── LAN peer name tag ─────────────────────────────────────────────────────────
+  if (_lanPeer && _lanNametag) {
+    if (!_lanPeer.alive) {
+      _lanNametag.style.display = 'none';
+    } else {
+      // Project peer tank's world position to screen
+      _lanNametagPos.copy(_lanPeer.position);
+      _lanNametagPos.y += 4.5 * _lanPeer.def.modelScale;
+      _lanNametagPos.project(camera);
+      const sw = renderer.domElement.clientWidth;
+      const sh = renderer.domElement.clientHeight;
+      const sx = (_lanNametagPos.x + 1) * 0.5 * sw;
+      const sy = (-_lanNametagPos.y + 1) * 0.5 * sh;
+      // Only show when in front of camera and on-screen
+      if (_lanNametagPos.z < 1 && sx > 0 && sx < sw && sy > 0 && sy < sh) {
+        const hpPct = Math.max(0, Math.round(_lanPeer.hp / _lanPeer.maxHp * 100));
+        _lanNametag.innerHTML =
+          `${_lanPeer.def.name}<span class="nt-hp"><span class="nt-hp-fill" style="width:${hpPct}%"></span></span>`;
+        _lanNametag.style.display = 'block';
+        _lanNametag.style.left = `${sx}px`;
+        _lanNametag.style.top  = `${sy}px`;
+      } else {
+        _lanNametag.style.display = 'none';
+      }
+    }
+  }
 
   // ── LAN HUD (~2 Hz) ──────────────────────────────────────────────────────────
   fpsCount++;
@@ -1730,10 +1777,14 @@ let _lanBroadTimer = 0;      // countdown to next broadcast (host only)
 let _lanGameActive = false;  // true once both tanks are spawned and game is running
 let _lanTankKey    = null;   // this player's selected tank key for LAN
 let _lanStatus     = '';     // display string for lobby screen
-let _lanEvents     = [];     // muzzle/explosion events pending next broadcast (host)
-let _lanGameResult = null;   // null | 'h' (host won) | 'c' (client won)
-let _lanRtt        = 0;      // round-trip time in ms (from host measurement)
-let _lanLastSnapTs = 0;      // client: ts of last received snapshot (echoed to host)
+let _lanEvents      = [];    // muzzle/explosion events pending next broadcast (host)
+let _lanGameResult  = null;  // null | 'h' (host won) | 'c' (client won)
+let _lanEndTimer    = -1;    // host: seconds remaining in wind-down broadcast (-1 = inactive)
+let _lanRtt         = 0;     // round-trip time in ms (from host measurement)
+let _lanLastSnapTs  = 0;     // client: ts of last received snapshot (echoed to host)
+let _lanPeerTankKey = null;  // peer's tank key — saved for rematch
+const _lanNametag    = document.getElementById('lan-nametag');
+const _lanNametagPos = new THREE.Vector3();  // reused for screen projection
 
 // ─── Demo mode ────────────────────────────────────────────────────────────────
 // When enabled in Settings and no player input has been received, the AI drives
@@ -2148,23 +2199,72 @@ function updateOverlay() {
     overlayHint.textContent  = 'Press R to continue';
 
   } else if (s === STATES.GAME_OVER) {
-    overlayTitle.textContent = _gameMode === MODES.ARCADE ? 'TANK DESTROYED' : 'FLEET DESTROYED';
-    if (_gameMode === MODES.ARCADE) {
-      overlaySub.textContent = `Class ${_arcadeClass + 1}  ·  Kills: ${game.kills}`;
-    } else if (_gameMode === MODES.ATTRITION) {
-      overlaySub.textContent = `Battle ${_attritionBattle + 1}  ·  Fleet wiped out`;
+    if (_lanMode) {
+      overlayTitle.textContent = 'DEFEATED';
+      overlaySub.textContent   = 'Your tank was destroyed';
+      overlayScore.textContent = '';
+    } else if (_gameMode === MODES.ARCADE) {
+      overlayTitle.textContent = 'TANK DESTROYED';
+      overlaySub.textContent   = `Class ${_arcadeClass + 1}  ·  Kills: ${game.kills}`;
+      overlayScore.textContent = `Final score: ${game.score}  ·  Total kills: ${game.kills}`;
     } else {
-      overlaySub.textContent = `Level ${_strategyLevel + 1}  ·  Fleet wiped out`;
+      overlayTitle.textContent = 'FLEET DESTROYED';
+      overlaySub.textContent   = _gameMode === MODES.ATTRITION
+        ? `Battle ${_attritionBattle + 1}  ·  Fleet wiped out`
+        : `Level ${_strategyLevel + 1}  ·  Fleet wiped out`;
+      overlayScore.textContent = `Final score: ${game.score}  ·  Total kills: ${game.kills}`;
     }
-    overlayScore.textContent = `Final score: ${game.score}  ·  Total kills: ${game.kills}`;
-    overlayHint.textContent  = 'Press R to return to menu';
+    overlayHint.textContent = _lanMode ? '' : 'Press R to return to menu';
+    if (_lanMode && overlayControls) {
+      overlayControls.innerHTML = _lanEndScreenHtml(false);
+      _wireLanEndButtons();
+    }
 
   } else if (s === STATES.VICTORY) {
-    overlayTitle.textContent = 'MISSION COMPLETE';
-    overlaySub.textContent   = 'All three waves cleared';
-    overlayScore.textContent = `Final score: ${game.score}`;
-    overlayHint.textContent  = 'Press R to play again';
+    if (_lanMode) {
+      overlayTitle.textContent = 'VICTORY';
+      overlaySub.textContent   = 'You destroyed your opponent';
+      overlayScore.textContent = '';
+      overlayHint.textContent  = '';
+      if (overlayControls) {
+        overlayControls.innerHTML = _lanEndScreenHtml(true);
+        _wireLanEndButtons();
+      }
+    } else {
+      overlayTitle.textContent = 'MISSION COMPLETE';
+      overlaySub.textContent   = 'All three waves cleared';
+      overlayScore.textContent = `Final score: ${game.score}`;
+      overlayHint.textContent  = 'Press R to play again';
+    }
   }
+}
+
+function _lanEndScreenHtml(won) {
+  return `
+    <div class="lan-lobby">
+      <div class="lan-status" style="font-size:13px;color:${won ? 'rgba(120,255,120,0.85)' : 'rgba(255,100,80,0.85)'}">
+        ${won ? '● Opponent destroyed' : '● Your tank was destroyed'}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button id="lan-rematch-btn" class="lan-btn">Rematch</button>
+        <button id="lan-menu-btn"    class="lan-btn">Main Menu</button>
+      </div>
+    </div>`;
+}
+
+function _wireLanEndButtons() {
+  const rematch = overlayControls.querySelector('#lan-rematch-btn');
+  const menu    = overlayControls.querySelector('#lan-menu-btn');
+  if (rematch) rematch.addEventListener('click', () => {
+    if (_lanNet && _lanNet.connected && _lanPeerTankKey) {
+      _initLanGame(_lanPeerTankKey);
+    }
+  });
+  if (menu) menu.addEventListener('click', () => {
+    _cleanupLan();
+    game.state = STATES.MENU;
+    updateOverlay();
+  });
 }
 
 // ─── Keyboard handlers for overlay actions ────────────────────────────────────

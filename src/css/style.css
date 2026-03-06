@@ -941,6 +941,35 @@ html, body {
   animation: blink 0.9s ease-in-out infinite;
 }
 
+/* ── LAN peer name tag ── */
+#lan-nametag {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(255, 160, 80, 0.90);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+#lan-nametag .nt-hp {
+  display: block;
+  width: 48px;
+  height: 4px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,160,80,0.4);
+  margin: 2px auto 0;
+  position: relative;
+}
+#lan-nametag .nt-hp-fill {
+  position: absolute;
+  top: 0; left: 0; height: 100%;
+  background: rgba(255, 120, 40, 0.85);
+  transition: width 0.2s;
+}
+
 /* ── LAN lobby ── */
 .lan-lobby {
   display: flex;
