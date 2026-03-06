@@ -1246,10 +1246,9 @@ function _cleanupLan() {
   _lanRoomCode   = '';
 }
 
-// Relay server URL — same host/port as the game, proxied via /relay path.
-// Nginx (NPM) forwards this to the relay container on 127.0.0.1:8765.
-// No extra port exposed; works on both ws:// and wss://.
-const _relayUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/relay`;
+// Relay server URL — same host as the game, port 8765.
+// Port 8765 is LAN-only (server is at a private IP; router does not forward it).
+const _relayUrl = `ws://${location.hostname}:8765`;
 
 async function startLanHost() {
   _lanMode       = true;
