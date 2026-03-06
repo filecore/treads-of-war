@@ -3,18 +3,46 @@
 //
 // Run:   node signalling-server.js [port]   (default port: 8765)
 //
-// This tiny server relays SDP offer/answer and ICE candidates between exactly
-// two peers (one host, one client) so they can establish a direct WebRTC
-// data channel. Once the data channel is open, all game traffic flows directly
-// between the two browsers — this server is no longer involved.
+// This server does two jobs:
+//   1. HTTP GET /discover — lets browsers scan the subnet for a waiting host.
+//      Returns JSON: { name, hostWaiting }. CORS open so any LAN origin can fetch.
+//   2. WebSocket — relays SDP offer/answer and ICE candidates between one host
+//      and one client. Once the data channel is open, all game traffic flows
+//      directly between the two browsers — this server is no longer involved.
 //
 // Prerequisites:  npm install ws   (or: npm init -y && npm install ws)
 
+const http = require('http');
 const { WebSocketServer } = require('ws');
+
 const port = parseInt(process.argv[2] || '8765', 10);
-const wss  = new WebSocketServer({ port });
 
 let peers = { host: null, client: null };
+
+// ── HTTP server (discovery endpoint) ─────────────────────────────────────────
+const httpServer = http.createServer((req, res) => {
+  // Open CORS so browsers on any LAN origin can reach us
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204); res.end(); return;
+  }
+
+  if (req.method === 'GET' && req.url === '/discover') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      name: 'Conqueror LAN Server',
+      hostWaiting: peers.host !== null && peers.client === null,
+    }));
+    return;
+  }
+
+  res.writeHead(404); res.end();
+});
+
+// ── WebSocket server (signalling) ─────────────────────────────────────────────
+const wss = new WebSocketServer({ server: httpServer });
 
 function relay(from, rawMsg) {
   const target = from === peers.host ? peers.client : peers.host;
@@ -66,5 +94,9 @@ wss.on('connection', ws => {
   });
 });
 
-console.log(`[sig] Conqueror signalling server on ws://0.0.0.0:${port}`);
-console.log('[sig] Share your LAN IP with the other player, both open the game, then connect.');
+httpServer.listen(port, () => {
+  console.log(`[sig] Conqueror signalling server on port ${port}`);
+  console.log(`[sig]   WebSocket:  ws://0.0.0.0:${port}`);
+  console.log(`[sig]   Discovery:  http://0.0.0.0:${port}/discover`);
+  console.log('[sig] Share your LAN IP with the other player, both open the game, then connect.');
+});

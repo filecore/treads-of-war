@@ -1054,6 +1054,42 @@ html, body {
   padding: 0;
 }
 .lan-back-btn:hover { color: rgba(200, 200, 200, 0.80); }
+.lan-btn-sm { font-size: 11px; padding: 5px 10px; }
+.lan-btn:disabled { opacity: 0.45; cursor: default; }
+.lan-scan-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.lan-scan-status {
+  font-size: 11px;
+  color: rgba(160, 200, 255, 0.65);
+  letter-spacing: 0.05em;
+}
+.lan-scan-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.lan-scan-result {
+  background: rgba(20, 40, 80, 0.60);
+  border: 1px solid rgba(100, 160, 255, 0.25);
+  border-radius: 3px;
+  color: rgba(160, 200, 255, 0.75);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.lan-scan-result:hover { background: rgba(40, 70, 140, 0.70); color: rgba(200, 230, 255, 0.95); }
+.lan-scan-result-ready {
+  border-color: rgba(80, 200, 120, 0.40);
+  color: rgba(140, 230, 160, 0.90);
+}
+.lan-scan-result-ready:hover { background: rgba(20, 60, 30, 0.70); }
 
 /* ── Fleet HUD (top-centre) ── */
 #hud-fleet {
