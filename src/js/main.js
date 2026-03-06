@@ -1210,17 +1210,19 @@ function _cleanupLan() {
   _lanEndTimer   = -1;
   _lanRtt        = 0;
   _lanLastSnapTs = 0;
+  _lanPeerName   = '';
 }
 
 async function startLanHost() {
-  _lanMode    = true;
-  _lanTankKey = ALL_TANKS[_selIdx];
-  _lanStatus  = 'Waiting for opponent…';
+  _lanMode       = true;
+  _lanTankKey    = ALL_TANKS[_selIdx];
+  _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
+  _lanStatus     = 'Waiting for opponent…';
   updateOverlay();
 
   _lanNet = new Net();
-  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey); };
-  _lanNet.onPeerHello  = peerKey => { _initLanGame(peerKey); };
+  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey, _lanPlayerName); };
+  _lanNet.onPeerHello  = (peerKey, peerName) => { _lanPeerName = peerName; _initLanGame(peerKey); };
   _lanNet.onDisconnect = () => { _endLanSession('Opponent disconnected.'); };
 
   try {
@@ -1234,14 +1236,15 @@ async function startLanHost() {
 }
 
 async function startLanClient(ip) {
-  _lanMode    = true;
-  _lanTankKey = ALL_TANKS[_selIdx];
-  _lanStatus  = `Connecting to ${ip}…`;
+  _lanMode       = true;
+  _lanTankKey    = ALL_TANKS[_selIdx];
+  _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
+  _lanStatus     = `Connecting to ${ip}…`;
   updateOverlay();
 
   _lanNet = new Net();
-  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey); };
-  _lanNet.onPeerHello  = peerKey => { _initLanGame(peerKey); };
+  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey, _lanPlayerName); };
+  _lanNet.onPeerHello  = (peerKey, peerName) => { _lanPeerName = peerName; _initLanGame(peerKey); };
   _lanNet.onDisconnect = () => { _endLanSession('Host disconnected.'); };
 
   try {
@@ -1469,8 +1472,9 @@ function _runLanFrame(dt, now) {
       // Only show when in front of camera and on-screen
       if (_lanNametagPos.z < 1 && sx > 0 && sx < sw && sy > 0 && sy < sh) {
         const hpPct = Math.max(0, Math.round(_lanPeer.hp / _lanPeer.maxHp * 100));
+        const nameLabel = _lanPeerName ? `<span class="nt-name">${_lanPeerName}</span>` : '';
         _lanNametag.innerHTML =
-          `${_lanPeer.def.name}<span class="nt-hp"><span class="nt-hp-fill" style="width:${hpPct}%"></span></span>`;
+          `${nameLabel}${_lanPeer.def.name}<span class="nt-hp"><span class="nt-hp-fill" style="width:${hpPct}%"></span></span>`;
         _lanNametag.style.display = 'block';
         _lanNametag.style.left = `${sx}px`;
         _lanNametag.style.top  = `${sy}px`;
@@ -1511,6 +1515,11 @@ function _runLanFrame(dt, now) {
 function lanLobbyHtml() {
   return `
     <div class="lan-lobby">
+      <div class="lan-name-row">
+        <label class="lan-name-label" for="lan-name-input">Your name</label>
+        <input id="lan-name-input" class="lan-input lan-name-input" type="text" maxlength="16"
+               placeholder="Player" value="${_lanPlayerName}" />
+      </div>
       <div class="lan-section">
         <div class="lan-section-title">Host a game</div>
         <div class="lan-desc">Start <code>node signalling-server.js</code> in the project folder on this machine first, then click Host Game.</div>
@@ -1825,7 +1834,9 @@ let _lanGameResult  = null;  // null | 'h' (host won) | 'c' (client won)
 let _lanEndTimer    = -1;    // host: seconds remaining in wind-down broadcast (-1 = inactive)
 let _lanRtt         = 0;     // round-trip time in ms (from host measurement)
 let _lanLastSnapTs  = 0;     // client: ts of last received snapshot (echoed to host)
-let _lanPeerTankKey = null;  // peer's tank key — saved for rematch
+let _lanPeerTankKey  = null;  // peer's tank key — saved for rematch
+let _lanPlayerName   = '';    // this player's chosen name
+let _lanPeerName     = '';    // peer's name (received in Hello)
 const _lanNametag    = document.getElementById('lan-nametag');
 const _lanNametagPos = new THREE.Vector3();  // reused for screen projection
 
@@ -2320,10 +2331,11 @@ function updateOverlay() {
 }
 
 function _lanEndScreenHtml(won) {
+  const opp = _lanPeerName || 'Opponent';
   return `
     <div class="lan-lobby">
       <div class="lan-status" style="font-size:13px;color:${won ? 'rgba(120,255,120,0.85)' : 'rgba(255,100,80,0.85)'}">
-        ${won ? '● Opponent destroyed' : '● Your tank was destroyed'}
+        ${won ? `● ${opp} destroyed` : `● Destroyed by ${opp}`}
       </div>
       <div style="display:flex;gap:10px;margin-top:8px;">
         <button id="lan-rematch-btn" class="lan-btn">Rematch</button>

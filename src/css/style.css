@@ -969,6 +969,14 @@ html, body {
   background: rgba(255, 120, 40, 0.85);
   transition: width 0.2s;
 }
+#lan-nametag .nt-name {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 220, 140, 0.75);
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
 
 /* ── LAN lobby ── */
 .lan-lobby {
@@ -1054,6 +1062,20 @@ html, body {
   padding: 0;
 }
 .lan-back-btn:hover { color: rgba(200, 200, 200, 0.80); }
+.lan-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lan-name-label {
+  font-size: 11px;
+  color: rgba(160, 190, 230, 0.60);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.lan-name-input { max-width: 140px; }
 .lan-btn-sm { font-size: 11px; padding: 5px 10px; }
 .lan-btn:disabled { opacity: 0.45; cursor: default; }
 .lan-scan-row {
