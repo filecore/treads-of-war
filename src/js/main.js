@@ -1211,23 +1211,26 @@ function _cleanupLan() {
   _lanRtt        = 0;
   _lanLastSnapTs = 0;
   _lanPeerName   = '';
+  _lanRoomCode   = '';
 }
 
 async function startLanHost() {
   _lanMode       = true;
   _lanTankKey    = ALL_TANKS[_selIdx];
   _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
-  _lanStatus     = 'Waiting for opponent…';
+  _lanRoomCode   = _genRoomCode();
+  _lanStatus     = `Waiting for opponent… · Room: ${_lanRoomCode}`;
   updateOverlay();
 
   _lanNet = new Net();
-  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey, _lanPlayerName); };
-  _lanNet.onPeerHello  = (peerKey, peerName) => { _lanPeerName = peerName; _initLanGame(peerKey); };
-  _lanNet.onDisconnect = () => { _endLanSession('Opponent disconnected.'); };
+  _lanNet.onConnect     = () => { _lanNet.sendHello(_lanTankKey, _lanPlayerName); };
+  _lanNet.onPeerHello   = (peerKey, peerName) => { _lanPeerName = peerName; _initLanGame(peerKey); };
+  _lanNet.onDisconnect  = () => { _endLanSession('Opponent disconnected.'); };
+  _lanNet.onServerError = msg => { _lanStatus = `Error: ${msg}`; updateOverlay(); };
 
   try {
-    await _lanNet.host('ws://localhost:8765');
-    _lanStatus = 'Signalling server reached — waiting for opponent…';
+    await _lanNet.host('ws://localhost:8765', _lanRoomCode);
+    _lanStatus = `Room ${_lanRoomCode} · Waiting for opponent…`;
     updateOverlay();
   } catch (e) {
     _lanStatus = `Error: ${e.message}`;
@@ -1235,21 +1238,23 @@ async function startLanHost() {
   }
 }
 
-async function startLanClient(ip) {
+async function startLanClient(ip, roomCode) {
   _lanMode       = true;
   _lanTankKey    = ALL_TANKS[_selIdx];
   _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
-  _lanStatus     = `Connecting to ${ip}…`;
+  _lanRoomCode   = roomCode.toUpperCase().trim();
+  _lanStatus     = `Connecting to ${ip} · Room ${_lanRoomCode}…`;
   updateOverlay();
 
   _lanNet = new Net();
-  _lanNet.onConnect    = () => { _lanNet.sendHello(_lanTankKey, _lanPlayerName); };
-  _lanNet.onPeerHello  = (peerKey, peerName) => { _lanPeerName = peerName; _initLanGame(peerKey); };
-  _lanNet.onDisconnect = () => { _endLanSession('Host disconnected.'); };
+  _lanNet.onConnect     = () => { _lanNet.sendHello(_lanTankKey, _lanPlayerName); };
+  _lanNet.onPeerHello   = (peerKey, peerName) => { _lanPeerName = peerName; _initLanGame(peerKey); };
+  _lanNet.onDisconnect  = () => { _endLanSession('Host disconnected.'); };
+  _lanNet.onServerError = msg => { _lanStatus = `Error: ${msg}`; updateOverlay(); };
 
   try {
-    await _lanNet.join(`ws://${ip}:8765`);
-    _lanStatus = 'Connected to signalling server — waiting for host…';
+    await _lanNet.join(`ws://${ip}:8765`, _lanRoomCode);
+    _lanStatus = `Room ${_lanRoomCode} · Waiting for host…`;
     updateOverlay();
   } catch (e) {
     _lanStatus = `Error: ${e.message}`;
@@ -1533,9 +1538,11 @@ function lanLobbyHtml() {
           <span id="lan-scan-status" class="lan-scan-status"></span>
         </div>
         <div id="lan-scan-results" class="lan-scan-results"></div>
-        <div class="lan-desc">Or enter the host's IP manually:</div>
+        <div class="lan-desc">Or enter manually:</div>
         <div class="lan-join-row">
-          <input id="lan-ip-input" class="lan-input" type="text" placeholder="192.168.0.x" />
+          <input id="lan-ip-input"   class="lan-input" type="text" placeholder="192.168.0.x" style="flex:2" />
+          <input id="lan-code-input" class="lan-input lan-code-input" type="text" maxlength="4"
+                 placeholder="CODE" value="${_lanRoomCode}" />
           <button id="lan-join-btn" class="lan-btn">Join</button>
         </div>
       </div>
@@ -1543,6 +1550,12 @@ function lanLobbyHtml() {
       <div class="lan-back"><button id="lan-back-btn" class="lan-back-btn">Back to menu</button></div>
     </div>
   `;
+}
+
+/** Generate a random 4-character room code (no ambiguous chars O/0/I/1). */
+function _genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
 /** Use WebRTC ICE to discover our own LAN IP prefix (e.g. "192.168.0"). */
@@ -1837,6 +1850,7 @@ let _lanLastSnapTs  = 0;     // client: ts of last received snapshot (echoed to 
 let _lanPeerTankKey  = null;  // peer's tank key — saved for rematch
 let _lanPlayerName   = '';    // this player's chosen name
 let _lanPeerName     = '';    // peer's name (received in Hello)
+let _lanRoomCode     = '';    // 4-char room code for this session
 const _lanNametag    = document.getElementById('lan-nametag');
 const _lanNametagPos = new THREE.Vector3();  // reused for screen projection
 
@@ -2187,8 +2201,11 @@ function updateOverlay() {
       const btnScan = overlayControls.querySelector('#lan-scan-btn');
       if (btnHost) btnHost.addEventListener('click', () => startLanHost());
       if (btnJoin) btnJoin.addEventListener('click', () => {
-        const ip = overlayControls.querySelector('#lan-ip-input')?.value.trim() || '';
-        if (ip) startLanClient(ip);
+        const ip   = overlayControls.querySelector('#lan-ip-input')?.value.trim()   || '';
+        const code = overlayControls.querySelector('#lan-code-input')?.value.trim() || '';
+        if (!ip)   { _lanStatus = 'Enter the host IP address.';   updateOverlay(); return; }
+        if (!code) { _lanStatus = 'Enter the 4-character room code.'; updateOverlay(); return; }
+        startLanClient(ip, code);
       });
       if (btnBack) btnBack.addEventListener('click', () => {
         _cleanupLan();
@@ -2215,17 +2232,33 @@ function updateOverlay() {
         if (hosts.length === 0) {
           if (scanStatus) scanStatus.textContent = 'No servers found.';
         } else {
-          if (scanStatus) scanStatus.textContent = `Found ${hosts.length} server${hosts.length > 1 ? 's' : ''}:`;
+          // Flatten to one button per room (or one "no rooms" per server)
+          const entries = [];
+          for (const h of hosts) {
+            if (h.rooms && h.rooms.length > 0) {
+              for (const r of h.rooms) {
+                entries.push({ ip: h.ip, code: r.code, ready: true });
+              }
+            } else {
+              entries.push({ ip: h.ip, code: '', ready: false });
+            }
+          }
+          const readyCount = entries.filter(e => e.ready).length;
+          if (scanStatus) scanStatus.textContent =
+            readyCount > 0 ? `${readyCount} game${readyCount > 1 ? 's' : ''} waiting:` : 'Server found — no host waiting:';
           if (scanResults) {
-            scanResults.innerHTML = hosts.map(h =>
-              `<button class="lan-scan-result${h.hostWaiting ? ' lan-scan-result-ready' : ''}" data-ip="${h.ip}">` +
-              `${h.ip}${h.hostWaiting ? '  — host waiting' : '  — no host yet'}` +
+            scanResults.innerHTML = entries.map(e =>
+              `<button class="lan-scan-result${e.ready ? ' lan-scan-result-ready' : ''}"` +
+              ` data-ip="${e.ip}" data-code="${e.code}">` +
+              `${e.ip}${e.code ? `  <span class="scan-code">${e.code}</span>` : '  — no host yet'}` +
               `</button>`
             ).join('');
             scanResults.querySelectorAll('.lan-scan-result').forEach(el => {
               el.addEventListener('click', () => {
-                const ipInput = overlayControls.querySelector('#lan-ip-input');
-                if (ipInput) ipInput.value = el.dataset.ip;
+                const ipInput   = overlayControls.querySelector('#lan-ip-input');
+                const codeInput = overlayControls.querySelector('#lan-code-input');
+                if (ipInput)   ipInput.value   = el.dataset.ip;
+                if (codeInput && el.dataset.code) codeInput.value = el.dataset.code;
               });
             });
           }
