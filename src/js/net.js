@@ -1,21 +1,18 @@
-// net.js — WebRTC LAN networking (Option B: state broadcast)
+// net.js — WebSocket LAN networking (relay through games server)
 //
 // Architecture:
-//   Host runs authoritative simulation. At LAN_SNAP_HZ per second the host
-//   serialises all tank states and broadcasts them to the client via a WebRTC
-//   data channel. The client sends its raw input to the host every frame; the
-//   host applies that input to the client's tank. No client-side prediction —
-//   the host is fully authoritative.
+//   A relay-server.js process runs permanently on the LAN games server.
+//   Both players connect to it via WebSocket; all game traffic is relayed
+//   through the server. No WebRTC, no local server needed on player machines.
 //
-// Signalling:
-//   Requires signalling-server.js running on the host machine (default port
-//   8765). Both peers connect to ws://[host-ip]:8765. The server relays SDP
-//   and ICE candidates. Once the data channel is open the signalling WebSocket
-//   is no longer needed for gameplay.
+// Rooms:
+//   Each game session is identified by a 4-char room code. Host generates
+//   the code; client enters it. The relay server pairs them by code.
 //
-// Data channel:
-//   Unordered, maxRetransmits=0 — fire-and-forget (UDP-like). Old snapshots
-//   are silently dropped; only the freshest state matters.
+// Transport:
+//   Messages are plain JSON strings. The relay forwards them verbatim.
+//   Fire-and-forget is no longer possible (TCP-backed WebSocket is reliable
+//   and ordered), but on a LAN this makes no practical difference.
 
 export const LAN_SNAP_HZ = 20;  // snapshots broadcast per second
 
@@ -23,38 +20,38 @@ export class Net {
   constructor() {
     this.role      = null;   // 'host' | 'client'
     this.connected = false;
+    this.roomCode  = null;
 
     // Callbacks set by caller
-    this.onConnect    = null;  // ()          → void
-    this.onDisconnect = null;  // ()          → void
-    this.onPeerHello  = null;  // (tankKey)   → void  — peer announced their tank
+    this.onConnect     = null;  // ()              → void
+    this.onDisconnect  = null;  // ()              → void
+    this.onPeerHello   = null;  // (tankKey, name) → void
+    this.onServerError = null;  // (message)       → void
 
-    this._pc      = null;      // RTCPeerConnection
-    this._channel = null;      // RTCDataChannel
-    this._ws      = null;      // WebSocket (signalling only)
+    this._ws = null;   // WebSocket to relay server
 
     // Host side: last decoded input received from client
-    this.clientInput   = null;
-    this.clientEchoTs  = 0;    // echo of snapshot timestamp from client (for RTT)
+    this.clientInput  = null;
+    this.clientEchoTs = 0;
 
     // Client side: latest snapshot waiting to be consumed
-    this._pendingSnap  = null;
+    this._pendingSnap = null;
   }
 
   // ── Public API ───────────────────────────────────────────────────────────────
 
-  /** Host: open game and wait for client. roomCode identifies the game slot. */
-  async host(sigUrl, roomCode) {
+  /** Host: open game and wait for client. */
+  async host(serverUrl, roomCode) {
     this.role     = 'host';
     this.roomCode = roomCode;
-    await this._connect(sigUrl, true, roomCode);
+    await this._connect(serverUrl, 'host', roomCode);
   }
 
-  /** Client: join an existing hosted game. */
-  async join(sigUrl, roomCode) {
+  /** Client: join a hosted game by room code. */
+  async join(serverUrl, roomCode) {
     this.role     = 'client';
     this.roomCode = roomCode;
-    await this._connect(sigUrl, false, roomCode);
+    await this._connect(serverUrl, 'client', roomCode);
   }
 
   /** Announce local tank type and player name to peer. Call once after onConnect fires. */
@@ -102,9 +99,7 @@ export class Net {
   isClient() { return this.role === 'client'; }
 
   disconnect() {
-    if (this._ws)      { try { this._ws.close();      } catch { /**/ } this._ws      = null; }
-    if (this._channel) { try { this._channel.close(); } catch { /**/ } this._channel = null; }
-    if (this._pc)      { try { this._pc.close();      } catch { /**/ } this._pc      = null; }
+    if (this._ws) { try { this._ws.close(); } catch { /**/ } this._ws = null; }
     this.connected = false;
     this.role      = null;
   }
@@ -112,8 +107,8 @@ export class Net {
   // ── Internal ─────────────────────────────────────────────────────────────────
 
   _send(obj) {
-    if (this._channel && this._channel.readyState === 'open') {
-      try { this._channel.send(JSON.stringify(obj)); } catch { /**/ }
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      try { this._ws.send(JSON.stringify(obj)); } catch { /**/ }
     }
   }
 
@@ -135,92 +130,33 @@ export class Net {
         fire:        !!d.fi,  fireOnce:    !!d.fo,
         skipAccel: false,
       };
-      // Echo timestamp for RTT measurement
       this.clientEchoTs = d.e ?? 0;
 
     } else if (msg.t === 'h') {
       // Hello: peer announced their tank type and name
       if (this.onPeerHello) this.onPeerHello(msg.k, msg.n || '');
-
-    } else if (msg.t === 'peer_gone') {
-      this.connected = false;
-      if (this.onDisconnect) this.onDisconnect();
     }
   }
 
-  _setupChannel(ch) {
-    ch.onopen    = () => { this.connected = true;  if (this.onConnect)    this.onConnect();    };
-    ch.onclose   = () => { this.connected = false; if (this.onDisconnect) this.onDisconnect(); };
-    ch.onmessage = e  => this._onMessage(e.data);
-  }
-
-  async _connect(sigUrl, isHost, roomCode = '') {
-    this._pc = new RTCPeerConnection({ iceServers: [] });
-
-    if (isHost) {
-      this._channel = this._pc.createDataChannel('game', {
-        ordered: false, maxRetransmits: 0,
-      });
-      this._setupChannel(this._channel);
-    } else {
-      this._pc.ondatachannel = e => {
-        this._channel = e.channel;
-        this._setupChannel(this._channel);
-      };
-    }
-
-    // Buffer ICE candidates received before remote description is applied
-    const iceBuf = [];
-    let   remSet = false;
-
-    const applyIce = async c => {
-      try { await this._pc.addIceCandidate(c); } catch { /**/ }
-    };
-
-    this._pc.onicecandidate = e => {
-      if (e.candidate) {
-        this._ws.send(JSON.stringify({ type: 'ice', c: e.candidate }));
-      }
-    };
-
-    // ── Open signalling WebSocket ─────────────────────────────────────────────
-    this._ws = new WebSocket(sigUrl);
+  async _connect(serverUrl, role, roomCode) {
+    this._ws = new WebSocket(serverUrl);
 
     await new Promise((res, rej) => {
       this._ws.onopen  = res;
-      this._ws.onerror = () => rej(new Error(`Cannot reach signalling server at ${sigUrl}`));
+      this._ws.onerror = () => rej(new Error(`Cannot reach relay server at ${serverUrl}`));
     });
 
-    this._ws.send(JSON.stringify({ type: 'role', role: isHost ? 'host' : 'client', room: roomCode }));
+    // Register with the relay server
+    this._ws.send(JSON.stringify({ type: 'role', role, room: roomCode }));
 
-    this._ws.onmessage = async e => {
+    this._ws.onmessage = e => {
       let msg;
       try { msg = JSON.parse(e.data); } catch { return; }
 
-      if (msg.type === 'ready' && isHost) {
-        // Both peers registered — host creates the WebRTC offer
-        const offer = await this._pc.createOffer();
-        await this._pc.setLocalDescription(offer);
-        this._ws.send(JSON.stringify({ type: 'offer', sdp: this._pc.localDescription }));
-
-      } else if (msg.type === 'offer' && !isHost) {
-        await this._pc.setRemoteDescription(msg.sdp);
-        remSet = true;
-        for (const c of iceBuf) await applyIce(c);
-        iceBuf.length = 0;
-        const answer = await this._pc.createAnswer();
-        await this._pc.setLocalDescription(answer);
-        this._ws.send(JSON.stringify({ type: 'answer', sdp: this._pc.localDescription }));
-
-      } else if (msg.type === 'answer' && isHost) {
-        await this._pc.setRemoteDescription(msg.sdp);
-        remSet = true;
-        for (const c of iceBuf) await applyIce(c);
-        iceBuf.length = 0;
-
-      } else if (msg.type === 'ice') {
-        if (remSet) await applyIce(msg.c);
-        else        iceBuf.push(msg.c);
+      if (msg.type === 'connected') {
+        // Both peers are in the room — game can start
+        this.connected = true;
+        if (this.onConnect) this.onConnect();
 
       } else if (msg.type === 'peer_gone') {
         this.connected = false;
@@ -228,6 +164,17 @@ export class Net {
 
       } else if (msg.type === 'error') {
         if (this.onServerError) this.onServerError(msg.msg || 'Server error');
+
+      } else {
+        // Game message (snapshot / input / hello) — route to game handler
+        this._onMessage(e.data);
+      }
+    };
+
+    this._ws.onclose = () => {
+      if (this.connected) {
+        this.connected = false;
+        if (this.onDisconnect) this.onDisconnect();
       }
     };
   }
