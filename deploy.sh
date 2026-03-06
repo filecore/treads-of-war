@@ -30,3 +30,15 @@ rsync -av --delete "${GAMES_ROOT}/" "${REMOTE}"
 
 echo ""
 echo "Done. ${GAME_NAME} + manifest.json live on remote."
+
+# ── 3. Deploy relay server (only if relay/ directory exists) ──────────────────
+RELAY_REMOTE_DIR="/home/oxide/docker/nginx/nginx-subdomain-togneri-games/relay"
+if [ -d relay ]; then
+  echo ""
+  echo "Deploying relay server..."
+  rsync -av relay/ "oxide@192.168.0.101:${RELAY_REMOTE_DIR}/"
+  # Rebuild and restart the relay container (no-op if nothing changed)
+  ssh oxide@192.168.0.101 \
+    "cd /home/oxide/docker/nginx/nginx-subdomain-togneri-games && docker compose up -d --build relay 2>&1 | tail -5"
+  echo "Relay deployed."
+fi
