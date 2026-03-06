@@ -1513,22 +1513,65 @@ function lanLobbyHtml() {
     <div class="lan-lobby">
       <div class="lan-section">
         <div class="lan-section-title">Host a game</div>
-        <div class="lan-desc">Start <code>node signalling-server.js</code> in the project folder on this machine first, then click Host Game. Share your LAN IP with the other player.</div>
+        <div class="lan-desc">Start <code>node signalling-server.js</code> in the project folder on this machine first, then click Host Game.</div>
         <button id="lan-host-btn" class="lan-btn">Host Game</button>
       </div>
       <div class="lan-divider">— or —</div>
       <div class="lan-section">
         <div class="lan-section-title">Join a game</div>
-        <div class="lan-desc">Enter the host's LAN IP address:</div>
+        <div class="lan-scan-row">
+          <button id="lan-scan-btn" class="lan-btn lan-btn-sm">Scan LAN</button>
+          <span id="lan-scan-status" class="lan-scan-status"></span>
+        </div>
+        <div id="lan-scan-results" class="lan-scan-results"></div>
+        <div class="lan-desc">Or enter the host's IP manually:</div>
         <div class="lan-join-row">
           <input id="lan-ip-input" class="lan-input" type="text" placeholder="192.168.0.x" />
           <button id="lan-join-btn" class="lan-btn">Join</button>
         </div>
       </div>
       <div class="lan-status">${_lanStatus}</div>
-      <div class="lan-back"><button id="lan-back-btn" class="lan-back-btn">← Back to menu</button></div>
+      <div class="lan-back"><button id="lan-back-btn" class="lan-back-btn">Back to menu</button></div>
     </div>
   `;
+}
+
+/** Use WebRTC ICE to discover our own LAN IP prefix (e.g. "192.168.0"). */
+async function _getLocalSubnet() {
+  try {
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    pc.createDataChannel('');
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    return new Promise(resolve => {
+      const done = result => { try { pc.close(); } catch { /**/ } resolve(result); };
+      pc.onicecandidate = e => {
+        if (!e.candidate) { done(null); return; }
+        const m = e.candidate.candidate.match(/(\d+\.\d+\.\d+)\.\d+/);
+        if (m) done(m[1]);
+      };
+      setTimeout(() => done(null), 2000);
+    });
+  } catch { return null; }
+}
+
+/** Scan a /24 subnet for a running signalling server. Returns array of {ip, name, hostWaiting}. */
+async function _scanForHosts(subnet) {
+  const TIMEOUT = 700;
+  const results = await Promise.all(
+    Array.from({ length: 254 }, (_, i) => i + 1).map(async last => {
+      const ip = `${subnet}.${last}`;
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), TIMEOUT);
+      try {
+        const r = await fetch(`http://${ip}:8765/discover`, { signal: ctrl.signal });
+        clearTimeout(t);
+        if (r.ok) { const j = await r.json(); return { ip, ...j }; }
+      } catch { clearTimeout(t); }
+      return null;
+    })
+  );
+  return results.filter(Boolean);
 }
 
 // ─── Between-battle advance ────────────────────────────────────────────────────
@@ -2130,6 +2173,7 @@ function updateOverlay() {
       const btnHost = overlayControls.querySelector('#lan-host-btn');
       const btnJoin = overlayControls.querySelector('#lan-join-btn');
       const btnBack = overlayControls.querySelector('#lan-back-btn');
+      const btnScan = overlayControls.querySelector('#lan-scan-btn');
       if (btnHost) btnHost.addEventListener('click', () => startLanHost());
       if (btnJoin) btnJoin.addEventListener('click', () => {
         const ip = overlayControls.querySelector('#lan-ip-input')?.value.trim() || '';
@@ -2139,6 +2183,42 @@ function updateOverlay() {
         _cleanupLan();
         game.state = STATES.MENU;
         updateOverlay();
+      });
+      if (btnScan) btnScan.addEventListener('click', async () => {
+        const scanStatus = overlayControls.querySelector('#lan-scan-status');
+        const scanResults = overlayControls.querySelector('#lan-scan-results');
+        btnScan.disabled = true;
+        if (scanStatus) scanStatus.textContent = 'Detecting subnet…';
+        if (scanResults) scanResults.innerHTML = '';
+
+        const subnet = await _getLocalSubnet();
+        if (!subnet) {
+          if (scanStatus) scanStatus.textContent = 'Could not detect LAN subnet.';
+          btnScan.disabled = false;
+          return;
+        }
+        if (scanStatus) scanStatus.textContent = `Scanning ${subnet}.0/24…`;
+
+        const hosts = await _scanForHosts(subnet);
+        btnScan.disabled = false;
+        if (hosts.length === 0) {
+          if (scanStatus) scanStatus.textContent = 'No servers found.';
+        } else {
+          if (scanStatus) scanStatus.textContent = `Found ${hosts.length} server${hosts.length > 1 ? 's' : ''}:`;
+          if (scanResults) {
+            scanResults.innerHTML = hosts.map(h =>
+              `<button class="lan-scan-result${h.hostWaiting ? ' lan-scan-result-ready' : ''}" data-ip="${h.ip}">` +
+              `${h.ip}${h.hostWaiting ? '  — host waiting' : '  — no host yet'}` +
+              `</button>`
+            ).join('');
+            scanResults.querySelectorAll('.lan-scan-result').forEach(el => {
+              el.addEventListener('click', () => {
+                const ipInput = overlayControls.querySelector('#lan-ip-input');
+                if (ipInput) ipInput.value = el.dataset.ip;
+              });
+            });
+          }
+        }
       });
     }
     return;
