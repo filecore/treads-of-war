@@ -43,16 +43,18 @@ export class Net {
 
   // ── Public API ───────────────────────────────────────────────────────────────
 
-  /** Host: open game and wait for client. */
-  async host(sigUrl) {
-    this.role = 'host';
-    await this._connect(sigUrl, true);
+  /** Host: open game and wait for client. roomCode identifies the game slot. */
+  async host(sigUrl, roomCode) {
+    this.role     = 'host';
+    this.roomCode = roomCode;
+    await this._connect(sigUrl, true, roomCode);
   }
 
   /** Client: join an existing hosted game. */
-  async join(sigUrl) {
-    this.role = 'client';
-    await this._connect(sigUrl, false);
+  async join(sigUrl, roomCode) {
+    this.role     = 'client';
+    this.roomCode = roomCode;
+    await this._connect(sigUrl, false, roomCode);
   }
 
   /** Announce local tank type and player name to peer. Call once after onConnect fires. */
@@ -152,7 +154,7 @@ export class Net {
     ch.onmessage = e  => this._onMessage(e.data);
   }
 
-  async _connect(sigUrl, isHost) {
+  async _connect(sigUrl, isHost, roomCode = '') {
     this._pc = new RTCPeerConnection({ iceServers: [] });
 
     if (isHost) {
@@ -189,7 +191,7 @@ export class Net {
       this._ws.onerror = () => rej(new Error(`Cannot reach signalling server at ${sigUrl}`));
     });
 
-    this._ws.send(JSON.stringify({ type: 'role', role: isHost ? 'host' : 'client' }));
+    this._ws.send(JSON.stringify({ type: 'role', role: isHost ? 'host' : 'client', room: roomCode }));
 
     this._ws.onmessage = async e => {
       let msg;
@@ -223,6 +225,9 @@ export class Net {
       } else if (msg.type === 'peer_gone') {
         this.connected = false;
         if (this.onDisconnect) this.onDisconnect();
+
+      } else if (msg.type === 'error') {
+        if (this.onServerError) this.onServerError(msg.msg || 'Server error');
       }
     };
   }

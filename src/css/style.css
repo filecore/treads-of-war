@@ -1076,6 +1076,25 @@ html, body {
   white-space: nowrap;
 }
 .lan-name-input { max-width: 140px; }
+.lan-code-input {
+  width: 54px;
+  flex: 0 0 54px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 13px;
+  text-align: center;
+}
+.scan-code {
+  display: inline-block;
+  background: rgba(80, 200, 120, 0.18);
+  border: 1px solid rgba(80, 200, 120, 0.35);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: rgba(140, 230, 160, 0.95);
+  margin-left: 6px;
+}
 .lan-btn-sm { font-size: 11px; padding: 5px 10px; }
 .lan-btn:disabled { opacity: 0.45; cursor: default; }
 .lan-scan-row {
