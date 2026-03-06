@@ -994,6 +994,8 @@ html, body {
   gap: 18px;
   max-width: 400px;
   margin: 0 auto;
+  pointer-events: auto;
+  user-select: text;
 }
 .lan-section {
   display: flex;
