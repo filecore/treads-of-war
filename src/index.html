@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conqueror</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+
+  <div id="canvas-wrap"></div>
+
+  <!-- Game state overlay (menu / paused / game-over / victory) -->
+  <div id="overlay" class="overlay-hidden">
+    <a id="games-back" href="../../" style="display:none">&#8592; GAMES</a>
+    <div id="overlay-title"></div>
+    <div id="overlay-sub"></div>
+    <!-- Tank preview canvas — shown only on menu/selection screen -->
+    <canvas id="tank-preview" width="220" height="160"></canvas>
+    <div id="overlay-controls"></div>
+    <div id="overlay-score"></div>
+    <div id="overlay-hint"></div>
+  </div>
+
+  <!-- Edge-of-map warning (shown when player nears boundary) -->
+  <div id="hud-edge-warning">Edge of battle area</div>
+
+  <!-- Hit zone indicator (shown briefly when player lands a hit) -->
+  <div id="hud-hit-indicator"></div>
+
+  <!-- Damage flash (red edge vignette when player is hit) -->
+  <div id="hud-damage-flash"></div>
+
+  <!-- Gun-sight overlay (shown when V is held in sight mode) -->
+  <div id="hud-sight">
+    <svg class="sight-svg" viewBox="-100 -100 200 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Horizontal crosshair (gap at centre) -->
+      <line x1="-95" y1="0" x2="-7" y2="0"/>
+      <line x1="7"   y1="0" x2="95" y2="0"/>
+      <!-- Vertical crosshair (gap at centre) -->
+      <line x1="0" y1="-95" x2="0" y2="-7"/>
+      <line x1="0" y1="7"   x2="0" y2="95"/>
+      <!-- Fine centre cross inside gap -->
+      <line x1="-3.5" y1="0" x2="3.5" y2="0"/>
+      <line x1="0" y1="-3.5" x2="0" y2="3.5"/>
+      <!-- Stadia range marks (below centre — for range estimation) -->
+      <line x1="-14" y1="20" x2="14" y2="20"/>
+      <line x1="-9"  y1="38" x2="9"  y2="38"/>
+      <line x1="-6"  y1="56" x2="6"  y2="56"/>
+      <!-- Range tick labels (right side, small) -->
+      <text x="17" y="23"  class="sight-text">500</text>
+      <text x="12" y="41"  class="sight-text">750</text>
+      <text x="9"  y="59"  class="sight-text">1000</text>
+    </svg>
+  </div>
+
+  <!-- Arcade lives icons (above minimap, arcade mode only) -->
+  <canvas id="hud-lives-icons" width="210" height="44"></canvas>
+
+  <!-- Tactical minimap (bottom-right) -->
+  <canvas id="minimap" width="210" height="210"></canvas>
+
+  <!-- Fleet status HUD (top-centre, fleet modes only) -->
+  <div id="hud-fleet"></div>
+
+  <!-- Objective capture timer (top-centre, strategy mode) -->
+  <div id="hud-objective"></div>
+
+  <!-- Settings button + panel (above HUD, has pointer events) -->
+  <div id="settings-wrap">
+    <button id="settings-btn" title="Settings">&#9776;</button>
+    <div id="settings-panel">
+      <div class="settings-title">Settings</div>
+      <label class="settings-row">
+        <span class="settings-label">Simple Controls (WASD)</span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="cb-simple-controls">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+      <label class="settings-row">
+        <span class="settings-label">Auto-rotate turret (Simple mode)</span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="cb-aim-assist">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+      <label class="settings-row">
+        <span class="settings-label">Show Advanced Info</span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="cb-advanced-info">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+      <label class="settings-row">
+        <span class="settings-label">Enable Mercenaries faction</span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="cb-mercenaries" checked>
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+      <label class="settings-row">
+        <span class="settings-label">Demo mode (AI plays until you act)</span>
+        <span class="toggle-wrap">
+          <input type="checkbox" id="cb-demo">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+
+      <div class="settings-diff">
+        <span class="settings-label">Difficulty</span>
+        <input type="range" id="diff-slider" min="0" max="3" step="1" value="1">
+        <div class="diff-labels">
+          <span>Easy</span><span>Normal</span><span>Medium</span><span>Hard</span>
+        </div>
+      </div>
+
+      <div class="settings-ctrl-title">Controls</div>
+      <div id="settings-ctrl-ref" class="settings-ctrl-ref">
+        W/S &middot; forward/back &nbsp; A/D &middot; turn<br>
+        Q/E &middot; turret left/right &nbsp; Space/F &middot; fire<br>
+        Tab &middot; ammo (AP/HE) &nbsp; V &middot; gun sight<br>
+        G &middot; smoke &nbsp; C &middot; artillery &nbsp; Esc &middot; pause
+      </div>
+
+      <details class="cl-details">
+        <summary class="cl-summary">Changelog</summary>
+        <div class="cl-body">
+          <div class="cl-entry"><span class="cl-tag">Phase 40</span> Faction selector added: Allies, Soviets, Axis — each with distinct tank roster, fleet compositions, and correct opposing enemies across all three modes. Axis campaign faces Allied/Soviet tanks; shop and Attrition fleets updated accordingly.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 39</span> Collision radii tightened (tanks 0.85×, buildings max-edge). Phantom Sherman disposed on fleet-mode entry. Ammo HUD hidden in fleet modes. WAVE_COMPLETE handler guarded for Arcade. Strategy fleet capped at 8 player / 10 AI. AI slower: advance 5s, halt 1.2s, fire interval 6s. Mode name shown in bottom-left HUD.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 38</span> Menu redesign: vehicle and battle mode now on one screen side-by-side. ◄/► selects tank, ▲/▼ or click selects mode, Enter starts. Settings panel shows full controls reference (updates per mode and simple/advanced setting). ← GAMES button moved clear of settings icon.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 37</span> Game mode UI polish: mode selection now navigated with ▲/▼ arrows and supports mouse clicks; controls hint updates per mode (Tab shows "switch tank" in Attrition/Strategy, "ammo AP/HE" in Arcade); ← GAMES portal button on title and end screens.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 36</span> Three game modes: Arcade (endless waves, solo — tank class upgrades after 4 kills each); Attrition (fixed fleet of 5, permanent losses, escalating enemy fleets); Strategy (budget purchase before each battle, objective ring capture, enemy AI buys too). Tab switches controlled tank in fleet modes.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 35</span> Dynamic 8v8 battle: 8 allied tanks vs 8 enemies. Enemy AI roams the full map at high speed. Wingmen actively patrol between waypoints rather than standing still. Aim-assist toggle added to settings. Tank tracks rendered in dark grey, separate from hull. Improved Phong shading with specular highlights.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 34</span> Supply crates: three crates spawn on the map each wave — red (HP +25), blue (smoke replenishment), yellow (artillery charge +1). Drive over a crate to collect it. Crates bob and rotate for visibility; shown as coloured dots on the minimap. Collecting clears the item immediately and shows a HUD callout.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 33</span> Audio: shell pass-by crack and ricochet ping. Enemy shells that fly within 20 m of the player trigger a sharp Doppler crack and descending whoosh — once per shell. Ricochets now play a distinct high metallic ping rather than the hull-impact thud, clearly distinguishing a deflection from a penetrating hit.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 32</span> Allied wingman: a randomly selected Allied tank (M24 Chaffee, Sherman, T-34, or KV-1S) fights alongside the player each wave. It targets and engages the nearest live enemy independently. No friendly fire — shells cannot damage tanks of the same faction. The wingman is replaced fresh each wave. Shown as a cyan dot on the tactical minimap.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 31</span> Visual overhaul: vivid European summer palette (bright greens, warm earth tones), cream stone farmhouse walls with terracotta roofs, dark forest-green tree canopies, warm brown dirt roads. Sky and fog shifted to deep blue (0x99AACC). Fog pushed to 300–800 m for better long-range visibility. Ambient and hemisphere lighting brightened.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Trees no longer spawn on roads. Tanks that drive into a tree destroy it on contact — the merged chunk geometry is rebuilt instantly without the felled tree.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 30</span> Artillery support: press C to call in an off-map barrage (2 per wave, replenished on advance). Six shells rain down over a 22-metre spread around the ballistic aim point 1.8 seconds after the call, each dealing area-of-effect blast damage. An incoming whistle sounds on call. The barrage damages all tanks in range — including the player. Charges shown in HUD.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 29</span> Ammo types: press Tab to switch between AP and HE. AP is armour-piercing — standard penetration and ricochet rules apply. HE (high-explosive) always detonates on contact (no ricochet), deals 50% direct damage regardless of armour, and blasts all tanks within 18 metres with area-of-effect splash damage. HE craters are over twice as wide. Tracer colour changes to yellow-green when HE is loaded.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 28</span> Smoke grenades: press G to fire a smoke canister (3 per wave, replenished on advance) along the turret bearing. The canister arcs ballistically and deploys a multi-puff grey cloud on landing. Enemy tanks cannot fire while the player is inside the cloud. Smoke clouds fade over ~14 seconds and are shown as grey blobs on the minimap.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 27</span> Enemy AI tactics: flanking approach and fire-and-move cycle. Each enemy selects a random sector around the player and approaches from that angle rather than head-on. In ENGAGING state, tanks alternate between advancing toward their flank position and halting to fire from a steady platform. Flank angle shifts occasionally for unpredictability.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 26</span> Destructible buildings: any shell that strikes a building destroys it instantly — the walls and roof are removed and replaced with scattered rubble chunks. Destroyed buildings no longer block tank movement. Shells are consumed on impact (they do not pass through). One direct hit levels the structure.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 25</span> Shell tracers: every shell in flight is now rendered as a glowing colour-coded streak — light blue for player shots, orange-red for enemy shots. The 10-unit elongated tracer rotates each frame to follow the parabolic arc under gravity, making shells clearly trackable and incoming fire easy to spot.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 24</span> Roads: three terrain-following dirt roads cross the map (E-W main road, N-S corridor, SW diagonal). Rendered as smooth quad strips that conform to terrain height. Tanks on a road ignore the cross-country slope penalty, maintaining full road speed on hills. Roads shown as brown lines on the tactical minimap.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 23</span> Tank selection preview: the menu shows a live rotating 3D render of the selected vehicle, rendered into a separate canvas using a dedicated Three.js renderer. Camera angle is front-left elevated for a clear view of the hull and turret.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 22</span> Buildings: ~30 procedural stone farmhouses (walls + roofed or open-topped ruins) scattered across the map with a fixed seed layout. Tanks collide with buildings and are pushed away — buildings act as hard cover. Spawned clear of the player start zone and water.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 21</span> Shell craters: ground impacts leave persistent dark crater decals (scorched pit + displaced earth rim) on the terrain. Up to 50 craters per wave; cleared on wave advance and game restart. Battlefields accumulate visible shell damage over the course of a fight.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Controls updated: Q/E traverse turret left/right; Space/F fires. P/Esc pause in both modes.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 20</span> Target acquisition HUD: when the gun points at a live enemy (±11.5° in 3rd-person, ±4° in gun-sight), shows tank name, 8-block HP bar, and range in metres. Cone narrows automatically in sight mode for precision targeting.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 19</span> Screen shake &amp; damage flash: cannon recoil nudge on fire, scaled shake on hit (by damage dealt), concussion from nearby explosions. Red edge-vignette flash when player takes a penetrating hit. Sight view dampens shake 70%. Ground impacts now show explosions (not sparks).</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 18</span> Gun-sight camera: press V to toggle between third-person view and a first-person periscope sight (14° FOV, ~4× zoom). Authentic WWII reticle with crosshair, centre fine cross, and stadia range marks. Exits automatically on tank destruction.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 17</span> Penetration &amp; ricochet: shots that cannot defeat the armour (firepower &lt; armour × 0.6) deflect with a gold spark instead of exploding. HUD indicator shows hit zone (FRONT / SIDE / REAR) and result. Chaffee cannot penetrate King Tiger frontally; Tiger cannot pierce JS-II head-on.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 16</span> Directional armour from original binary: front / side / rear values per tank. Panther: 60 / 29 / 23; Tiger I: 55 / 40 / 40; King Tiger: 100 / 45 / 45. Shells resolved against the correct face based on impact angle — flanking and rear shots now significantly more effective.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 15</span> Cross-country speed: each tank now slows on slopes using original binary XC km/h values (e.g. Tiger I: 38 road → 20 XC). Speed blends continuously with terrain gradient — flat valleys at full road speed, steep hills at XC speed. Russian tanks retain better cross-country mobility than German heavies, as in the original.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 14</span> Tank selection screen: choose from all 8 Allied vehicles (4 American, 4 Russian) before battle. Stats shown with comparative bars. Enemies remain German throughout.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 13</span> Wave-based progression: three escalating waves of German armour (Pz III × 2 / Panther / Tiger I → Panther / Tiger I × 2 / King Tiger → Panther / Tiger I / King Tiger × 2). Wave-complete screen with +30 HP repair; press R to advance. Final victory only after all waves cleared.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 12</span> Stats corrected from original Archimedes binary: all 12 authentic tank types (Sherman Firefly, M36 90mmGMC, KV-85, JS-II etc.), road speeds match historical km/h, armour/penetration from original data. Tiger and Sherman now similar speed, as in original. Enemy roster: Pz III × 2, Panther, Tiger I.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Player turret traverses 5% faster than enemies.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 11</span> Synthesised sound engine: diesel engine hum (pitch follows speed), cannon fire, distance-attenuated explosions, hull-impact clang. No audio files — all Web Audio API.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 10</span> Tactical minimap: player-relative rotating view, FOV V indicator, live enemy positions, destroyed wrecks, map boundary.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 9</span> Progressive damage states: half speed below 50% HP, quarter speed below 25%, with damage smoke. Death camera orbits wreck and points toward the killer on player defeat.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Terrain colour banding visible across full altitude range; world palette shifted to muted olive/earthy tones matching original. Map 35% smaller. AI less aggressive.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Simple controls (WASD) now the default; enemy reload times no longer affected by player bonus.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 8</span> Authentic tank geometry from original Archimedes face data — proper triangulated hull and turret meshes per tank type, friend/foe colour coding.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> I/O turret keys, P-to-fire in simple mode; faster reload; edge warning; lighter boundary.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 7</span> Map boundary walls, terrain cutoff, ballistic elevation, WASD simple controls.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Enemy fire rate reduced and randomised; reload time cut 25%.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Tank collisions, player aim assist, destroyed hull with persistent fire and smoke.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Turning responsiveness, track equalization, faster friction.</div>
+          <div class="cl-entry"><span class="cl-tag">Fix</span> Terrain clipping resolved; correct world-space slope normal, smaller tile size.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 6</span> Procedural trees scattered per chunk, merged into single draw calls.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 5</span> Game states: menu, pause, victory and defeat screens, kill scoring.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 4</span> Enemy AI with four states: Idle, Seeking, Engaging, Retreating.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 3</span> Shell ballistics with gravity, muzzle flash, explosion particles.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 2</span> Dual-track tank physics (H/N/K/M), third-person camera with heading lag.</div>
+          <div class="cl-entry"><span class="cl-tag">Phase 1</span> Fourier sine-wave terrain, flat-shaded vertex colours, rolling chunk system.</div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div id="hud">
+
+    <!-- Top-left: phase label (title moved to settings area) -->
+    <div id="hud-topleft">
+      <div id="hud-phase">Arcade Mode</div>
+    </div>
+
+    <!-- Target acquisition: appears when gun is aimed at an enemy -->
+    <div id="hud-target">
+      <div id="hud-target-name"></div>
+      <div id="hud-target-bar"></div>
+    </div>
+
+    <!-- Top-right: FPS + score + enemies -->
+    <div id="hud-topright">
+      <div class="hud-label">FPS</div>
+      <div class="hud-val" id="hud-fps">–</div>
+      <div class="hud-val" id="hud-score" style="margin-top:6px;">Score: 0</div>
+      <div class="hud-val" id="hud-enemies" style="margin-top:2px;">Enemies: 4 / 4</div>
+    </div>
+
+    <!-- Bottom-left: two-panel info box -->
+    <div id="hud-bottomleft">
+      <div class="hud-info-container">
+        <div id="hud-info-left" class="hud-info-left">
+          <div id="hud-mode"      class="hil-mode">ARCADE MODE</div>
+          <div id="hud-tank-name" class="hil-name">–</div>
+          <div id="hud-faction"   class="hil-faction">–</div>
+
+          <div id="hud-adv-block" class="hil-adv-block">
+            <div class="hil-kv"><span class="hil-key">SPEED</span><span   id="hud-speed"   class="hil-val">– km/h</span></div>
+            <div class="hil-kv"><span class="hil-key">HEADING</span><span id="hud-heading" class="hil-val">–°</span></div>
+            <div class="hil-kv"><span class="hil-key">POS</span><span     id="hud-pos"     class="hil-val">–</span></div>
+          </div>
+
+          <div class="hil-status">
+            <div class="hil-hp-row">
+              <span id="hud-reload" class="hil-ready">● READY</span>
+              <span id="hud-hp"     class="hil-val">HP 100%</span>
+              <span id="hud-lives"  class="hil-val" style="color:rgba(100,200,255,0.9)">♦♦♦</span>
+            </div>
+            <div class="hil-consumables">
+              <span id="hud-smoke" class="hil-val">SMOKE 3</span>
+              <span id="hud-ammo"  class="hil-val">AP</span>
+              <span id="hud-arty"  class="hil-val">ARTY 2</span>
+            </div>
+          </div>
+        </div>
+        <div class="hud-info-right" id="hud-controls"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Settings panel toggle: plain script, no module dependencies -->
+  <script>
+    (function () {
+      var btn   = document.getElementById('settings-btn');
+      var panel = document.getElementById('settings-panel');
+      btn.addEventListener('click', function (e) {
+        panel.classList.toggle('settings-open');
+        e.stopPropagation();
+      });
+      document.addEventListener('click', function (e) {
+        if (!btn.contains(e.target) && !panel.contains(e.target)) {
+          panel.classList.remove('settings-open');
+        }
+      });
+    })();
+  </script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three":         "https://unpkg.com/three@0.158.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="./js/main.js?v=40"></script>
+
+</body>
+</html>
