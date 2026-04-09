@@ -181,7 +181,14 @@ export class CombatManager {
           }
           const surfaceAngleDeg = 90 - Math.acos(Math.min(1, cosIncidence)) * (180 / Math.PI);
           const effectiveSurfaceAngle = surfaceAngleDeg - (hitTank.def.slopeBonus || 0);
-          if (effectiveSurfaceAngle < 20) {
+          // Probability curve: shallow angles bounce more often than steep ones.
+          // 0–10°: 95%  |  10–15°: 70%  |  15–20°: 40%  |  20–25°: 15%  |  25°+: 0%
+          const ricProb = effectiveSurfaceAngle <  10 ? 0.95
+                        : effectiveSurfaceAngle <  15 ? 0.70
+                        : effectiveSurfaceAngle <  20 ? 0.40
+                        : effectiveSurfaceAngle <  25 ? 0.15
+                        :                               0.00;
+          if (Math.random() < ricProb) {
             hitResult = { penetrated: false, damage: 0, ricochet: true, preHitHp: prevHp };
           } else {
             hitResult = hitTank.getHit(shell.penetration, hitDot);
