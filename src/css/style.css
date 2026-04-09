@@ -55,26 +55,47 @@ html, body {
   position: absolute;
   top: 40px;
   left: 0;
-  min-width: 400px;
+  width: min(600px, calc(100vw - 24px));
   background: rgba(8, 14, 28, 0.92);
   border: 1px solid rgba(100, 160, 255, 0.30);
   border-radius: 4px;
-  padding: 14px 18px 16px;
+  padding: 10px 18px 16px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.6);
 }
 #settings-panel.settings-open {
   display: block;
 }
 
-.settings-title {
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(100, 160, 255, 0.80);
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(100, 160, 255, 0.15);
-  padding-bottom: 6px;
+/* ── Settings tabs ── */
+.sp-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(100, 160, 255, 0.20);
+  margin-bottom: 14px;
 }
+.sp-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 6px 12px 8px;
+  color: rgba(140, 170, 230, 0.50);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.sp-tab:hover { color: rgba(180, 210, 255, 0.80); }
+.sp-tab.sp-tab-active {
+  color: rgba(190, 215, 255, 0.95);
+  border-bottom-color: rgba(100, 160, 255, 0.75);
+}
+.sp-pane { display: none; }
+.sp-pane.sp-pane-active { display: block; }
+
+/* .settings-title replaced by .sp-tabs */
 
 .settings-row {
   display: flex;
@@ -89,6 +110,9 @@ html, body {
   color: rgba(220, 235, 255, 0.90);
   letter-spacing: 0.04em;
 }
+
+.settings-sub { padding-left: 14px; }
+.settings-sub-header { margin-bottom: 0; padding-bottom: 0; }
 
 /* Difficulty slider */
 .settings-diff {
@@ -128,10 +152,24 @@ html, body {
 .diff-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
-  color: rgba(150, 180, 255, 0.48);
+  font-size: 11px;
+  color: rgba(150, 180, 255, 0.55);
   letter-spacing: 0.04em;
   user-select: none;
+}
+
+.settings-select {
+  display: block;
+  width: 100%;
+  margin: 5px 0 3px;
+  background: rgba(0, 20, 60, 0.85);
+  color: rgba(150, 180, 255, 0.90);
+  border: 1px solid rgba(100, 160, 255, 0.40);
+  padding: 4px 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
 }
 
 /* Changelog */
@@ -156,22 +194,21 @@ html, body {
 }
 .cl-details[open] .cl-summary::after { content: ' -'; }
 .cl-body {
-  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  max-height: 340px;
+  gap: 6px;
+  max-height: 420px;
   overflow-y: auto;
 }
 .cl-entry {
-  font-size: 11px;
-  color: rgba(180, 200, 240, 0.65);
+  font-size: 13px;
+  color: rgba(190, 210, 245, 0.80);
   line-height: 1.6;
 }
 .cl-entry code {
   font-family: 'Courier New', monospace;
-  font-size: 10px;
-  color: rgba(140, 210, 255, 0.85);
+  font-size: 12px;
+  color: rgba(140, 210, 255, 0.90);
   background: rgba(0, 20, 50, 0.50);
   padding: 1px 4px;
   border-radius: 2px;
@@ -181,6 +218,25 @@ html, body {
   color: rgba(100, 160, 255, 0.75);
   font-weight: bold;
   margin-right: 4px;
+}
+.setup-list {
+  margin: 4px 0 2px 18px;
+  padding: 0;
+}
+.setup-list li {
+  margin-bottom: 3px;
+}
+.setup-pre {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(140, 210, 255, 0.90);
+  background: rgba(0, 20, 50, 0.55);
+  border-left: 2px solid rgba(80, 140, 220, 0.40);
+  padding: 6px 10px;
+  margin: 6px 0 4px 0;
+  border-radius: 3px;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 /* Toggle switch */
@@ -363,6 +419,13 @@ html, body {
 }
 .hud-info-left.adv .hil-ready { display: inline; }
 
+/* Speed damage state indicator */
+.hil-speed-state {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+
 /* Consumables: column in basic, row in advanced */
 .hil-consumables {
   display: flex;
@@ -393,7 +456,7 @@ html, body {
 /* ── Hit indicator ── */
 #hud-hit-indicator {
   position: fixed;
-  top: 33%;
+  top: 36px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 18px;
@@ -406,6 +469,75 @@ html, body {
   z-index: 15;
   opacity: 0;
   white-space: nowrap;
+}
+
+/* ── Menu warning (above overlay, tank selection) ── */
+#menu-warn {
+  position: fixed;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+  color: rgba(255, 80, 60, 0.95);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+  pointer-events: none;
+  user-select: none;
+  z-index: 25;
+  display: none;
+  white-space: nowrap;
+}
+
+/* ── Encounter message ── */
+#hud-encounter {
+  position: fixed;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+  color: rgba(180, 220, 255, 0.90);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+  pointer-events: none;
+  user-select: none;
+  z-index: 15;
+  opacity: 0;
+  white-space: nowrap;
+}
+
+/* ── Obliterator customise label ── */
+.ts-customise-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: rgba(120, 180, 255, 0.60);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+/* ── Mercenary stat adjust buttons (Obliterator) ── */
+.merc-adj {
+  background: rgba(60, 80, 110, 0.85);
+  border: 1px solid rgba(120, 180, 255, 0.35);
+  color: rgba(200, 225, 255, 0.95);
+  font-size: 13px;
+  font-family: 'Courier New', Courier, monospace;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  text-align: center;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+.merc-adj:hover {
+  background: rgba(80, 120, 180, 0.95);
+  border-color: rgba(150, 200, 255, 0.6);
 }
 
 /* ── Edge-of-map warning ── */
@@ -434,6 +566,7 @@ html, body {
   margin: 10px 0 4px;
   text-align: left;
   min-width: 260px;
+  pointer-events: auto;
 }
 
 .ctrl-row {
@@ -472,11 +605,28 @@ html, body {
   margin-bottom: 4px;
 }
 .ts-arrow {
-  color: rgba(140, 185, 255, 0.70);
-  font-size: 22px;
-  width: 22px;
-  text-align: center;
+  background: rgba(60, 80, 110, 0.85);
+  border: 1px solid rgba(120, 180, 255, 0.35);
+  color: rgba(200, 225, 255, 0.95);
+  font-size: 15px;
+  font-family: 'Courier New', Courier, monospace;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+  pointer-events: auto;
   user-select: none;
+}
+.ts-arrow:hover:not(:disabled) {
+  background: rgba(80, 120, 180, 0.95);
+  border-color: rgba(150, 200, 255, 0.6);
+}
+.ts-arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 .ts-name {
   font-size: 28px;
@@ -520,8 +670,16 @@ html, body {
 }
 .ts-val {
   color: rgba(255, 240, 160, 0.90);
-  min-width: 60px;
+  width: 82px;
+  flex-shrink: 0;
   font-size: 16px;
+}
+.merc-adj-pair {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 50px;
+  justify-content: flex-end;
 }
 .ts-counter {
   text-align: center;
@@ -712,29 +870,6 @@ html, body {
   image-rendering: pixelated;
 }
 
-/* ── Portal back button ── */
-#games-back {
-  position: absolute;
-  top: 14px;
-  left: 60px;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 14px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: rgba(160, 220, 160, 0.85);
-  text-decoration: none;
-  border: 1px solid rgba(100, 200, 100, 0.50);
-  padding: 8px 16px;
-  border-radius: 3px;
-  pointer-events: auto;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-#games-back:hover {
-  color: rgba(200, 255, 200, 1.0);
-  border-color: rgba(100, 200, 100, 0.80);
-  background: rgba(20, 60, 20, 0.40);
-}
-
 /* ── Settings controls reference ── */
 .settings-ctrl-title {
   font-size: 11px;
@@ -762,6 +897,31 @@ html, body {
   color: rgba(255, 240, 160, 0.90);
   min-width: 1.4em;
   text-align: center;
+}
+
+/* ── Menu START button ── */
+.menu-start-btn {
+  display: block;
+  width: 100%;
+  margin-top: 18px;
+  padding: 12px 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: rgba(200, 240, 200, 0.95);
+  background: rgba(30, 80, 30, 0.55);
+  border: 2px solid rgba(120, 220, 120, 0.60);
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.menu-start-btn:hover {
+  background: rgba(40, 120, 40, 0.75);
+  border-color: rgba(160, 255, 160, 0.90);
+  color: rgba(220, 255, 220, 1.0);
 }
 
 /* ── Combined menu: 2-column tank + mode layout ── */
@@ -855,6 +1015,10 @@ html, body {
 .mode-selected .mode-name {
   color: rgba(255, 255, 180, 1.0);
 }
+.mode-sel-arrow {
+  font-size: 11px;
+  vertical-align: middle;
+}
 .mode-desc {
   font-size: 13px;
   color: rgba(180, 200, 255, 0.65);
@@ -869,7 +1033,28 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 440px;
+  min-width: 480px;
+  max-width: 580px;
+  width: 100%;
+}
+.purchase-info {
+  background: rgba(20, 35, 65, 0.70);
+  border: 1px solid rgba(100, 160, 255, 0.22);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: rgba(190, 215, 255, 0.80);
+  line-height: 1.55;
+  letter-spacing: 0.03em;
+}
+.purchase-info-title {
+  font-weight: bold;
+  color: rgba(255, 230, 100, 0.90);
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
 }
 .purchase-budget {
   font-size: 14px;
@@ -928,13 +1113,56 @@ html, body {
   font-size: 12px;
 }
 .pur-qty {
-  min-width: 60px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+  justify-content: center;
+}
+.pur-count {
+  min-width: 18px;
   text-align: center;
   color: rgba(200, 220, 255, 0.90);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: bold;
   font-family: 'Courier New', Courier, monospace;
 }
+.pur-adj {
+  background: rgba(30, 50, 90, 0.70);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 2px;
+  color: rgba(180, 210, 255, 0.90);
+  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  pointer-events: auto;
+  font-family: 'Courier New', Courier, monospace;
+}
+.pur-adj:hover:not(:disabled) { background: rgba(50, 80, 150, 0.85); }
+.pur-adj:disabled { opacity: 0.25; cursor: default; }
+.purchase-row { cursor: pointer; }
+.purchase-row:hover { background: rgba(15, 30, 60, 0.55); }
+.pur-start-btn {
+  align-self: center;
+  margin-top: 6px;
+  padding: 8px 32px;
+  background: rgba(30, 60, 110, 0.80);
+  border: 1px solid rgba(100, 160, 255, 0.45);
+  border-radius: 3px;
+  color: rgba(200, 225, 255, 0.95);
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: 'Courier New', Courier, monospace;
+}
+.pur-start-btn:hover:not(:disabled) { background: rgba(50, 100, 180, 0.90); }
+.pur-start-btn:disabled { opacity: 0.30; cursor: default; }
 .purchase-hint {
   font-size: 12px;
   color: rgba(160, 185, 255, 0.42);
@@ -950,8 +1178,8 @@ html, body {
   animation: blink 0.9s ease-in-out infinite;
 }
 
-/* ── LAN peer name tag ── */
-#lan-nametag {
+/* ── LAN peer name tags (dynamically created per peer) ── */
+.lan-nametag {
   position: absolute;
   transform: translate(-50%, -100%);
   pointer-events: none;
@@ -963,7 +1191,7 @@ html, body {
   white-space: nowrap;
   line-height: 1.4;
 }
-#lan-nametag .nt-hp {
+.lan-nametag .nt-hp {
   display: block;
   width: 48px;
   height: 4px;
@@ -972,16 +1200,15 @@ html, body {
   margin: 2px auto 0;
   position: relative;
 }
-#lan-nametag .nt-hp-fill {
+.lan-nametag .nt-hp-fill {
   position: absolute;
   top: 0; left: 0; height: 100%;
   background: rgba(255, 120, 40, 0.85);
   transition: width 0.2s;
 }
-#lan-nametag .nt-name {
+.lan-nametag .nt-name {
   display: block;
   font-size: 10px;
-  color: rgba(255, 220, 140, 0.75);
   letter-spacing: 0.10em;
   text-transform: uppercase;
   margin-bottom: 1px;
@@ -1047,6 +1274,13 @@ html, body {
   text-transform: uppercase;
 }
 .lan-btn:hover { background: rgba(50, 90, 160, 0.80); }
+.lan-btn-danger {
+  background: rgba(100, 25, 25, 0.70);
+  border-color: rgba(255, 90, 70, 0.40);
+  color: rgba(255, 175, 165, 0.90);
+}
+.lan-btn-danger:hover { background: rgba(150, 40, 35, 0.80); }
+.lan-online-col { min-width: 200px; gap: 0; }
 .lan-divider {
   text-align: center;
   font-size: 11px;
@@ -1088,8 +1322,8 @@ html, body {
 }
 .lan-name-input { max-width: 140px; }
 .lan-code-input {
-  width: 54px;
-  flex: 0 0 54px;
+  width: 65px;
+  flex: 0 0 65px;
   text-transform: uppercase;
   letter-spacing: 0.15em;
   font-size: 13px;
@@ -1142,9 +1376,67 @@ html, body {
   color: rgba(140, 230, 160, 0.90);
 }
 .lan-scan-result-ready:hover { background: rgba(20, 60, 30, 0.70); }
+.scan-info {
+  font-size: 10px;
+  color: rgba(160, 200, 160, 0.60);
+  margin-left: 8px;
+}
+.lan-team-sel {
+  background: rgba(10, 15, 30, 0.80);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 3px;
+  color: rgba(200, 230, 255, 0.85);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 4px 6px;
+  cursor: pointer;
+  outline: none;
+}
+.lan-host-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.lan-btn-disabled { opacity: 0.38; cursor: default; }
+/* Waiting room */
+.lan-waiting-room {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(10, 20, 40, 0.60);
+  border: 1px solid rgba(100, 160, 255, 0.20);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.lan-waiting-title {
+  font-size: 12px;
+  letter-spacing: 0.10em;
+  color: rgba(180, 210, 255, 0.75);
+  text-transform: uppercase;
+}
+.lan-waiting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.lan-waiting-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(200, 220, 255, 0.80);
+}
+.lan-waiting-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lan-waiting-name { flex: 1; }
+.lan-waiting-team { font-size: 10px; letter-spacing: 0.06em; }
 
-/* ── Fleet HUD (top-centre) ── */
-#hud-fleet {
+/* ── Squad HUD (top-centre) ── */
+#hud-squad {
   position: fixed;
   top: 12px;
   left: 50%;
@@ -1159,7 +1451,26 @@ html, body {
   white-space: nowrap;
 }
 
-/* ── Objective HUD (below fleet HUD) ── */
+/* ── Tank name flash (below squad icons, on tank switch) ── */
+#hud-tank-name-flash {
+  position: fixed;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+  color: rgba(140, 210, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+  opacity: 0;
+  white-space: nowrap;
+}
+
+/* ── Objective HUD (below squad HUD) ── */
 #hud-objective {
   position: fixed;
   top: 42px;
@@ -1172,7 +1483,7 @@ html, body {
   text-shadow: 0 1px 4px rgba(0,0,0,0.8);
   pointer-events: none;
   user-select: none;
-  z-index: 10;
+  z-index: 26;
   white-space: nowrap;
 }
 
@@ -1181,8 +1492,241 @@ html, body {
   display: none;
   width: 220px;
   height: 160px;
-  border: 1px solid rgba(100, 160, 255, 0.20);
-  border-radius: 3px;
+  border: 2px solid rgba(120, 220, 120, 0.60);
+  border-radius: 4px;
   margin: 10px auto 0;
   background: transparent;
+  transition: border-color 0.2s;
 }
+#tank-preview.faction-american { border-color: rgba(120, 220, 120, 0.65); }
+#tank-preview.faction-russian  { border-color: rgba(220, 80,  80,  0.65); }
+#tank-preview.faction-german   { border-color: rgba(220, 200, 60,  0.65); }
+#tank-preview.faction-mercenary{ border-color: rgba(80,  160, 255, 0.65); }
+
+/* ── Merc editor ── */
+.merc-edit-btn {
+  display: block;
+  margin: 5px 0 0 auto;
+  padding: 3px 14px;
+  width: 54px;        /* aligns with merc-adj-pair width */
+  box-sizing: border-box;
+  background: rgba(60, 100, 180, 0.55);
+  border: 1px solid rgba(100, 160, 255, 0.50);
+  border-radius: 3px;
+  color: rgba(180, 215, 255, 0.95);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s;
+}
+.merc-edit-btn:hover { background: rgba(80, 130, 220, 0.75); }
+
+.me-panel {
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  background: rgba(8, 14, 28, 0.96);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.me-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(20, 35, 65, 0.80);
+  border-bottom: 1px solid rgba(100, 160, 255, 0.20);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: rgba(180, 210, 255, 0.90);
+}
+.me-close {
+  background: none;
+  border: none;
+  color: rgba(180, 210, 255, 0.70);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  pointer-events: auto;
+}
+.me-close:hover { color: rgba(255, 100, 80, 0.90); }
+.me-body {
+  padding: 10px 14px 12px;
+}
+.me-section-name {
+  margin-bottom: 8px;
+}
+.me-section-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(120, 170, 255, 0.70);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.me-name-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(15, 25, 50, 0.80);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 3px;
+  color: rgba(200, 225, 255, 0.95);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+  pointer-events: auto;
+}
+.me-name-input:focus { border-color: rgba(100, 160, 255, 0.65); }
+.me-cols {
+  display: flex;
+  gap: 16px;
+}
+.me-col {
+  flex: 1;
+  min-width: 0;
+}
+.me-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.me-label {
+  flex: 1;
+  font-size: 11px;
+  color: rgba(190, 215, 255, 0.80);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.me-val {
+  font-size: 11px;
+  color: rgba(220, 240, 255, 0.95);
+  min-width: 38px;
+  text-align: center;
+}
+.me-adj, .me-vis {
+  background: rgba(30, 50, 90, 0.70);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 2px;
+  color: rgba(180, 210, 255, 0.90);
+  font-size: 13px;
+  line-height: 1;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+.me-adj:hover, .me-vis:hover { background: rgba(50, 80, 150, 0.85); }
+.me-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+.me-btn {
+  padding: 5px 16px;
+  border-radius: 3px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid;
+  pointer-events: auto;
+}
+.me-btn-reset {
+  background: rgba(60, 30, 30, 0.65);
+  border-color: rgba(200, 80, 60, 0.40);
+  color: rgba(255, 160, 140, 0.90);
+}
+.me-btn-reset:hover { background: rgba(90, 40, 40, 0.80); }
+.me-btn-done {
+  background: rgba(30, 60, 120, 0.70);
+  border-color: rgba(100, 160, 255, 0.45);
+  color: rgba(180, 215, 255, 0.95);
+}
+.me-btn-done:hover { background: rgba(50, 90, 170, 0.85); }
+
+/* ── Debug panel (right-edge, shown during gameplay) ── */
+#debug-panel {
+  display: none;
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 240px;
+  background: rgba(8, 14, 28, 0.92);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 30;
+  pointer-events: auto;
+}
+#debug-panel.dbg-visible { display: block; }
+.dbg-title {
+  padding: 6px 10px;
+  background: rgba(20, 35, 65, 0.90);
+  border-bottom: 1px solid rgba(100, 160, 255, 0.20);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 255, 0.90);
+  font-family: 'Courier New', Courier, monospace;
+}
+.dbg-section {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: rgba(120, 170, 255, 0.70);
+  text-transform: uppercase;
+  padding: 5px 8px 2px;
+}
+.dbg-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+}
+.dbg-label {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(190, 215, 255, 0.80);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Courier New', Courier, monospace;
+}
+.dbg-val {
+  font-size: 13px;
+  color: rgba(220, 240, 255, 0.95);
+  min-width: 36px;
+  text-align: center;
+  font-family: 'Courier New', Courier, monospace;
+}
+.dbg-adj {
+  background: rgba(30, 50, 90, 0.70);
+  border: 1px solid rgba(100, 160, 255, 0.30);
+  border-radius: 2px;
+  color: rgba(180, 210, 255, 0.90);
+  font-size: 14px;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  pointer-events: auto;
+}
+.dbg-adj:hover { background: rgba(50, 80, 150, 0.85); }
+

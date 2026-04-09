@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// signalling-server.js — WebRTC signalling relay for Conqueror LAN play
+// signalling-server.js — WebRTC signalling relay for Treads of War LAN play
 //
 // Run:   node signalling-server.js [port]   (default port: 8765)
 //
@@ -41,7 +41,7 @@ const httpServer = http.createServer((req, res) => {
       .filter(([, r]) => r.host && !r.client)
       .map(([code]) => ({ code }));
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ name: 'Conqueror LAN Server', rooms: waiting }));
+    res.end(JSON.stringify({ name: 'Treads of War LAN Server', rooms: waiting }));
     return;
   }
 
@@ -126,7 +126,7 @@ wss.on('connection', ws => {
 });
 
 httpServer.listen(port, () => {
-  console.log(`[sig] Conqueror signalling server on port ${port}`);
+  console.log(`[sig] Treads of War signalling server on port ${port}`);
   console.log(`[sig]   WebSocket:  ws://0.0.0.0:${port}`);
   console.log(`[sig]   Discovery:  http://0.0.0.0:${port}/discover`);
   console.log('[sig] Supports multiple concurrent games via room codes.');

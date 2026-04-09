@@ -273,14 +273,48 @@ class MudPool {
   }
 }
 
+// ── Persistent light-smoke emitter for recoverable wrecks ─────────────────────
+// Lighter grey, less frequent than Smoker intensity=1 — tank is damaged, not burning.
+class WreckSmoker {
+  constructor(scene, x, y, z) {
+    this.scene  = scene;
+    this.x = x; this.y = y; this.z = z;
+    this.active = true;
+    this._timer = 0;
+    this._bursts = [];
+  }
+
+  update(dt) {
+    this._timer -= dt;
+    if (this._timer <= 0 && this.active) {
+      this._bursts.push(new Burst(this.scene, this.x, this.y, this.z, {
+        count: 2, speed: 0.4, color: 0x888888, life: 2.2, size: 0.55, upBias: 1.6, gravity: 0.25,
+      }));
+      this._timer = 0.35 + Math.random() * 0.3;
+    }
+    for (let i = this._bursts.length - 1; i >= 0; i--) {
+      if (!this._bursts[i].update(dt)) {
+        this._bursts[i].dispose();
+        this._bursts.splice(i, 1);
+      }
+    }
+  }
+
+  dispose() {
+    this._bursts.forEach(b => b.dispose());
+    this._bursts.length = 0;
+  }
+}
+
 // ── Public particle system ─────────────────────────────────────────────────────
 export class ParticleSystem {
   constructor(scene) {
-    this.scene    = scene;
-    this.bursts   = [];
-    this._burners = [];   // persistent burning wrecks
-    this._smokers = [];   // persistent damage-smoke emitters
-    this._mudPool = new MudPool(scene);
+    this.scene        = scene;
+    this.bursts       = [];
+    this._burners     = [];   // persistent burning wrecks
+    this._smokers     = [];   // persistent damage-smoke emitters
+    this._wreckSmokers = [];  // persistent light smoke for recoverable wrecks
+    this._mudPool     = new MudPool(scene);
   }
 
   explosion(x, y, z) {
@@ -299,12 +333,15 @@ export class ParticleSystem {
     this._mudPool.emit(x, y, z, bx, bz);
   }
 
-  // Small wood-chip burst when a tree is destroyed by a tank or shell
+  // Wood-chip and leaf burst when a tree is destroyed by a tank or shell
   treeBurst(x, y, z) {
-    // Splinter chips — brown, kicked in all directions
-    this._add(x, y + 1.0, z, { count: 12, speed: 5,  color: 0x664422, life: 0.7,  size: 0.18, upBias: 0.8 });
-    // Leaf/canopy fragments — darker green, drift up then fall
-    this._add(x, y + 2.0, z, { count: 8,  speed: 3,  color: 0x116622, life: 1.0,  size: 0.22, upBias: 1.0, gravity: 3 });
+    // Trunk splinters — dark brown, high speed lateral spray
+    this._add(x, y + 0.8, z, { count: 22, speed: 9,  color: 0x5A2E08, life: 0.9,  size: 0.28, upBias: 0.7 });
+    // Bark chips — very dark brown, lower arc
+    this._add(x, y + 0.5, z, { count: 14, speed: 6,  color: 0x321608, life: 0.7,  size: 0.20, upBias: 0.4 });
+    // Leaf/canopy spray — dark forest greens, drift high then fall slowly
+    this._add(x, y + 2.5, z, { count: 18, speed: 5,  color: 0x1A5E0A, life: 1.4,  size: 0.30, upBias: 1.6, gravity: 2.5 });
+    this._add(x, y + 3.0, z, { count: 10, speed: 3,  color: 0x0E3A14, life: 1.8,  size: 0.25, upBias: 2.0, gravity: 1.5 });
   }
 
   muzzleFlash(x, y, z) {
@@ -319,6 +356,13 @@ export class ParticleSystem {
   // Start a persistent fire+smoke emitter at a world position (destroyed tank).
   addBurner(x, y, z) {
     this._burners.push(new Burner(this.scene, x, y, z));
+  }
+
+  // Light grey smoke for a recoverable wreck — less intense than a burning hulk.
+  addWreckSmoker(x, y, z) {
+    const ws = new WreckSmoker(this.scene, x, y, z);
+    this._wreckSmokers.push(ws);
+    return ws;
   }
 
   // Create a moveable smoke emitter for a damaged tank. intensity 1=light, 2=heavy+fire.
@@ -341,6 +385,7 @@ export class ParticleSystem {
     }
     for (const b of this._burners) b.update(dt);
     for (const s of this._smokers) s.update(dt);
+    for (const ws of this._wreckSmokers) ws.update(dt);
     this._mudPool.update(dt);
   }
 
@@ -351,6 +396,8 @@ export class ParticleSystem {
     this._burners.length = 0;
     this._smokers.forEach(s => s.dispose());
     this._smokers.length = 0;
+    this._wreckSmokers.forEach(ws => ws.dispose());
+    this._wreckSmokers.length = 0;
     this._mudPool.reset(); // keep mesh in scene — pool persists across battles
   }
 }

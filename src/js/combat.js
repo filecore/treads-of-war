@@ -91,13 +91,15 @@ class Shell {
 // ── Combat manager ─────────────────────────────────────────────────────────────
 export class CombatManager {
   constructor(scene) {
-    this.scene  = scene;
-    this.shells = [];
+    this.scene        = scene;
+    this.shells       = [];
+    this.friendlyFire = true;   // enabled by default; toggled via settings
   }
 
   // Attempt to fire from tank. Returns gun tip {x,y,z} for muzzle flash, or null
   // if still reloading. ammoType: 'AP' (default) or 'HE'.
   fire(tank, ammoType = 'AP') {
+    if (tank.ctfCarrying) return null;   // flag carrier cannot fire
     if (tank.reloadTimer < tank.reloadTime) return null;
     tank.reloadTimer = 0;
 
@@ -137,7 +139,7 @@ export class CombatManager {
       for (const t of tanks) {
         if (!t.alive) continue;
         if (t === shell.firedBy) continue;                               // no self-hit
-        if (t.def.faction === shell.firedBy.def.faction) continue;      // no friendly fire
+        if (!this.friendlyFire && t.def.faction === shell.firedBy.def.faction) continue;
         const dx = t.position.x - shell.px;
         const dy = t.position.y - shell.py + t.hitRadius * 0.5;  // rough centre
         const dz = t.position.z - shell.pz;
@@ -156,17 +158,40 @@ export class CombatManager {
         const hitDot = (shell.vx / sLen) * tfx + (shell.vz / sLen) * tfz;
 
         let hitResult;
+        const prevHp = hitTank.hp;
         if (shell.ammoType === 'HE') {
           // HE always detonates on contact — no armour check, reduced direct damage
           const dmg = Math.max(1, shell.penetration * 0.5) * hitTank.damageMult;
           hitTank.hp = Math.max(0, hitTank.hp - dmg);
           if (hitTank.hp <= 0) hitTank.alive = false;
-          hitResult = { penetrated: true, damage: Math.round(dmg) };
+          hitResult = { penetrated: true, damage: Math.round(dmg), ricochet: false, preHitHp: prevHp };
         } else {
-          hitResult = hitTank.getHit(shell.penetration, hitDot);
+          // Ricochet check — AP only
+          // Use 3D shell velocity to compute angle of incidence against the struck face.
+          // Sloped armour tanks subtract slopeBonus° from the effective surface angle,
+          // increasing the chance a glancing long-range shot skips off.
+          const speed3D = Math.sqrt(shell.vx*shell.vx + shell.vy*shell.vy + shell.vz*shell.vz) || 1;
+          let cosIncidence;
+          if (Math.abs(hitDot) > 0.707) {
+            // Front or rear face: outward normal aligns with tank long axis
+            cosIncidence = Math.abs(hitDot) * sLen / speed3D;
+          } else {
+            // Side face: outward normal is perpendicular to tank long axis
+            cosIncidence = Math.sqrt(Math.max(0, 1 - hitDot * hitDot)) * sLen / speed3D;
+          }
+          const surfaceAngleDeg = 90 - Math.acos(Math.min(1, cosIncidence)) * (180 / Math.PI);
+          const effectiveSurfaceAngle = surfaceAngleDeg - (hitTank.def.slopeBonus || 0);
+          if (effectiveSurfaceAngle < 20) {
+            hitResult = { penetrated: false, damage: 0, ricochet: true, preHitHp: prevHp };
+          } else {
+            hitResult = hitTank.getHit(shell.penetration, hitDot);
+            hitResult.ricochet = false;
+            hitResult.preHitHp = prevHp;
+          }
         }
         impact = { x: shell.px, y: shell.py, z: shell.pz,
                    penetrated: hitResult.penetrated, damage: hitResult.damage,
+                   ricochet: hitResult.ricochet, preHitHp: hitResult.preHitHp ?? 0,
                    hitDot, shellType: shell.ammoType };
         shell.alive = false;
       } else {

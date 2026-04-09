@@ -7,7 +7,7 @@ export const STATES = Object.freeze({
   WAVE_COMPLETE:  'WAVE_COMPLETE',
   GAME_OVER:      'GAME_OVER',
   VICTORY:        'VICTORY',
-  PURCHASE:       'PURCHASE',        // Strategy mode — fleet purchase screen
+  PURCHASE:       'PURCHASE',        // Strategy mode — squad purchase screen
   BATTLE_COMPLETE:'BATTLE_COMPLETE', // Attrition/Strategy — battle won, proceed
   LAN_LOBBY:      'LAN_LOBBY',       // LAN duel — waiting for peer connection
 });
@@ -56,11 +56,11 @@ export class GameManager {
     }
   }
 
-  // Multi-tank fleet end-condition check (Attrition / Strategy)
-  // playerFleet: all allied tanks (including currently controlled one)
-  checkFleetEndConditions(playerFleet, enemies) {
+  // Multi-tank squad end-condition check (Attrition / Strategy)
+  // playerSquad: all allied tanks (including currently controlled one)
+  checkSquadEndConditions(playerSquad, enemies) {
     if (this.state !== STATES.PLAYING) return;
-    if (playerFleet.every(t => !t.alive)) {
+    if (playerSquad.every(t => !t.alive)) {
       this.state = STATES.GAME_OVER;
       return;
     }

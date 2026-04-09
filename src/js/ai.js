@@ -10,13 +10,13 @@ import { DIFFICULTY, CONFIG } from './config.js';
 const MAP_SAFE = CONFIG.MAP_HALF - 20;
 
 // ── Fixed AI constants (not difficulty-dependent) ─────────────────────────────
-const RETREAT_HP       = 0.25;  // retreat when HP drops below 25 %
+const RETREAT_HP       = 0.13;  // retreat when HP drops below 13% (near-dead only)
 const TRACKS_WRECKED_HP = 0.12; // tracks destroyed — immobile but turret still operates (original state 3)
 const WAYPOINT_DIST = 8;     // world units — close enough to reach waypoint
 const PATROL_RADIUS = 220;   // world units — roam wide across the map
 const HALT_BRAKE    = 0.80;  // per-frame speed multiplier when halted (frame-rate-independent base)
-const ADVANCE_TIME  = 5.0;   // seconds of advancing toward flank position
-const HALT_TIME     = 1.2;   // seconds of halting and firing
+const ADVANCE_TIME  = 6.0;   // seconds of advancing toward flank position
+const HALT_TIME     = 1.0;   // seconds of halting and firing
 const AI_TURRET_MULT = 0.65; // AI turret inherently slower than player (on top of difficulty)
 const AI_SPREAD      = 0.052; // ±3° random aim error when firing (radians)
 // Difficulty-driven constants are read from DIFFICULTY each frame (see config.js)
@@ -50,7 +50,12 @@ export class AIController {
   }
 
   // ── Main update ───────────────────────────────────────────────────────────────
-  update(dt, playerTank, combatManager, particles, obscured = false) {
+  // weatherDetectMult:  multiplier on detection range (0.35–1.0 from WeatherManager)
+  // weatherFireMult:    multiplier on fire interval (1.0–1.5 from WeatherManager)
+  // weatherEngageMult:  multiplier on engage range (0.40–1.0 from WeatherManager)
+  update(dt, playerTank, combatManager, particles, obscured = false, weatherDetectMult = 1.0, weatherFireMult = 1.0, weatherEngageMult = 1.0) {
+    this._weatherFireMult   = weatherFireMult;
+    this._weatherEngageMult = weatherEngageMult;
     const tank   = this.tank;
     const hpFrac = tank.hp / tank.maxHp;
 
@@ -63,25 +68,26 @@ export class AIController {
 
     // ── State transitions ──────────────────────────────────────────────────────
     const D = DIFFICULTY;
+    const effEngage = D.engageRange * weatherEngageMult;
     switch (this.state) {
       case 'IDLE':
-        if (dist < D.detectRange) {
+        if (dist < D.detectRange * weatherDetectMult) {
           this.state = 'SEEKING';
-          // Fresh flank angle + reaction delay each time an enemy wakes up
+          // Fresh flank angle + difficulty-scaled reaction delay
           this._flankAngle = Math.random() * Math.PI * 2;
           this._movePhase  = 'advance';
           this._moveTimer  = ADVANCE_TIME;
-          this._reactTimer = 0.5 + Math.random() * 0.5;   // 0.5–1.0s before turret tracks
+          this._reactTimer = D.reactionDelay * (0.7 + Math.random() * 0.6);
         }
         break;
       case 'SEEKING':
         if (dist > D.disengageRange) this.state = 'IDLE';
-        if (dist < D.engageRange)    this.state = 'ENGAGING';
+        if (dist < effEngage)        this.state = 'ENGAGING';
         if (hpFrac < RETREAT_HP)     this.state = 'RETREATING';
         break;
       case 'ENGAGING':
-        if (dist > D.engageRange * 1.4) this.state = 'SEEKING';
-        if (hpFrac < RETREAT_HP)        this.state = 'RETREATING';
+        if (dist > effEngage * 1.4) this.state = 'SEEKING';
+        if (hpFrac < RETREAT_HP)    this.state = 'RETREATING';
         break;
       case 'RETREATING':
         if (dist > D.disengageRange)    this.state = 'IDLE';
@@ -103,10 +109,10 @@ export class AIController {
         this._patrol(dt);
         break;
       case 'SEEKING':
-        // Approach from the flank side at full speed
+        // Charge toward player with a slight flank offset for unpredictability
         {
-          const fax = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.x + Math.sin(this._flankAngle) * D.engageRange * 0.9));
-          const faz = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.z + Math.cos(this._flankAngle) * D.engageRange * 0.9));
+          const fax = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.x + Math.sin(this._flankAngle) * effEngage * 0.55));
+          const faz = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.z + Math.cos(this._flankAngle) * effEngage * 0.55));
           this._steerToward(dt, fax, faz, 1.0);
         }
         break;
@@ -117,7 +123,7 @@ export class AIController {
         this._steerToward(dt,
           tank.position.x - _toPlayer.x,
           tank.position.z - _toPlayer.z,
-          0.8,
+          0.45,
         );
         this._aimAndFire(dt, playerTank, combatManager, particles, obscured);
         break;
@@ -139,10 +145,16 @@ export class AIController {
   _engageFlank(dt, playerTank, combatManager, particles, obscured = false) {
     const D   = DIFFICULTY;
     const tank = this.tank;
+    const engR = D.engageRange * (this._weatherEngageMult ?? 1.0);
 
-    // Flank target — a fixed-angle position around the player at ~75% of engage range
-    const fax = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.x + Math.sin(this._flankAngle) * D.engageRange * 0.75));
-    const faz = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.z + Math.cos(this._flankAngle) * D.engageRange * 0.75));
+    // Flank target — orbit around the player, but never further than current distance.
+    // Capping at distToPlayer prevents the tank from backing away when the player closes in.
+    const _dpx = tank.position.x - playerTank.position.x;
+    const _dpz = tank.position.z - playerTank.position.z;
+    const _distToPlayer = Math.sqrt(_dpx * _dpx + _dpz * _dpz);
+    const orbitR = Math.min(engR * 0.75, _distToPlayer);
+    const fax = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.x + Math.sin(this._flankAngle) * orbitR));
+    const faz = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.z + Math.cos(this._flankAngle) * orbitR));
     const dFx = fax - tank.position.x;
     const dFz = faz - tank.position.z;
     const distToFlank = Math.sqrt(dFx * dFx + dFz * dFz);
@@ -162,8 +174,8 @@ export class AIController {
     }
 
     if (this._movePhase === 'advance' && distToFlank > 12) {
-      // Drive toward flank position at moderate speed
-      this._steerToward(dt, fax, faz, 0.80);
+      // Drive toward flank position aggressively
+      this._steerToward(dt, fax, faz, 0.87);
     } else {
       // Halt — bleed off speed quickly so the tank fires from a steady position
       const brake = Math.pow(HALT_BRAKE, dt * 60);
@@ -259,7 +271,7 @@ export class AIController {
       tank.gunElevation = savedElev;
       if (tip) {
         particles.muzzleFlash(tip.x, tip.y, tip.z);
-        this._fireLag = DIFFICULTY.fireInterval + Math.random() * DIFFICULTY.fireRandExtra;
+        this._fireLag = (DIFFICULTY.fireInterval + Math.random() * DIFFICULTY.fireRandExtra) * (this._weatherFireMult ?? 1.0);
       }
     }
   }

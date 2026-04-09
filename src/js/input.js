@@ -87,6 +87,7 @@ export class Input {
   get smokeOnce()      { return this._justPressed('KeyG'); }
   get ammoSwitch()     { return this._justPressed('Tab'); }
   get artilleryOnce()  { return this._justPressed('KeyC'); }
+  get spotterOnce()    { return this._justPressed('KeyX'); }
 
   // ── General ───────────────────────────────────────────────────────────────────
   get pause() {

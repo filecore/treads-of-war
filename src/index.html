@@ -2,9 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Conqueror</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Treads of War</title>
+  <link rel="icon" type="image/png" href="./favicon.png">
   <link rel="stylesheet" href="./css/style.css" />
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0e1a">
 </head>
 <body>
 
@@ -12,7 +18,6 @@
 
   <!-- Game state overlay (menu / paused / game-over / victory) -->
   <div id="overlay" class="overlay-hidden">
-    <a id="games-back" href="../../" style="display:none">&#8592; GAMES</a>
     <div id="overlay-title"></div>
     <div id="overlay-sub"></div>
     <!-- Tank preview canvas — shown only on menu/selection screen -->
@@ -28,7 +33,16 @@
   <!-- Hit zone indicator (shown briefly when player lands a hit) -->
   <div id="hud-hit-indicator"></div>
 
-  <!-- Damage flash (red edge vignette when player is hit) -->
+  <!-- Menu warning (shown above overlay during tank selection) -->
+  <div id="menu-warn"></div>
+
+  <!-- Encounter message (shown when player closes within range of enemy) -->
+  <div id="hud-encounter"></div>
+
+  <!-- Debug panel (shown during gameplay when debug mode is on) -->
+  <div id="debug-panel"></div>
+
+<!-- Damage flash (red edge vignette when player is hit) -->
   <div id="hud-damage-flash"></div>
 
   <!-- Gun-sight overlay (shown when V is held in sight mode) -->
@@ -60,8 +74,11 @@
   <!-- Tactical minimap (bottom-right) -->
   <canvas id="minimap" width="210" height="210"></canvas>
 
-  <!-- Fleet status HUD (top-centre, fleet modes only) -->
-  <div id="hud-fleet"></div>
+  <!-- Squad status HUD (top-centre, squad modes only) -->
+  <div id="hud-squad"></div>
+
+  <!-- Tank name flash (shown briefly when player switches tank) -->
+  <div id="hud-tank-name-flash"></div>
 
   <!-- Objective capture timer (top-centre, strategy mode) -->
   <div id="hud-objective"></div>
@@ -70,161 +87,308 @@
   <div id="settings-wrap">
     <button id="settings-btn" title="Settings">&#9776;</button>
     <div id="settings-panel">
-      <div class="settings-title">Settings</div>
-      <label class="settings-row">
-        <span class="settings-label">Simple Controls (WASD)</span>
-        <span class="toggle-wrap">
-          <input type="checkbox" id="cb-simple-controls">
-          <span class="toggle-slider"></span>
-        </span>
-      </label>
-      <label class="settings-row">
-        <span class="settings-label">Auto-rotate turret (Simple mode)</span>
-        <span class="toggle-wrap">
-          <input type="checkbox" id="cb-aim-assist">
-          <span class="toggle-slider"></span>
-        </span>
-      </label>
-      <label class="settings-row">
-        <span class="settings-label">Show Advanced Info</span>
-        <span class="toggle-wrap">
-          <input type="checkbox" id="cb-advanced-info">
-          <span class="toggle-slider"></span>
-        </span>
-      </label>
-      <label class="settings-row">
-        <span class="settings-label">Enable Mercenaries faction</span>
-        <span class="toggle-wrap">
-          <input type="checkbox" id="cb-mercenaries" checked>
-          <span class="toggle-slider"></span>
-        </span>
-      </label>
-      <label class="settings-row">
-        <span class="settings-label">Demo mode (AI plays until you act)</span>
-        <span class="toggle-wrap">
-          <input type="checkbox" id="cb-demo">
-          <span class="toggle-slider"></span>
-        </span>
-      </label>
-      <label class="settings-row">
-        <span class="settings-label">Enable LAN Duel mode</span>
-        <span class="toggle-wrap">
-          <input type="checkbox" id="cb-lan">
-          <span class="toggle-slider"></span>
-        </span>
-      </label>
+      <div class="sp-tabs">
+        <button class="sp-tab sp-tab-active" data-pane="settings">Settings</button>
+        <button class="sp-tab" data-pane="controls">Controls</button>
+        <button class="sp-tab" data-pane="faq">FAQ</button>
+        <button class="sp-tab" data-pane="server">Server Setup</button>
+        <button class="sp-tab" data-pane="changelog">Changelog</button>
+        <button class="sp-tab" data-pane="defaults">Defaults</button>
+      </div>
 
-      <div class="settings-diff">
-        <span class="settings-label">Difficulty</span>
-        <input type="range" id="diff-slider" min="0" max="3" step="1" value="1">
-        <div class="diff-labels">
-          <span>Easy</span><span>Normal</span><span>Medium</span><span>Hard</span>
+      <!-- ── Settings pane ── -->
+      <div class="sp-pane sp-pane-active" id="sp-settings">
+        <label class="settings-row">
+          <span class="settings-label">Simple Controls (WASD)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-simple-controls">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Auto-rotate turret (Simple mode)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-aim-assist">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Mouse aiming (left-click fires; overrides auto-turret)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-mouse-aim">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+<label class="settings-row">
+          <span class="settings-label">Show Advanced Info</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-advanced-info">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Enable Mercenaries faction</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-mercenaries" checked>
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Tank Editor (Obliterator customisation panel)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-merc-editor">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Friendly fire (team tanks can damage each other)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-friendly-fire" checked>
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Demo mode (AI plays until you act)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-demo">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Enable Online mode</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-lan">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Debug mode (real-time tank stat editor)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-debug">
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Water (ponds and flooded terrain)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-water" checked>
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row">
+          <span class="settings-label">Enable dynamic weather effects (fog, rain, dust)</span>
+          <span class="toggle-wrap">
+            <input type="checkbox" id="cb-weather" checked>
+            <span class="toggle-slider"></span>
+          </span>
+        </label>
+        <label class="settings-row settings-sub" id="row-weather-sel">
+          <span class="settings-label">↳ Condition</span>
+          <select id="sel-weather" style="background:#2a2e3a;color:#c8c8b4;border:1px solid #444;padding:2px 6px;font-size:12px;border-radius:3px;">
+            <option value="auto">Auto</option>
+            <option value="clear">Clear</option>
+            <option value="rain">Rain</option>
+            <option value="fog">Dense fog</option>
+            <option value="dust">Dust storm</option>
+          </select>
+        </label>
+        <div class="settings-diff">
+          <span class="settings-label">Difficulty</span>
+          <input type="range" id="diff-slider" min="0" max="3" step="1" value="1">
+          <div class="diff-labels">
+            <span>Easy</span><span>Normal</span><span>Medium</span><span>Hard</span>
+          </div>
         </div>
       </div>
 
-      <div class="settings-ctrl-title">Controls</div>
-      <div id="settings-ctrl-ref" class="settings-ctrl-ref">
-        W/S &middot; forward/back &nbsp; A/D &middot; turn<br>
-        Q/E &middot; turret left/right &nbsp; Space/F &middot; fire<br>
-        Tab &middot; ammo (AP/HE) &nbsp; V &middot; gun sight<br>
-        G &middot; smoke &nbsp; C &middot; artillery &nbsp; Esc &middot; pause
+      <!-- ── Controls pane ── -->
+      <div class="sp-pane" id="sp-controls">
+        <div id="settings-ctrl-ref" class="settings-ctrl-ref">
+          W/S &middot; forward/back &nbsp; A/D &middot; turn<br>
+          Q/E &middot; turret left/right &nbsp; Space/F &middot; fire<br>
+          Tab &middot; ammo (AP/HE) &nbsp; V &middot; gun sight<br>
+          G &middot; smoke &nbsp; C &middot; artillery &nbsp; Esc &middot; pause
+        </div>
       </div>
 
-      <details class="cl-details">
-        <summary class="cl-summary">Help &amp; FAQ</summary>
+      <!-- ── Help & FAQ pane ── -->
+      <div class="sp-pane" id="sp-faq">
         <div class="cl-body">
+          <div class="cl-entry"><span class="cl-tag">About</span> Treads of War is a browser reimplementation of Conqueror (Superior Software, 1988, Acorn Archimedes), one of my favourite childhood games. Over time it grew new features, refinements, and improvements far above and beyond the scope of the original. I claim no credit for copyright for the original work, and this is intended as a compliment and a love letter. Feel free to reach out to me: jason.togneri@gmail.com. Thanks! March 2026.</div>
           <div class="cl-entry"><span class="cl-tag">Controls</span> Simple (WASD): W/S forward/back, A/D turn, Q/E turret, Space/F fire, Tab ammo, V sight, G smoke, C artillery, P/Esc pause. Advanced (original): H/N left track fwd/rev, K/M right track fwd/rev.</div>
           <div class="cl-entry"><span class="cl-tag">Arcade</span> Solo mode — survive endless waves. Each 4 kills upgrades your tank class. You have 3 lives. Heavy class (wave 4+) adds one more enemy per wave.</div>
-          <div class="cl-entry"><span class="cl-tag">Attrition</span> You start with a fixed fleet of 5 tanks — losses are permanent. Enemies escalate each battle. Tab switches your controlled tank. Last fleet standing wins.</div>
+          <div class="cl-entry"><span class="cl-tag">Attrition</span> You start with a fixed squad of 5 tanks — losses are permanent. Enemies escalate each battle. Tab switches your controlled tank. Last squad standing wins.</div>
           <div class="cl-entry"><span class="cl-tag">Strategy</span> Before each battle, spend your budget on any mix of Allied, Soviet and Axis tanks. Enemies buy too. Capture and hold the objective ring for 60 seconds to win the battle. 7 battles total.</div>
-          <div class="cl-entry"><span class="cl-tag">LAN Duel</span> 1 v 1 tank battle against a friend — on your local network or over the internet. Requires a relay server running on the host server (see Server Admin below). Enable LAN Duel in Settings, then select it from the mode list. Nothing to install on player machines.</div>
-          <div class="cl-entry"><span class="cl-tag">LAN — Playing (Host)</span> Pick your tank on the main menu, then select LAN Duel and click <b>Host Game</b>. A 4-character room code appears (e.g. <code>7K3M</code>) — share it with your opponent by any means (chat, voice, text). Wait for them to join; the game starts automatically once they connect.</div>
-          <div class="cl-entry"><span class="cl-tag">LAN — Playing (Join)</span> Pick your tank, select LAN Duel, then click <b>Find games</b> to see open rooms on the server — click one to fill in the code. Or type the code your opponent gave you directly and click <b>Join</b>. Multiple games can run concurrently; room codes keep them separate.</div>
-          <div class="cl-entry"><span class="cl-tag">LAN — Notes</span> Ping is shown in the bottom-left HUD (Advanced Info on). Shot effects — muzzle flash, explosions, ricochets — are synchronised to both screens. Your opponent's tank name and HP bar appear above their vehicle. A Rematch button is shown at the end.</div>
-          <div class="cl-entry"><span class="cl-tag">Server Admin — Relay</span> LAN Duel requires a small WebSocket relay service (<code>relay/relay-server.js</code>, Node.js + ws). Add it to your games <code>docker-compose.yaml</code> alongside the nginx service:<br><br>
-<code>  relay:<br>
-&nbsp;&nbsp;build: ./relay<br>
-&nbsp;&nbsp;ports:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;- "8765:8765"<br>
-&nbsp;&nbsp;restart: unless-stopped</code><br><br>
-Then run <code>docker compose up -d --build relay</code> once. The deploy script keeps it updated on each deploy.</div>
-          <div class="cl-entry"><span class="cl-tag">Server Admin — NPM Proxy</span> To route the relay through your reverse proxy (no extra port exposed) add a WebSocket location to the Advanced config of your games proxy host in NPM:<br><br>
-<code>location /relay {<br>
-&nbsp;&nbsp;proxy_pass http://192.168.0.101:8765;<br>
-&nbsp;&nbsp;proxy_http_version 1.1;<br>
-&nbsp;&nbsp;proxy_set_header Upgrade $http_upgrade;<br>
-&nbsp;&nbsp;proxy_set_header Connection "upgrade";<br>
-&nbsp;&nbsp;proxy_read_timeout 3600;<br>
-}</code><br><br>
-Replace <code>192.168.0.101</code> with your server's LAN IP. All relay traffic then flows through ports 80/443 — no additional firewall rules needed. Works with both <code>ws://</code> (HTTP) and <code>wss://</code> (HTTPS) automatically.</div>
+          <div class="cl-entry"><span class="cl-tag">Online</span> Multiplayer tank battle against friends — on your local network or over the internet. Enable Online in Settings, then select it from the mode list. Nothing to install on player machines. Server setup is covered in the Server Setup tab.</div>
+          <div class="cl-entry"><span class="cl-tag">Network — Playing (Host)</span> Pick your tank on the main menu, then select Online and click <b>Host Game</b>. A 4-character room code appears (e.g. <code>7K3M</code>) — share it with your opponents by any means (chat, voice, text). Wait for them to join, then click Start.</div>
+          <div class="cl-entry"><span class="cl-tag">Network — Playing (Join)</span> Pick your tank, select Online, then click <b>Find games</b> to see open rooms on the server — click one to fill in the code. Or type the code your host gave you directly and click <b>Join</b>. Multiple games can run concurrently; room codes keep them separate.</div>
+          <div class="cl-entry"><span class="cl-tag">Network — Notes</span> Ping is shown in the bottom-left HUD (Advanced Info on). Shot effects — muzzle flash, explosions, ricochets — are synchronised to all screens. Your opponents' tank names and HP bars appear above their vehicles. A Rematch button is shown at the end.</div>
           <div class="cl-entry"><span class="cl-tag">Armour</span> Shells are resolved against front / side / rear armour zones. Approach angle determines the zone. A shot that cannot penetrate (firepower &lt; armour × 0.6) ricochets with a gold spark. Aim for flanks and rears of heavy tanks.</div>
           <div class="cl-entry"><span class="cl-tag">Damage</span> Below 50% HP: half speed. Below 25% HP: quarter speed, damage smoke. Below 12% HP: tracks wrecked — hull immobile but turret still operates.</div>
         </div>
-      </details>
+      </div>
 
-      <details class="cl-details">
-        <summary class="cl-summary">Changelog</summary>
+      <!-- ── Server Setup pane ── -->
+      <div class="sp-pane" id="sp-server">
         <div class="cl-body">
-          <div class="cl-entry"><span class="cl-tag">Phase 41</span> LAN Duel mode: 1 v 1 over local network via WebRTC state broadcast. Host runs authoritative simulation at 60 fps, broadcasts tank states at 20 Hz; client runs local prediction for smooth movement with server correction. Shot effects synchronised to both screens. Ping display in HUD. Scan LAN button auto-discovers host on local subnet. End-game reliability (wind-down broadcast), peer name tag above opponent tank, Rematch button. Demo mode on by default; cancelled by any input. Mercs off by default. Strategy purchase expanded to all 12 main-faction tanks. FPS/score/enemies moved to advanced info block.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 40</span> Faction selector added: Allies, Soviets, Axis — each with distinct tank roster, fleet compositions, and correct opposing enemies across all three modes. Axis campaign faces Allied/Soviet tanks; shop and Attrition fleets updated accordingly.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 39</span> Collision radii tightened (tanks 0.85×, buildings max-edge). Phantom Sherman disposed on fleet-mode entry. Ammo HUD hidden in fleet modes. WAVE_COMPLETE handler guarded for Arcade. Strategy fleet capped at 8 player / 10 AI. AI slower: advance 5s, halt 1.2s, fire interval 6s. Mode name shown in bottom-left HUD.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 38</span> Menu redesign: vehicle and battle mode now on one screen side-by-side. ◄/► selects tank, ▲/▼ or click selects mode, Enter starts. Settings panel shows full controls reference (updates per mode and simple/advanced setting). ← GAMES button moved clear of settings icon.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 37</span> Game mode UI polish: mode selection now navigated with ▲/▼ arrows and supports mouse clicks; controls hint updates per mode (Tab shows "switch tank" in Attrition/Strategy, "ammo AP/HE" in Arcade); ← GAMES portal button on title and end screens.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 36</span> Three game modes: Arcade (endless waves, solo — tank class upgrades after 4 kills each); Attrition (fixed fleet of 5, permanent losses, escalating enemy fleets); Strategy (budget purchase before each battle, objective ring capture, enemy AI buys too). Tab switches controlled tank in fleet modes.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 35</span> Dynamic 8v8 battle: 8 allied tanks vs 8 enemies. Enemy AI roams the full map at high speed. Wingmen actively patrol between waypoints rather than standing still. Aim-assist toggle added to settings. Tank tracks rendered in dark grey, separate from hull. Improved Phong shading with specular highlights.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 34</span> Supply crates: three crates spawn on the map each wave — red (HP +25), blue (smoke replenishment), yellow (artillery charge +1). Drive over a crate to collect it. Crates bob and rotate for visibility; shown as coloured dots on the minimap. Collecting clears the item immediately and shows a HUD callout.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 33</span> Audio: shell pass-by crack and ricochet ping. Enemy shells that fly within 20 m of the player trigger a sharp Doppler crack and descending whoosh — once per shell. Ricochets now play a distinct high metallic ping rather than the hull-impact thud, clearly distinguishing a deflection from a penetrating hit.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 32</span> Allied wingman: a randomly selected Allied tank (M24 Chaffee, Sherman, T-34, or KV-1S) fights alongside the player each wave. It targets and engages the nearest live enemy independently. No friendly fire — shells cannot damage tanks of the same faction. The wingman is replaced fresh each wave. Shown as a cyan dot on the tactical minimap.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 31</span> Visual overhaul: vivid European summer palette (bright greens, warm earth tones), cream stone farmhouse walls with terracotta roofs, dark forest-green tree canopies, warm brown dirt roads. Sky and fog shifted to deep blue (0x99AACC). Fog pushed to 300–800 m for better long-range visibility. Ambient and hemisphere lighting brightened.</div>
+
+          <div class="cl-entry"><span class="cl-tag">Source</span> Want to run this yourself? The full source for v4.9 (08-03-2026) can be downloaded <a href="/treads/treads_of_war_source_v4.9.zip" style="color:rgba(160,220,255,0.9)">here</a> (0.2 MB).</div>
+
+          <div class="cl-entry"><span class="cl-tag">Overview</span>
+            Online requires a WebSocket relay service running on your server. The relay is a small Node.js process — no installation is required on player machines. Two connection paths are supported:
+            <ul class="setup-list">
+              <li><b>LAN / HTTP</b> — players connect directly to port 8765 on the server. No proxy config needed.</li>
+              <li><b>Internet / HTTPS</b> — traffic routes through nginx and your reverse proxy (e.g. NPM). Port 8765 can stay closed to the internet.</li>
+            </ul>
+          </div>
+
+          <div class="cl-entry"><span class="cl-tag">1 · Docker Compose</span>
+            Add the relay service to your <code>docker-compose.yml</code> alongside the games nginx service:
+<pre class="setup-pre">  relay:
+    build: ./relay
+    ports:
+      - "8765:8765"
+    restart: unless-stopped</pre>
+            The <code>relay/</code> directory (containing <code>relay-server.js</code>, <code>Dockerfile</code>, and <code>package.json</code>) is included in the project and synced to the server on every <code>./deploy.sh</code> run. Start it once manually, or let deploy handle it:
+<pre class="setup-pre">docker compose up -d --build relay</pre>
+          </div>
+
+          <div class="cl-entry"><span class="cl-tag">2 · Nginx Config</span>
+            The games nginx config (<code>conf/default.conf</code>) must proxy <code>/relay</code> to the relay container. Both the WebSocket connection and the HTTP discovery endpoint route through the same two location blocks:
+<pre class="setup-pre">location = /relay {
+    proxy_pass         http://relay:8765;
+    proxy_http_version 1.1;
+    proxy_set_header   Upgrade    $http_upgrade;
+    proxy_set_header   Connection "upgrade";
+    proxy_set_header   Host       $host;
+    proxy_read_timeout 86400s;
+}
+
+location = /relay/discover {
+    proxy_pass       http://relay:8765/discover;
+    proxy_set_header Host $host;
+}</pre>
+            Use the Docker service name <code>relay</code> (not an IP address) — both containers are on the same compose network. Reload nginx after editing:
+<pre class="setup-pre">docker compose exec &lt;nginx-service-name&gt; nginx -s reload</pre>
+            Verify with: <code>curl http://localhost:&lt;port&gt;/relay/discover</code> — should return <code>{"name":"Treads of War Relay","rooms":[]}</code>.
+          </div>
+
+          <div class="cl-entry"><span class="cl-tag">3 · Reverse Proxy (NPM)</span>
+            Required for HTTPS / internet play. In Nginx Proxy Manager, edit the proxy host for your games domain:
+            <ul class="setup-list">
+              <li>Go to <b>Proxy Hosts</b> → your games domain → <b>Edit</b>.</li>
+              <li>On the <b>Details</b> tab, enable <b>Websockets Support</b>.</li>
+              <li>Save. No custom location blocks are needed — the inner nginx handles the <code>/relay</code> routing.</li>
+            </ul>
+            Without this toggle, NPM strips the <code>Upgrade</code> header and the WebSocket handshake fails silently.
+          </div>
+
+          <div class="cl-entry"><span class="cl-tag">4 · Firewall</span>
+            <ul class="setup-list">
+              <li><b>LAN play (HTTP)</b>: port <code>8765</code> must be reachable from other devices on the LAN. Open it in your host firewall (<code>ufw allow 8765/tcp</code> or equivalent).</li>
+              <li><b>Internet play (HTTPS)</b>: port <code>8765</code> does not need to be internet-facing. All traffic enters via port <code>443</code> through NPM. Port <code>8765</code> only needs to be accessible within the Docker network.</li>
+              <li>The games web server port (e.g. <code>36008</code>) must be reachable by NPM — typically it already is since both run on the same host.</li>
+            </ul>
+          </div>
+
+          <div class="cl-entry"><span class="cl-tag">5 · Deploy Script</span>
+            <code>deploy.sh</code> handles everything in one step: it rsyncs <code>src/</code> to the remote server, rsyncs the <code>relay/</code> directory, and SSHs in to run <code>docker compose up -d --build relay</code>. Run it from the project root:
+<pre class="setup-pre">./deploy.sh</pre>
+            The relay container is only rebuilt if its source files changed; otherwise it restarts in place (no-op rebuild). No manual steps are needed after initial setup.
+          </div>
+
+          <div class="cl-entry"><span class="cl-tag">Troubleshooting</span>
+            <ul class="setup-list">
+              <li><b>404 on /relay/discover</b> — nginx proxy locations are missing or nginx hasn't been reloaded.</li>
+              <li><b>WebSocket connection refused</b> — relay container is not running, or NPM WebSocket Support is not enabled.</li>
+              <li><b>LAN works, internet doesn't</b> — NPM WebSocket Support toggle is off, or the inner nginx <code>Upgrade</code> headers are not set.</li>
+              <li><b>Internet works, LAN doesn't</b> — port 8765 is blocked by the host firewall.</li>
+              <li><b>Find Games shows nothing</b> — the host hasn't clicked Host Game yet, or the relay container restarted and cleared its room list.</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Changelog pane ── -->
+      <div class="sp-pane" id="sp-changelog">
+        <div class="cl-body">
+          <div class="cl-entry"><span class="cl-tag">v4.9</span> NEW: Ricochet system — shells at shallow angles bounce off armour with a distinct spark and sound; sloped-armour tanks (T-34, Panther, King Tiger) get a mechanical bonus. NEW: Tank recovery — destroyed friendly tanks may leave recoverable wrecks in Attrition/Strategy; park nearby for 12s to field-repair to 25% HP. NEW: Dynamic weather — Rain, Fog, and Dust Storm conditions affect visibility, movement speed, and AI behaviour; weather can change mid-battle. NEW: Supply crate symbols — HP (cross), Smoke (cloud), Artillery (ballistic arc) markings on crate faces. NEW: Game renamed to &quot;Treads of War&quot; with new logo and favicon. IMPROVED: Difficulty levels rebalanced with clearer progression from Easy to Hard. IMPROVED: Dense fog forces extremely close engagement ranges. FIXED: Arcade life tank icons now face the correct direction.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.8</span> Landing page redesigned: wider layout, improved section headings and card borders, screenshot labels styled as chapter headings. Smoke, artillery, and spotter plane restricted to Strategy mode. Spotter plane (X key) reveals enemy positions on minimap for 25 seconds. Enemy tanks hidden from minimap in Strategy until spotted. Objective capture point redesigned as a transparent cylindrical wall rising from the ring boundary.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.7</span> Merc Tank Editor: full visual and stat editor for the Obliterator, toggled in Settings. Editable custom designation, all combat/mobility stats with +/− controls, and per-part visual transforms (body/turret width, height, raise; gun length and radius). Changes persist between sessions. Online beta warning shown on Online lobby screen. Settings panel widened to fit all tabs. Tank preview background darkened for better contrast.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.6</span> LAN Duel renamed to Online mode. Online lobby redesigned: tank selection and faction remain visible on the lobby screen; host/join controls replace the mode column. Enemy shells now visible to clients as team-coloured tracers with between-snapshot physics interpolation. Player death in online play shows Defeat screen immediately (no lives system). Victory/Defeat screen: two buttons — Main Menu and Online Lobby. Mercenary warning on tank selection; Mercs hidden from selector when toggle is off. Faction-coloured border on tank preview. Mode selector arrow scaled to match text height. Buildings no longer visually overlap. Tank selector ◄/► arrows are clickable buttons; START button added to menu.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.5</span> LAN Duel expanded to up to 16 players (8v8). Team selection (Gold/Blue/Red/Green), team colours applied to tank models. Auto-submit on room discovery click. Lobby waiting room shows all connected players and teams; host picks max player count and clicks Start. Speed damage state moved to its own HUD row under HP with descriptive labels (Half speed / Quarter speed / Immobilised). Game loads with a random Allied tank selected. Death crater placed under destroyed hull (black centre shading to medium brown, 50% larger than shell craters). Last 5 tank-lengths of tracks frozen on death for dramatic effect.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.4</span> Server Setup tab documents Docker Compose, nginx, NPM proxy, firewall, and deploy steps. LAN stale-connection eviction + heartbeat ping — prevents false &quot;room is full&quot; errors. Code input 20% wider. Tagline: &quot;Crush your opponent over the network&quot;.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.3</span> Trees +20% per chunk. Tree destruction particles darkened. Buildings no longer spawn on roads. Friendly fire toggle (on by default). Flash texts (tank name, encounter, hit indicator, tracks wrecked) unified at top of screen. Fleet renamed to Squad. Changelog versioned as vX.Y.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.2</span> Settings menu redesigned: tabbed layout (Settings / Controls / Help &amp; FAQ / Changelog). LAN relay connects directly on HTTP (LAN play, no proxy needed); wss:// proxy path used only for HTTPS/internet. NPM proxy_pass fixed with trailing slash for correct path rewriting.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.1</span> LAN Duel mode: 1 v 1 over local network via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts tank states at 20 Hz; client runs local prediction for smooth movement with server correction. Shot effects synchronised to both screens. Ping display in HUD. Find games button auto-discovers open rooms. End-game reliability (wind-down broadcast), peer name tag above opponent tank, Rematch button. Demo mode on by default; cancelled by any input. Mercs off by default. Strategy purchase expanded to all 12 main-faction tanks. FPS/score/enemies moved to advanced info block.</div>
+          <div class="cl-entry"><span class="cl-tag">v4.0</span> Faction selector added: Allies, Soviets, Axis — each with distinct tank roster, squad compositions, and correct opposing enemies across all three modes. Axis campaign faces Allied/Soviet tanks; shop and Attrition squads updated accordingly.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.9</span> Collision radii tightened (tanks 0.85×, buildings max-edge). Phantom Sherman disposed on squad-mode entry. Ammo HUD hidden in squad modes. WAVE_COMPLETE handler guarded for Arcade. Strategy squad capped at 8 player / 10 AI. AI slower: advance 5s, halt 1.2s, fire interval 6s. Mode name shown in bottom-left HUD.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.8</span> Menu redesign: vehicle and battle mode now on one screen side-by-side. ◄/► selects tank, ▲/▼ or click selects mode, Enter starts. Settings panel shows full controls reference (updates per mode and simple/advanced setting). ← GAMES button moved clear of settings icon.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.7</span> Game mode UI polish: mode selection now navigated with ▲/▼ arrows and supports mouse clicks; controls hint updates per mode (Tab shows "switch tank" in Attrition/Strategy, "ammo AP/HE" in Arcade); ← GAMES portal button on title and end screens.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.6</span> Three game modes: Arcade (endless waves, solo — tank class upgrades after 4 kills each); Attrition (fixed squad of 5, permanent losses, escalating enemy squads); Strategy (budget purchase before each battle, objective ring capture, enemy AI buys too). Tab switches controlled tank in squad modes.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.5</span> Dynamic 8v8 battle: 8 allied tanks vs 8 enemies. Enemy AI roams the full map at high speed. Wingmen actively patrol between waypoints rather than standing still. Aim-assist toggle added to settings. Tank tracks rendered in dark grey, separate from hull. Improved Phong shading with specular highlights.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.4</span> Supply crates: three crates spawn on the map each wave — red (HP +25), blue (smoke replenishment), yellow (artillery charge +1). Drive over a crate to collect it. Crates bob and rotate for visibility; shown as coloured dots on the minimap. Collecting clears the item immediately and shows a HUD callout.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.3</span> Audio: shell pass-by crack and ricochet ping. Enemy shells that fly within 20 m of the player trigger a sharp Doppler crack and descending whoosh — once per shell. Ricochets now play a distinct high metallic ping rather than the hull-impact thud, clearly distinguishing a deflection from a penetrating hit.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.2</span> Allied wingman: a randomly selected Allied tank (M24 Chaffee, Sherman, T-34, or KV-1S) fights alongside the player each wave. It targets and engages the nearest live enemy independently. No friendly fire — shells cannot damage tanks of the same faction. The wingman is replaced fresh each wave. Shown as a cyan dot on the tactical minimap.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.1</span> Visual overhaul: vivid European summer palette (bright greens, warm earth tones), cream stone farmhouse walls with terracotta roofs, dark forest-green tree canopies, warm brown dirt roads. Sky and fog shifted to deep blue (0x99AACC). Fog pushed to 300–800 m for better long-range visibility. Ambient and hemisphere lighting brightened.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Trees no longer spawn on roads. Tanks that drive into a tree destroy it on contact — the merged chunk geometry is rebuilt instantly without the felled tree.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 30</span> Artillery support: press C to call in an off-map barrage (2 per wave, replenished on advance). Six shells rain down over a 22-metre spread around the ballistic aim point 1.8 seconds after the call, each dealing area-of-effect blast damage. An incoming whistle sounds on call. The barrage damages all tanks in range — including the player. Charges shown in HUD.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 29</span> Ammo types: press Tab to switch between AP and HE. AP is armour-piercing — standard penetration and ricochet rules apply. HE (high-explosive) always detonates on contact (no ricochet), deals 50% direct damage regardless of armour, and blasts all tanks within 18 metres with area-of-effect splash damage. HE craters are over twice as wide. Tracer colour changes to yellow-green when HE is loaded.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 28</span> Smoke grenades: press G to fire a smoke canister (3 per wave, replenished on advance) along the turret bearing. The canister arcs ballistically and deploys a multi-puff grey cloud on landing. Enemy tanks cannot fire while the player is inside the cloud. Smoke clouds fade over ~14 seconds and are shown as grey blobs on the minimap.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 27</span> Enemy AI tactics: flanking approach and fire-and-move cycle. Each enemy selects a random sector around the player and approaches from that angle rather than head-on. In ENGAGING state, tanks alternate between advancing toward their flank position and halting to fire from a steady platform. Flank angle shifts occasionally for unpredictability.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 26</span> Destructible buildings: any shell that strikes a building destroys it instantly — the walls and roof are removed and replaced with scattered rubble chunks. Destroyed buildings no longer block tank movement. Shells are consumed on impact (they do not pass through). One direct hit levels the structure.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 25</span> Shell tracers: every shell in flight is now rendered as a glowing colour-coded streak — light blue for player shots, orange-red for enemy shots. The 10-unit elongated tracer rotates each frame to follow the parabolic arc under gravity, making shells clearly trackable and incoming fire easy to spot.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 24</span> Roads: three terrain-following dirt roads cross the map (E-W main road, N-S corridor, SW diagonal). Rendered as smooth quad strips that conform to terrain height. Tanks on a road ignore the cross-country slope penalty, maintaining full road speed on hills. Roads shown as brown lines on the tactical minimap.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 23</span> Tank selection preview: the menu shows a live rotating 3D render of the selected vehicle, rendered into a separate canvas using a dedicated Three.js renderer. Camera angle is front-left elevated for a clear view of the hull and turret.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 22</span> Buildings: ~30 procedural stone farmhouses (walls + roofed or open-topped ruins) scattered across the map with a fixed seed layout. Tanks collide with buildings and are pushed away — buildings act as hard cover. Spawned clear of the player start zone and water.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 21</span> Shell craters: ground impacts leave persistent dark crater decals (scorched pit + displaced earth rim) on the terrain. Up to 50 craters per wave; cleared on wave advance and game restart. Battlefields accumulate visible shell damage over the course of a fight.</div>
+          <div class="cl-entry"><span class="cl-tag">v3.0</span> Artillery support: press C to call in an off-map barrage (2 per wave, replenished on advance). Six shells rain down over a 22-metre spread around the ballistic aim point 1.8 seconds after the call, each dealing area-of-effect blast damage. An incoming whistle sounds on call. The barrage damages all tanks in range — including the player. Charges shown in HUD.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.9</span> Ammo types: press Tab to switch between AP and HE. AP is armour-piercing — standard penetration and ricochet rules apply. HE (high-explosive) always detonates on contact (no ricochet), deals 50% direct damage regardless of armour, and blasts all tanks within 18 metres with area-of-effect splash damage. HE craters are over twice as wide. Tracer colour changes to yellow-green when HE is loaded.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.8</span> Smoke grenades: press G to fire a smoke canister (3 per wave, replenished on advance) along the turret bearing. The canister arcs ballistically and deploys a multi-puff grey cloud on landing. Enemy tanks cannot fire while the player is inside the cloud. Smoke clouds fade over ~14 seconds and are shown as grey blobs on the minimap.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.7</span> Enemy AI tactics: flanking approach and fire-and-move cycle. Each enemy selects a random sector around the player and approaches from that angle rather than head-on. In ENGAGING state, tanks alternate between advancing toward their flank position and halting to fire from a steady platform. Flank angle shifts occasionally for unpredictability.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.6</span> Destructible buildings: any shell that strikes a building destroys it instantly — the walls and roof are removed and replaced with scattered rubble chunks. Destroyed buildings no longer block tank movement. Shells are consumed on impact (they do not pass through). One direct hit levels the structure.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.5</span> Shell tracers: every shell in flight is now rendered as a glowing colour-coded streak — light blue for player shots, orange-red for enemy shots. The 10-unit elongated tracer rotates each frame to follow the parabolic arc under gravity, making shells clearly trackable and incoming fire easy to spot.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.4</span> Roads: three terrain-following dirt roads cross the map (E-W main road, N-S corridor, SW diagonal). Rendered as smooth quad strips that conform to terrain height. Tanks on a road ignore the cross-country slope penalty, maintaining full road speed on hills. Roads shown as brown lines on the tactical minimap.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.3</span> Tank selection preview: the menu shows a live rotating 3D render of the selected vehicle, rendered into a separate canvas using a dedicated Three.js renderer. Camera angle is front-left elevated for a clear view of the hull and turret.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.2</span> Buildings: ~30 procedural stone farmhouses (walls + roofed or open-topped ruins) scattered across the map with a fixed seed layout. Tanks collide with buildings and are pushed away — buildings act as hard cover. Spawned clear of the player start zone and water.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.1</span> Shell craters: ground impacts leave persistent dark crater decals (scorched pit + displaced earth rim) on the terrain. Up to 50 craters per wave; cleared on wave advance and game restart. Battlefields accumulate visible shell damage over the course of a fight.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Controls updated: Q/E traverse turret left/right; Space/F fires. P/Esc pause in both modes.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 20</span> Target acquisition HUD: when the gun points at a live enemy (±11.5° in 3rd-person, ±4° in gun-sight), shows tank name, 8-block HP bar, and range in metres. Cone narrows automatically in sight mode for precision targeting.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 19</span> Screen shake &amp; damage flash: cannon recoil nudge on fire, scaled shake on hit (by damage dealt), concussion from nearby explosions. Red edge-vignette flash when player takes a penetrating hit. Sight view dampens shake 70%. Ground impacts now show explosions (not sparks).</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 18</span> Gun-sight camera: press V to toggle between third-person view and a first-person periscope sight (14° FOV, ~4× zoom). Authentic WWII reticle with crosshair, centre fine cross, and stadia range marks. Exits automatically on tank destruction.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 17</span> Penetration &amp; ricochet: shots that cannot defeat the armour (firepower &lt; armour × 0.6) deflect with a gold spark instead of exploding. HUD indicator shows hit zone (FRONT / SIDE / REAR) and result. Chaffee cannot penetrate King Tiger frontally; Tiger cannot pierce JS-II head-on.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 16</span> Directional armour from original binary: front / side / rear values per tank. Panther: 60 / 29 / 23; Tiger I: 55 / 40 / 40; King Tiger: 100 / 45 / 45. Shells resolved against the correct face based on impact angle — flanking and rear shots now significantly more effective.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 15</span> Cross-country speed: each tank now slows on slopes using original binary XC km/h values (e.g. Tiger I: 38 road → 20 XC). Speed blends continuously with terrain gradient — flat valleys at full road speed, steep hills at XC speed. Russian tanks retain better cross-country mobility than German heavies, as in the original.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 14</span> Tank selection screen: choose from all 8 Allied vehicles (4 American, 4 Russian) before battle. Stats shown with comparative bars. Enemies remain German throughout.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 13</span> Wave-based progression: three escalating waves of German armour (Pz III × 2 / Panther / Tiger I → Panther / Tiger I × 2 / King Tiger → Panther / Tiger I / King Tiger × 2). Wave-complete screen with +30 HP repair; press R to advance. Final victory only after all waves cleared.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 12</span> Stats corrected from original Archimedes binary: all 12 authentic tank types (Sherman Firefly, M36 90mmGMC, KV-85, JS-II etc.), road speeds match historical km/h, armour/penetration from original data. Tiger and Sherman now similar speed, as in original. Enemy roster: Pz III × 2, Panther, Tiger I.</div>
+          <div class="cl-entry"><span class="cl-tag">v2.0</span> Target acquisition HUD: when the gun points at a live enemy (±11.5° in 3rd-person, ±4° in gun-sight), shows tank name, 8-block HP bar, and range in metres. Cone narrows automatically in sight mode for precision targeting.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.9</span> Screen shake &amp; damage flash: cannon recoil nudge on fire, scaled shake on hit (by damage dealt), concussion from nearby explosions. Red edge-vignette flash when player takes a penetrating hit. Sight view dampens shake 70%. Ground impacts now show explosions (not sparks).</div>
+          <div class="cl-entry"><span class="cl-tag">v1.8</span> Gun-sight camera: press V to toggle between third-person view and a first-person periscope sight (14° FOV, ~4× zoom). Authentic WWII reticle with crosshair, centre fine cross, and stadia range marks. Exits automatically on tank destruction.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.7</span> Penetration &amp; ricochet: shots that cannot defeat the armour (firepower &lt; armour × 0.6) deflect with a gold spark instead of exploding. HUD indicator shows hit zone (FRONT / SIDE / REAR) and result. Chaffee cannot penetrate King Tiger frontally; Tiger cannot pierce JS-II head-on.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.6</span> Directional armour from original binary: front / side / rear values per tank. Panther: 60 / 29 / 23; Tiger I: 55 / 40 / 40; King Tiger: 100 / 45 / 45. Shells resolved against the correct face based on impact angle — flanking and rear shots now significantly more effective.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.5</span> Cross-country speed: each tank now slows on slopes using original binary XC km/h values (e.g. Tiger I: 38 road → 20 XC). Speed blends continuously with terrain gradient — flat valleys at full road speed, steep hills at XC speed. Russian tanks retain better cross-country mobility than German heavies, as in the original.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.4</span> Tank selection screen: choose from all 8 Allied vehicles (4 American, 4 Russian) before battle. Stats shown with comparative bars. Enemies remain German throughout.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.3</span> Wave-based progression: three escalating waves of German armour (Pz III × 2 / Panther / Tiger I → Panther / Tiger I × 2 / King Tiger → Panther / Tiger I / King Tiger × 2). Wave-complete screen with +30 HP repair; press R to advance. Final victory only after all waves cleared.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.2</span> Stats corrected from original Archimedes binary: all 12 authentic tank types (Sherman Firefly, M36 90mmGMC, KV-85, JS-II etc.), road speeds match historical km/h, armour/penetration from original data. Tiger and Sherman now similar speed, as in original. Enemy roster: Pz III × 2, Panther, Tiger I.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Player turret traverses 5% faster than enemies.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 11</span> Synthesised sound engine: diesel engine hum (pitch follows speed), cannon fire, distance-attenuated explosions, hull-impact clang. No audio files — all Web Audio API.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 10</span> Tactical minimap: player-relative rotating view, FOV V indicator, live enemy positions, destroyed wrecks, map boundary.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 9</span> Progressive damage states: half speed below 50% HP, quarter speed below 25%, with damage smoke. Death camera orbits wreck and points toward the killer on player defeat.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.1</span> Synthesised sound engine: diesel engine hum (pitch follows speed), cannon fire, distance-attenuated explosions, hull-impact clang. No audio files — all Web Audio API.</div>
+          <div class="cl-entry"><span class="cl-tag">v1.0</span> Tactical minimap: player-relative rotating view, FOV V indicator, live enemy positions, destroyed wrecks, map boundary.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.9</span> Progressive damage states: half speed below 50% HP, quarter speed below 25%, with damage smoke. Death camera orbits wreck and points toward the killer on player defeat.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Terrain colour banding visible across full altitude range; world palette shifted to muted olive/earthy tones matching original. Map 35% smaller. AI less aggressive.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Simple controls (WASD) now the default; enemy reload times no longer affected by player bonus.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 8</span> Authentic tank geometry from original Archimedes face data — proper triangulated hull and turret meshes per tank type, friend/foe colour coding.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.8</span> Authentic tank geometry from original Archimedes face data — proper triangulated hull and turret meshes per tank type, friend/foe colour coding.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> I/O turret keys, P-to-fire in simple mode; faster reload; edge warning; lighter boundary.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 7</span> Map boundary walls, terrain cutoff, ballistic elevation, WASD simple controls.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.7</span> Map boundary walls, terrain cutoff, ballistic elevation, WASD simple controls.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Enemy fire rate reduced and randomised; reload time cut 25%.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Tank collisions, player aim assist, destroyed hull with persistent fire and smoke.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Turning responsiveness, track equalization, faster friction.</div>
           <div class="cl-entry"><span class="cl-tag">Fix</span> Terrain clipping resolved; correct world-space slope normal, smaller tile size.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 6</span> Procedural trees scattered per chunk, merged into single draw calls.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 5</span> Game states: menu, pause, victory and defeat screens, kill scoring.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 4</span> Enemy AI with four states: Idle, Seeking, Engaging, Retreating.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 3</span> Shell ballistics with gravity, muzzle flash, explosion particles.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 2</span> Dual-track tank physics (H/N/K/M), third-person camera with heading lag.</div>
-          <div class="cl-entry"><span class="cl-tag">Phase 1</span> Fourier sine-wave terrain, flat-shaded vertex colours, rolling chunk system.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.6</span> Procedural trees scattered per chunk, merged into single draw calls.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.5</span> Game states: menu, pause, victory and defeat screens, kill scoring.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.4</span> Enemy AI with four states: Idle, Seeking, Engaging, Retreating.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.3</span> Shell ballistics with gravity, muzzle flash, explosion particles.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.2</span> Dual-track tank physics (H/N/K/M), third-person camera with heading lag.</div>
+          <div class="cl-entry"><span class="cl-tag">v0.1</span> Fourier sine-wave terrain, flat-shaded vertex colours, rolling chunk system.</div>
         </div>
-      </details>
-    </div>
-  </div>
+      </div><!-- end sp-changelog -->
+
+      <!-- ── Defaults pane ── -->
+      <div class="sp-pane" id="sp-defaults">
+        <div class="cl-body" style="font-size:12px;margin-bottom:12px;color:rgba(180,210,255,0.75)">
+          Settings are remembered between page loads. Change any toggle in the Settings tab and it will be restored next visit. Use the button below to reset everything back to factory defaults.
+        </div>
+        <button id="btn-reset-defaults" class="lan-btn" style="pointer-events:auto">Reset to factory defaults</button>
+      </div><!-- end sp-defaults -->
+
+    </div><!-- end settings-panel -->
+  </div><!-- end settings-wrap -->
 
   <div id="hud">
 
-    <!-- LAN peer name tag — world-space projected label above opponent's tank -->
-    <div id="lan-nametag" style="display:none;"></div>
+    <!-- LAN nametags created dynamically per peer by main.js -->
 
     <!-- Top-left: phase label (title moved to settings area) -->
     <div id="hud-topleft">
@@ -260,10 +424,12 @@ Replace <code>192.168.0.101</code> with your server's LAN IP. All relay traffic 
               <span id="hud-hp"     class="hil-val">HP 100%</span>
               <span id="hud-lives"  class="hil-val" style="color:rgba(100,200,255,0.9)">♦♦♦</span>
             </div>
+            <div id="hud-speed-state" class="hil-speed-state" style="display:none;"></div>
             <div class="hil-consumables">
-              <span id="hud-smoke" class="hil-val">SMOKE 3</span>
-              <span id="hud-ammo"  class="hil-val">AP</span>
-              <span id="hud-arty"  class="hil-val">ARTY 2</span>
+              <span id="hud-smoke"   class="hil-val" style="display:none">SMOKE 3</span>
+              <span id="hud-ammo"    class="hil-val">AP</span>
+              <span id="hud-arty"    class="hil-val" style="display:none">ARTY 2</span>
+              <span id="hud-spotter" class="hil-val" style="display:none">SPOT 2</span>
             </div>
           </div>
         </div>
@@ -273,7 +439,7 @@ Replace <code>192.168.0.101</code> with your server's LAN IP. All relay traffic 
 
   </div>
 
-  <!-- Settings panel toggle: plain script, no module dependencies -->
+  <!-- Settings panel toggle + tab switching: plain script, no module dependencies -->
   <script>
     (function () {
       var btn   = document.getElementById('settings-btn');
@@ -287,6 +453,15 @@ Replace <code>192.168.0.101</code> with your server's LAN IP. All relay traffic 
           panel.classList.remove('settings-open');
         }
       });
+      panel.addEventListener('click', function (e) {
+        var tab = e.target.closest('.sp-tab');
+        if (!tab) return;
+        panel.querySelectorAll('.sp-tab').forEach(function (t) { t.classList.remove('sp-tab-active'); });
+        panel.querySelectorAll('.sp-pane').forEach(function (p) { p.classList.remove('sp-pane-active'); });
+        tab.classList.add('sp-tab-active');
+        var pane = panel.querySelector('#sp-' + tab.dataset.pane);
+        if (pane) pane.classList.add('sp-pane-active');
+      });
     })();
   </script>
 
@@ -298,7 +473,12 @@ Replace <code>192.168.0.101</code> with your server's LAN IP. All relay traffic 
     }
   }
   </script>
-  <script type="module" src="./js/main.js?v=40"></script>
+  <script type="module" src="./js/main.js?v=50"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
 
 </body>
 </html>

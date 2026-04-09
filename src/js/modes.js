@@ -30,18 +30,18 @@ export const ARCADE_CLASSES = [
 ];
 
 // ── Attrition mode ────────────────────────────────────────────────────────────
-// Player receives a fixed fleet at the start that is NEVER replenished.
+// Player receives a fixed squad at the start that is NEVER replenished.
 // Destroyed tanks are gone permanently. Escalating enemy per battle.
-export const ATTRITION_PLAYER_FLEETS = {
+export const ATTRITION_PLAYER_SQUADS = {
   american: ['m24', 'm24', 'sherman', 'sherman', 'pershing'],
   russian:  ['t34', 't34', 'kv85',   'kv85',    'js2'     ],
   german:   ['pz3', 'pz3', 'panther', 'tiger',   'kingtiger'],
   mercenary:['marauder', 'marauder', 'interceptor', 'vulture', 'obliterator'],
 };
 
-// Enemy fleets escalate each battle; last entry reused for battle 4+
+// Enemy squads escalate each battle; last entry reused for battle 4+
 // 'allies' = German player faces Allied/Soviet enemies; 'german' = Allied/Soviet player faces German enemies
-export const ATTRITION_ENEMY_FLEETS = {
+export const ATTRITION_ENEMY_SQUADS = {
   german: [
     ['pz3', 'pz3', 'pz3', 'panther'],
     ['pz3', 'pz3', 'panther', 'panther', 'tiger'],
@@ -57,7 +57,7 @@ export const ATTRITION_ENEMY_FLEETS = {
 };
 
 // ── Strategy mode ─────────────────────────────────────────────────────────────
-// Both sides start with a budget; player purchases fleet before each battle.
+// Both sides start with a budget; player purchases squad before each battle.
 // Budget progression from binary at 0x080C0.
 export const STRATEGY_BUDGETS = [1000, 2000, 3375, 3000, 4000, 5000, 6000];
 
