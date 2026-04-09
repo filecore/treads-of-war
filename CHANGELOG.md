@@ -1,23 +1,23 @@
-# Treads of War — Full Game Description (v4.8, 07-03-2026)
+# Treads of War - Full Game Description (v4.8, 07-03-2026)
 
-> A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (Superior Software, 1988, Acorn Archimedes). Playable at https://treads.togneri.net/treads/
+> A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (Superior Software, 1988, Acorn Archimedes).
 
 ---
 
-## Technology Stack
+## Tech Stack
 
-- **Renderer**: Three.js (WebGL), flat-shaded polygon aesthetic — no textures on tanks or terrain
+- **Renderer**: Three.js (WebGL), flat-shaded polygon aesthetic - no textures on tanks or terrain
 - **Language**: Vanilla ES modules (no build step, no framework)
 - **Audio**: Web Audio API via a custom `AudioManager`
 - **Networking**: WebSocket relay server (Node.js) for Online mode; hosted via Docker + nginx
 - **Deployment**: nginx static file serving; relay in Docker Compose; deployed via rsync from WSL
-- **Source files**: `src/js/` — `main.js`, `config.js`, `modes.js`, `tank.js`, `models.js`, `ai.js`, `combat.js`, `terrain.js`, `particles.js`, `audio.js`, `input.js`, `game.js`, `net.js`
+- **Source files**: `src/js/` - `main.js`, `config.js`, `modes.js`, `tank.js`, `models.js`, `ai.js`, `combat.js`, `terrain.js`, `particles.js`, `audio.js`, `input.js`, `game.js`, `net.js`
 
 ---
 
 ## Visual Style
 
-- Flat-shaded polygons throughout — no texture mapping on terrain or tanks
+- Flat-shaded polygons throughout - no texture mapping on terrain or tanks
 - WWII European summer colour palette: bright meadow greens, sandy shorelines, terracotta rooftops, cream stone walls, dunkelgelb yellow tanks
 - Vertex-coloured sky sphere with gradient from deep blue zenith to horizon, matching distance fog
 - Directional sun lighting baked into tank vertex colours; Lambert shading on scene objects (trees, roads, buildings)
@@ -30,7 +30,7 @@
 
 - Procedurally generated via six overlapping sine waves (Fourier terrain)
 - Map: `±325` world units from origin (650×650 wu total)
-- Altitude range approximately 14.5–25.5 wu; sea level at 17 — areas below are flat water
+- Altitude range approximately 14.5–25.5 wu; sea level at 17 - areas below are flat water
 - Terrain regenerated with a new seed each game start
 - **Chunk-streamed**: 11×11 grid of 8×8-tile chunks, loaded/unloaded as player moves
 - **Water**: low-lying cells tracked in a grid; rendered blue; shown on minimap
@@ -88,11 +88,11 @@
 ## Tank Model System
 
 - All tanks rendered as flat-shaded Three.js geometry (hull box, turret box, gun barrel cylinder, track bars)
-- Each tank has a `modelScale` multiplier — heavier tanks are visually larger
+- Each tank has a `modelScale` multiplier - heavier tanks are visually larger
 - Tank colours are faction-coded: American green, Soviet green (slightly different), German dunkelgelb yellow, Mercenary steel blue
 - Obliterator IV has a fully custom visual editor (see Settings)
 - Tank preview canvas shown on the menu screen (rotates the selected tank in isolation)
-- Baked vertex-colour lighting — tanks look correctly shaded regardless of scene lights
+- Baked vertex-colour lighting - tanks look correctly shaded regardless of scene lights
 
 ---
 
@@ -117,7 +117,7 @@
 - Deploys a smoke cloud at the player's position
 - 3 grenades per wave/battle, replenished on wave/battle start
 - Cloud grows to 11 wu radius over 2.5s, persists 14s total, fades over final 4s
-- Obscures enemy AI targeting — enemies cannot fire accurately through smoke
+- Obscures enemy AI targeting - enemies cannot fire accurately through smoke
 
 ### Artillery Barrage (`C`)
 - 2 charges per battle
@@ -125,14 +125,14 @@
 - Per-shell blast radius 11 wu, max 30 damage at ground zero
 - HE splash rules apply (area denial, not precision)
 
-### Spotter Plane (`X`) — Strategy mode only
+### Spotter Plane (`X`) - Strategy mode only
 - 2 charges per battle
 - Reveals all enemy positions on the minimap for 25 seconds
 - By default, enemy dots are hidden on the minimap in Strategy mode until spotted
 
 ---
 
-## Supply Crates — Strategy mode only
+## Supply Crates - Strategy mode only
 
 Three crates spawn on the map at the start of each Strategy battle:
 
@@ -153,17 +153,17 @@ Three crates spawn on the map at the start of each Strategy battle:
 ### Arcade
 - **Endless waves, solo play, 3 lives**
 - Player upgrades through 4 tank classes as they accumulate kills (4 kills per class)
-- Class 0: light tanks (M24/T-34/Pz III/Marauder) — 2 enemies per wave
-- Class 1: medium tanks — 3 enemies per wave
-- Class 2: medium-heavy — 4 enemies per wave
-- Class 3: heavy tanks (Pershing/JS-II/King Tiger/Obliterator) — starts at 3, grows by 1 each wave (endless)
+- Class 0: light tanks (M24/T-34/Pz III/Marauder) - 2 enemies per wave
+- Class 1: medium tanks - 3 enemies per wave
+- Class 2: medium-heavy - 4 enemies per wave
+- Class 3: heavy tanks (Pershing/JS-II/King Tiger/Obliterator) - starts at 3, grows by 1 each wave (endless)
 - +30 HP repair between waves
 - Score and kill count tracked throughout
 
 ### Attrition
 - **Fixed squad of 5, permanent losses, escalating enemy**
 - Player receives a pre-set faction squad at start (e.g. American: 2× M24, 2× Sherman, 1× Pershing)
-- Destroyed player tanks are gone permanently — no replacements
+- Destroyed player tanks are gone permanently - no replacements
 - Enemy squads escalate each battle (4 preset escalation tiers; last tier repeats)
 - Player switches between surviving squad tanks with `Q`/`E` keys
 - Surviving tanks carry their damage into the next battle
@@ -190,13 +190,13 @@ Three crates spawn on the map at the start of each Strategy battle:
 - Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz
 - Client runs local prediction (smooth movement + server correction)
 - Any tank from any faction selectable, including Mercenaries
-- 4 team colours: Gold (0), Blue (1), Red (2), Green (3) — auto-assigned or manual
+- 4 team colours: Gold (0), Blue (1), Red (2), Green (3) - auto-assigned or manual
 - Room codes (4 characters), host sets max player count and starts game
 - Enemy shells visible as team-coloured tracers with between-snapshot interpolation
 - Player name tags displayed above tanks
 - Ping shown in HUD
 - Find Games button scans relay for open rooms
-- No lives system — death shows Defeat screen immediately
+- No lives system - death shows Defeat screen immediately
 
 ---
 
@@ -337,7 +337,7 @@ Available via Settings toggle during gameplay:
 
 ---
 
-## Known Gaps / Areas Not Fully Implemented
+## Wishlist
 
 - Online mode is beta: tank colours may show host colour on client; some nametag edge cases; grey stray geometry possible
 - Mercenaries are flagged experimental and not balanced for competitive play
@@ -345,5 +345,4 @@ Available via Settings toggle during gameplay:
 - No persistent player progression across browser sessions (beyond Obliterator editor settings)
 - No sound for smoke deploy, spotter call, crate collection
 - Minimap does not show buildings
-- No weather effects
 - No night/lighting variation
