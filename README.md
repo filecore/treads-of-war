@@ -1,51 +1,95 @@
-# Treads of War — Source
+# Treads of War
 
-A browser-based 3D tank combat game inspired by Conqueror (Superior Software, 1988, Acorn Archimedes). Built with Three.js, it grew far beyond the original's scope with new modes, online play, and enhanced terrain. Non-commercial fan project. Feel free to reach out: jason.togneri@gmail.com. Thanks! March 2026.
+A browser-based 3D tank combat game built with Three.js. Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
 
 **Play it live:** https://treads.togneri.net
 
+![Treads of War](thumbnail.png)
+
 ---
 
-## What's in this archive
+## Game modes
 
+**Arcade** — Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light → medium → medium-heavy → heavy). Three lives. Waves grow larger at the heavy class tier.
+
+**Attrition** — Fixed squad of 5 allied tanks, permanent losses. Enemy squads escalate each battle through 4 tiers. Switch between surviving tanks with Q/E. Smoke grenades and HE ammo available.
+
+**Strategy** — Budget purchase screen before each battle. Buy any mix of tanks from your faction within the budget. Win by holding the objective ring for 60 continuous seconds. All abilities available: smoke, artillery barrage, spotter plane. Supply crates spawn on the map.
+
+**Online** — Up to 16 players (8v8) over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz. Client-side prediction with server correction. 4 team colours, room codes, ping display, CTF mode available.
+
+---
+
+## Features
+
+- Procedural Fourier terrain — six overlapping sine waves, unique every battle
+- Chunk-streamed world: 11×11 grid of chunks loaded around the player
+- Roads, rivers, ponds, destructible trees, farmhouse buildings
+- Persistent track marks and shell craters per battle
+- Dynamic weather: clear, rain, fog, dust storm — transitions mid-battle
+- AP and HE ammo; ballistic shell arcs with gravity
+- Directional armour (front/side/rear) with ricochet probability by angle
+- Damage states: half speed → quarter speed → immobilised → catastrophic
+- Wreck recovery: low-overkill kills leave recoverable wrecks (Attrition/Strategy)
+- Aim assist, gun-sight mode (V key, 14° FOV), mouse aim option
+- Minimap with roads, water, objective, enemy positions (spotter-gated in Strategy)
+- Obliterator IV editor: fully customisable stat and visual editor for the Mercenary faction
+
+---
+
+## Tank roster
+
+16 tanks across 4 factions. Stats derived from original Archimedes binary data.
+
+| Faction | Tanks |
+|---|---|
+| American | M24 Chaffee, M36 90mmGMC, Sherman Firefly, M26 Pershing |
+| German | Panzer III, Panther, Tiger I, King Tiger |
+| Russian | T-34/76, KV-1S, KV-85, JS-II |
+| Mercenary (experimental) | Marauder Mk II, Interceptor, Vulture Type I, Obliterator IV |
+
+---
+
+## Controls
+
+| Key | Action |
+|---|---|
+| W / S | Accelerate / reverse |
+| A / D | Turn left / right |
+| Q / E | Traverse turret left / right (also: switch tank in squad modes) |
+| Space | Fire |
+| Tab | Switch ammo AP/HE (Arcade) or switch controlled tank (Attrition/Strategy) |
+| V | Gun-sight mode (hold) |
+| G | Smoke screen (Attrition/Strategy) |
+| C | Artillery barrage (Strategy) |
+| X | Spotter plane (Strategy) |
+| P | Pause |
+| R | Next wave / continue |
+
+---
+
+## Running locally
+
+Any static file server works:
+
+```bash
+./serve.sh          # Python 3, serves on http://localhost:8080
+# or
+docker compose up   # nginx on port 53312
 ```
-src/            Game source (HTML, CSS, JS) — serve as static files
-relay/          WebSocket relay server (Node.js) — required for LAN Duel mode
-deploy.sh       One-step build + rsync to remote games server
-serve.sh        Local dev server (Python http.server)
-docker-compose.yml   Sample compose config for local/LAN hosting
-nginx-sample.conf    Sample nginx location blocks for /relay proxy
-README.md       This file
+
+Online mode requires the relay server:
+
+```bash
+cd relay && npm install && node relay-server.js
+# Listens on port 8765 — players must be able to reach it on your LAN
 ```
 
 ---
 
-## Quick start (local / LAN play)
+## Server setup (Docker + nginx)
 
-1. **Serve the game** — any static file server works:
-   ```bash
-   ./serve.sh          # Python 3, serves on http://localhost:8080
-   # or
-   docker compose up   # nginx on port 53312 (see docker-compose.yml)
-   ```
-
-2. **Run the relay** (needed only for LAN Duel mode):
-   ```bash
-   cd relay && npm install && node relay-server.js
-   ```
-   The relay listens on port `8765`. Players must be able to reach it on your LAN.
-
-3. Open the game in a browser, go to **Settings → Enable LAN Duel**, select **LAN Duel** from the mode list, and click **Host Game**.
-
----
-
-## Server setup (Docker Compose + nginx)
-
-This is the same guide shown in the **Server Setup** tab inside the game.
-
-### 1 · Docker Compose
-
-Add the relay service alongside your games nginx container:
+### Docker Compose
 
 ```yaml
 services:
@@ -64,14 +108,7 @@ services:
     restart: unless-stopped
 ```
 
-Start everything:
-```bash
-docker compose up -d --build relay
-```
-
-### 2 · Nginx config
-
-The games nginx config must proxy `/relay` to the relay container. Add these two location blocks:
+### Nginx — proxy `/relay` to the relay container
 
 ```nginx
 location = /relay {
@@ -89,60 +126,41 @@ location = /relay/discover {
 }
 ```
 
-Use the Docker service name `relay` (not an IP). Reload nginx after editing:
-```bash
-docker compose exec <nginx-service-name> nginx -s reload
-```
-
 Verify: `curl http://localhost:<port>/relay/discover` should return `{"name":"Treads of War Relay","rooms":[]}`.
 
-### 3 · Reverse proxy (NPM — for HTTPS / internet play)
+If serving over HTTPS via a reverse proxy (e.g. Nginx Proxy Manager), enable **Websockets Support** on the proxy host. The game auto-switches between `ws://` (HTTP) and `wss://` (HTTPS).
 
-In Nginx Proxy Manager, edit the proxy host for your games domain:
-- **Details** tab → enable **Websockets Support**
-- Save. No custom location blocks needed in NPM — the inner nginx handles `/relay` routing.
-
-Without this toggle, NPM strips the `Upgrade` header and the WebSocket handshake fails silently.
-
-### 4 · Firewall
-
-- **LAN play (HTTP)**: port `8765` must be open on your host firewall (`ufw allow 8765/tcp`).
-- **Internet play (HTTPS)**: port `8765` does not need to be internet-facing — all traffic enters via port `443` through NPM.
-
-### 5 · Deploy script
-
-`deploy.sh` handles everything in one step: rsyncs `src/` and `relay/` to the remote, then SSHs in to rebuild and restart the relay container:
+### Deploy script
 
 ```bash
 ./deploy.sh
 ```
 
-Edit the `TREADS_REMOTE` variable at the top of `deploy.sh` to point at your server path.
+Rsyncs `src/` and `relay/` to the remote server, then SSHs in to rebuild and restart the relay container. Edit `TREADS_REMOTE` at the top of the script for your server path.
 
 ---
 
-## LAN vs HTTPS connection modes
+## Tech stack
 
-| Mode | URL scheme | Port | Relay path |
-|------|-----------|------|------------|
-| Local dev | `ws://localhost:8765` | 8765 direct | — |
-| LAN (HTTP) | `ws://<server-ip>:8765` | 8765 direct | — |
-| Internet (HTTPS) | `wss://<domain>/relay` | 443 via NPM | `/relay` proxy |
-
-The game auto-detects which mode to use based on whether the page is served over HTTP or HTTPS.
+- **Renderer**: Three.js (WebGL), no build step, vanilla ES modules
+- **Audio**: Web Audio API (no audio files — all synthesised)
+- **Networking**: WebSocket relay (Node.js) for Online mode
+- **Deployment**: nginx static serving + Docker Compose
 
 ---
 
-## Troubleshooting
+## Source layout
 
-| Symptom | Fix |
-|---------|-----|
-| 404 on `/relay/discover` | nginx proxy locations missing or nginx not reloaded |
-| WebSocket connection refused | relay container not running, or NPM WebSocket Support off |
-| LAN works, internet doesn't | NPM WebSocket Support toggle is off |
-| Internet works, LAN doesn't | port 8765 blocked by host firewall |
-| Find Games shows nothing | host hasn't clicked Host Game yet, or relay restarted |
-
----
-
-For a visual walkthrough, open the game and go to **Settings → Server Setup**.
+```
+src/            Game source (HTML, CSS, JS modules)
+src/js/         Game modules: main.js, config.js, tank.js, ai.js, combat.js,
+                terrain.js, weather.js, particles.js, models.js, audio.js,
+                input.js, game.js, modes.js, net.js, ctf.js
+relay/          WebSocket relay server (Node.js)
+data/           Reference binary data extracted from original Archimedes ROM
+analysis/       Binary analysis notes and tools
+deploy.sh       rsync + relay rebuild in one step
+serve.sh        Local dev server (Python http.server)
+docker-compose.yml
+nginx-sample.conf
+```
