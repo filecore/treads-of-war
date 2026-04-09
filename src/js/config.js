@@ -32,7 +32,7 @@ export const CONFIG = {
     hillScrub:   0x667744,   // scrubby upper slope
     hillRock:    0x887744,   // bare rock / worn earth
     snow:        0xDDDDCC,   // light grey-white peaks
-    skyTop:      0x334488,   // deep blue sky
+    skyTop:      0x4488CC,   // vivid medium blue sky
     skyHorizon:  0x99AACC,   // matches fog colour
     road:        0x7A7870,   // grey-brown compacted road
     treeTrunk:   0x664422,   // rich brown trunk
