@@ -23,6 +23,30 @@ const AI_SPREAD      = 0.052; // ±3° random aim error when firing (radians)
 
 const _toPlayer = new THREE.Vector3();
 
+// ── Shared steering primitive ─────────────────────────────────────────────────
+// Sets tank.leftSpeed / tank.rightSpeed to steer toward world position (tx, tz)
+// at the given throttle fraction (0–1). Used by both AIController and WingmanController.
+function steerToward(tank, tx, tz, throttle) {
+  const dx = tx - tank.position.x;
+  const dz = tz - tank.position.z;
+  const targetHeading = Math.atan2(-dx, -dz);
+  let hdiff = targetHeading - tank.heading;
+  hdiff = ((hdiff % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
+  const maxSpeed = tank.maxSpeed * throttle;
+  if (Math.abs(hdiff) < 0.15) {
+    tank.leftSpeed  = maxSpeed;
+    tank.rightSpeed = maxSpeed;
+  } else if (hdiff > 0) {
+    // Turn right: slow left track, fast right
+    tank.leftSpeed  = maxSpeed * 0.15;
+    tank.rightSpeed = maxSpeed;
+  } else {
+    // Turn left: fast left, slow right
+    tank.leftSpeed  = maxSpeed;
+    tank.rightSpeed = maxSpeed * 0.15;
+  }
+}
+
 // ── AI state machine ──────────────────────────────────────────────────────────
 export class AIController {
   constructor(tank, spawnX, spawnZ) {
@@ -113,14 +137,14 @@ export class AIController {
         {
           const fax = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.x + Math.sin(this._flankAngle) * effEngage * 0.55));
           const faz = Math.max(-MAP_SAFE, Math.min(MAP_SAFE, playerTank.position.z + Math.cos(this._flankAngle) * effEngage * 0.55));
-          this._steerToward(dt, fax, faz, 1.0);
+          steerToward(this.tank, fax, faz, 1.0);
         }
         break;
       case 'ENGAGING':
         this._engageFlank(dt, playerTank, combatManager, particles, obscured);
         break;
       case 'RETREATING':
-        this._steerToward(dt,
+        steerToward(this.tank,
           tank.position.x - _toPlayer.x,
           tank.position.z - _toPlayer.z,
           0.45,
@@ -175,7 +199,7 @@ export class AIController {
 
     if (this._movePhase === 'advance' && distToFlank > 12) {
       // Drive toward flank position aggressively
-      this._steerToward(dt, fax, faz, 0.87);
+      steerToward(this.tank, fax, faz, 0.87);
     } else {
       // Halt — bleed off speed quickly so the tank fires from a steady position
       const brake = Math.pow(HALT_BRAKE, dt * 60);
@@ -187,41 +211,13 @@ export class AIController {
     this._aimAndFire(dt, playerTank, combatManager, particles, obscured);
   }
 
-  // ── Steer hull toward world position (throttle 0–1) ──────────────────────────
-  // Sets speeds directly each frame; skipAccel in tank.update() passes them through unchanged.
-  _steerToward(dt, tx, tz, throttle) {
-    const tank = this.tank;
-    const dx = tx - tank.position.x;
-    const dz = tz - tank.position.z;
-    const targetHeading = Math.atan2(-dx, -dz);
-
-    let hdiff = targetHeading - tank.heading;
-    hdiff = ((hdiff % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
-
-    const maxSpeed = tank.maxSpeed * throttle;
-
-    if (Math.abs(hdiff) < 0.15) {
-      // Roughly on-heading — full speed both tracks
-      tank.leftSpeed  = maxSpeed;
-      tank.rightSpeed = maxSpeed;
-    } else if (hdiff > 0) {
-      // Turn right: slow left track, fast right
-      tank.leftSpeed  = maxSpeed * 0.15;
-      tank.rightSpeed = maxSpeed;
-    } else {
-      // Turn left: fast left, slow right
-      tank.leftSpeed  = maxSpeed;
-      tank.rightSpeed = maxSpeed * 0.15;
-    }
-  }
-
   // ── Patrol between random waypoints near spawn ────────────────────────────────
   _patrol(dt) {
     const tank = this.tank;
     const dx = this._wpX - tank.position.x;
     const dz = this._wpZ - tank.position.z;
     if (Math.sqrt(dx * dx + dz * dz) < WAYPOINT_DIST) this._pickWaypoint();
-    this._steerToward(dt, this._wpX, this._wpZ, 0.85);
+    steerToward(this.tank, this._wpX, this._wpZ, 0.85);
   }
 
   _pickWaypoint() {
@@ -279,7 +275,7 @@ export class AIController {
 
 // ── Friendly wingman AI ────────────────────────────────────────────────────────
 // Targets the nearest live enemy; uses simple advance-and-fire behaviour.
-// Shares _steerToward logic with AIController but is self-contained.
+// Uses the shared steerToward() helper defined above.
 export class WingmanController {
   constructor(tank) {
     this.tank     = tank;
@@ -305,7 +301,7 @@ export class WingmanController {
     const dx = this._wpX - tank.position.x;
     const dz = this._wpZ - tank.position.z;
     if (Math.sqrt(dx * dx + dz * dz) < WAYPOINT_DIST) this._pickWaypoint();
-    this._steerToward(dt, this._wpX, this._wpZ, 0.70);
+    steerToward(this.tank, this._wpX, this._wpZ, 0.70);
   }
 
   update(dt, enemies, combatManager, particles) {
@@ -333,7 +329,7 @@ export class WingmanController {
 
     const STOP_DIST = 110;
     if (dist > STOP_DIST) {
-      this._steerToward(dt, target.position.x, target.position.z, 0.65);
+      steerToward(this.tank, target.position.x, target.position.z, 0.65);
     } else {
       // Within engage range — patrol rather than sit still
       this._patrol(dt);
@@ -364,22 +360,4 @@ export class WingmanController {
     }
   }
 
-  _steerToward(dt, tx, tz, throttle) {
-    const tank = this.tank;
-    const dx = tx - tank.position.x, dz = tz - tank.position.z;
-    const targetHeading = Math.atan2(-dx, -dz);
-    let hdiff = targetHeading - tank.heading;
-    hdiff = ((hdiff % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
-    const maxSpeed = tank.maxSpeed * throttle;
-    if (Math.abs(hdiff) < 0.15) {
-      tank.leftSpeed  = maxSpeed;
-      tank.rightSpeed = maxSpeed;
-    } else if (hdiff > 0) {
-      tank.leftSpeed  = maxSpeed * 0.15;
-      tank.rightSpeed = maxSpeed;
-    } else {
-      tank.leftSpeed  = maxSpeed;
-      tank.rightSpeed = maxSpeed * 0.15;
-    }
-  }
 }
