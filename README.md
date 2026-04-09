@@ -6,8 +6,6 @@ A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (
 
 **Play it live:** https://treads.togneri.net
 
-![Treads of War](thumbnail.png)
-
 ---
 
 ## Inspiration
