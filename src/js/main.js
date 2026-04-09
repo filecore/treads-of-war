@@ -21,6 +21,10 @@ import { DIFFICULTY }          from './config.js';
 import { WeatherManager } from './weather.js';
 import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js';
 import { Net, LAN_SNAP_HZ }   from './net.js';
+import {
+  factionLabel,
+  mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
+} from './ui.js';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -1079,13 +1083,7 @@ function _factionFromIdx(idx) {
   return 'mercenary';
 }
 
-// Maps internal faction key to display name. plural=true → "Allies"/"Soviets", false → "Allied"/"Soviet"/"Axis"
-function _factionLabel(f, plural = false) {
-  if (f === 'american') return plural ? 'Allies'  : 'Allied';
-  if (f === 'russian')  return plural ? 'Soviets' : 'Soviet';
-  if (f === 'mercenary') return 'Mercs';
-  return 'Axis';  // german — same in both forms
-}
+
 const MODE_LIST = [MODES.ARCADE, MODES.ATTRITION, MODES.STRATEGY, 'LAN'];
 
 // Arcade state
@@ -1544,7 +1542,7 @@ function switchControlledTank(newIdx) {
   _exitSightMode();
 
   if (hudName)    hudName.textContent    = player.def.name;
-  if (hudFaction) hudFaction.textContent = _factionLabel(player.def.faction).toUpperCase();
+  if (hudFaction) hudFaction.textContent = factionLabel(player.def.faction).toUpperCase();
   _showSquadHUD();
   // Flash the new tank's name below the squad icons
   if (hudTankNameFlash) {
@@ -2499,58 +2497,6 @@ function _runLanFrame(dt, now) {
 
 const LAN_TEAM_NAMES  = ['Gold', 'Blue', 'Red', 'Green'];
 
-function _lanTeamSelHtml(selectId, val = 0) {
-  return `<select id="${selectId}" class="lan-team-sel">` +
-    LAN_TEAM_NAMES.map((n, i) => `<option value="${i}"${i === val ? ' selected' : ''}>${n} Team</option>`).join('') +
-    `</select>`;
-}
-
-function lanLobbyHtml() {
-  // Waiting room: show once we have a room code
-  const inRoom = !!_lanRoomCode && _lanMode;
-  const isHost = _lanNet && _lanNet.isHost();
-
-  // Build roster HTML for waiting room
-  let rosterHtml = '';
-  if (inRoom) {
-    rosterHtml = '<div class="lan-waiting-room">';
-    rosterHtml += `<div class="lan-waiting-title">Room <b>${_lanRoomCode}</b>  ·  ${_lanRoster.size} / ${_lanMaxPlayers} players</div>`;
-    rosterHtml += '<div class="lan-waiting-list">';
-    for (const [id, p] of _lanRoster) {
-      const tc = LAN_TEAM_COLORS[p.team ?? 0] ?? LAN_TEAM_COLORS[0];
-      const tHex = '#' + tc.toString(16).padStart(6, '0');
-      const you = id === (_lanNet && _lanNet.id) ? ' (you)' : '';
-      rosterHtml += `<div class="lan-waiting-player">` +
-        `<span class="lan-waiting-dot" style="background:${tHex}"></span>` +
-        `<span class="lan-waiting-name">${p.name || id}${you}</span>` +
-        `<span class="lan-waiting-team" style="color:${tHex}">${LAN_TEAM_NAMES[p.team ?? 0]}</span>` +
-        `</div>`;
-    }
-    rosterHtml += '</div>';
-    if (isHost) {
-      const canStart = _lanRoster.size >= 2;
-      rosterHtml += `<button id="lan-start-btn" class="lan-btn${canStart ? '' : ' lan-btn-disabled'}" ${canStart ? '' : 'disabled'}>Start Game</button>`;
-    } else {
-      rosterHtml += `<div class="lan-desc">Waiting for host to start…</div>`;
-    }
-    rosterHtml += '</div>';
-  }
-
-  if (inRoom) {
-    return `
-      <div class="lan-lobby">
-        ${rosterHtml}
-        <div class="lan-name-row" style="margin-top:10px">
-          <label class="lan-name-label">Your team</label>
-          ${_lanTeamSelHtml('lan-team-sel-room', _lanMyTeam)}
-        </div>
-        <div class="lan-status">${_lanStatus}</div>
-        <div class="lan-back"><button id="lan-back-btn" class="lan-back-btn">Leave room</button></div>
-      </div>`;
-  }
-
-  return _onlinePreRoomHtml();
-}
 
 /** Generate a random 4-character room code (no ambiguous chars O/0/I/1). */
 function _genRoomCode() {
@@ -2718,7 +2664,7 @@ if (hudDamageFlash) {
 }
 
 if (hudName)    hudName.textContent    = player.def.name;
-if (hudFaction) hudFaction.textContent = _factionLabel(player.def.faction).toUpperCase();
+if (hudFaction) hudFaction.textContent = factionLabel(player.def.faction).toUpperCase();
 if (hudSmoke)   hudSmoke.textContent   = `SMOKE ${SMOKE_COUNT}`;
 if (hudAmmo)    hudAmmo.textContent    = 'AP';
 if (hudArty)    hudArty.textContent    = `ARTY ${ARTY_CHARGES}`;
@@ -2962,6 +2908,37 @@ const _ctf    = new CTFManager(scene);  // singleton; init() called per game
 
 // Team colours (index 0–3) — applied as colorOverride on peer tanks
 const LAN_TEAM_COLORS = [0xD4B822, 0x3A8FE8, 0xE83A3A, 0x3AE85A];
+
+// ── UI state snapshot — passed to pure HTML generators in ui.js ───────────────
+function _uiState() {
+  return {
+    // vehicle / faction selector
+    selIdx:            _selIdx,
+    faction:           _faction,
+    mercsEnabled:      _mercsEnabled,
+    mercEditorEnabled: _mercEditorEnabled,
+    getMercStats:      _getMercObliteratorStats,
+    // mode selector
+    modeSelIdx:        _modeSelIdx,
+    lanEnabled:        _lanEnabled,
+    // purchase
+    strategyBudget:    _strategyBudget,
+    purchaseSquad:     _purchaseSquad,
+    purchaseSelIdx:    _purchaseSelIdx,
+    // LAN lobby
+    lanTeamNames:      LAN_TEAM_NAMES,
+    lanTeamColors:     LAN_TEAM_COLORS,
+    lanRoomCode:       _lanRoomCode,
+    lanMode:           _lanMode,
+    lanNet:            _lanNet,
+    lanRoster:         _lanRoster,
+    lanMaxPlayers:     _lanMaxPlayers,
+    lanMyTeam:         _lanMyTeam,
+    lanPlayerName:     _lanPlayerName,
+    lanStatus:         _lanStatus,
+    ctfMode:           _ctfMode,
+  };
+}
 
 // Ghost shells — client-side visual tracers replicated from host snapshots
 const _ghostShellGeo = new THREE.BoxGeometry(0.15, 0.15, 10);
@@ -3287,79 +3264,6 @@ function _drawLivesIcons() {
   }
 }
 
-// ─── Controls help HTML for menu overlay ─────────────────────────────────────
-function controlsHtml() {
-  function row(key, desc) {
-    return `<div class="ctrl-row"><span class="ctrl-key">${key}</span><span class="ctrl-desc">${desc}</span></div>`;
-  }
-  const tip = '<div class="ctrl-tip">&#9776; To view or change controls, open Settings (top left)</div>';
-  const squad    = _gameMode === MODES.ATTRITION || _gameMode === MODES.STRATEGY;
-  const strategy = _gameMode === MODES.STRATEGY;
-  const tabDesc  = squad ? 'switch tank' : 'switch ammo  (AP / HE)';
-
-  if (input.simpleMode) {
-    return [
-      row('W / S',     'forward / backward'),
-      row('A / D',     'turn left / right'),
-      row('Q / E',     'turret left / right'),
-      row('Space / F', 'fire'),
-      row('Tab',       tabDesc),
-      ...(strategy ? [
-        row('G', 'smoke grenade  (3 / battle)'),
-        row('C', 'artillery support  (2 / battle)'),
-        row('X', 'spotter plane  (2 / battle)'),
-      ] : []),
-      row('Esc / P',   'pause'),
-      row('V',         'toggle gun sight  (mouse aims in sight mode)'),
-      tip,
-    ].join('');
-  }
-  return [
-    row('H / N',     'left track forward / reverse'),
-    row('K / M',     'right track forward / reverse'),
-    row('Q / E',     'turret left / right'),
-    row('Space / F', 'fire'),
-    row('Tab',       tabDesc),
-    ...(strategy ? [
-      row('G', 'smoke grenade  (3 / battle)'),
-      row('C', 'artillery support  (2 / battle)'),
-      row('X', 'spotter plane  (2 / battle)'),
-    ] : []),
-    row('P',         'pause'),
-    row('V',         'toggle gun sight'),
-    tip,
-  ].join('');
-}
-
-// ─── Tank selection UI ────────────────────────────────────────────────────────
-function tankSelectHtml() {
-  const key = PLAYER_TANKS[_selIdx];
-  const def = CONFIG.TANK_DEFS[key];
-  function bar(val, max) {
-    const n = Math.min(8, Math.max(0, Math.round(val / max * 8)));
-    return '\u25A0'.repeat(n) + '\u25A1'.repeat(8 - n);
-  }
-  const arrowL = _selIdx > 0                        ? '\u25C4' : '\u00A0';
-  const arrowR = _selIdx < PLAYER_TANKS.length - 1  ? '\u25BA' : '\u00A0';
-  const reloadDisplay = (def.reloadTime * DIFFICULTY.reloadMult).toFixed(1);
-  const reloadBar     = bar(5 - parseFloat(reloadDisplay), 5);
-  return [
-    `<div class="ts-nav">`,
-    `  <span class="ts-arrow">${arrowL}</span>`,
-    `  <span class="ts-name">${def.name}</span>`,
-    `  <span class="ts-arrow">${arrowR}</span>`,
-    `</div>`,
-    `<div class="ts-faction">${_factionLabel(def.faction, true)}</div>`,
-    `<div class="ts-stats">`,
-    `  <div class="ts-row"><span class="ts-label">Armour</span><span class="ts-bar">${bar(def.frontArmour, 100)}</span><span class="ts-val">${def.frontArmour}</span></div>`,
-    `  <div class="ts-row"><span class="ts-label">Firepower</span><span class="ts-bar">${bar(def.firepower, 100)}</span><span class="ts-val">${def.firepower}</span></div>`,
-    `  <div class="ts-row"><span class="ts-label">Speed</span><span class="ts-bar">${bar(def.maxSpeed, 56)}</span><span class="ts-val">${def.maxSpeed} km/h</span></div>`,
-    `  <div class="ts-row"><span class="ts-label">Reload</span><span class="ts-bar">${reloadBar}</span><span class="ts-val">${reloadDisplay}s</span></div>`,
-    `</div>`,
-    `<div class="ts-counter">${_selIdx + 1} / ${PLAYER_TANKS.length}</div>`,
-  ].join('');
-}
-
 // ─── Reinitialise player with a different tank type ───────────────────────────
 function reinitPlayer(type, colorOverride = null) {
   player.dispose(scene);
@@ -3379,247 +3283,7 @@ function reinitPlayer(type, colorOverride = null) {
   player.damageMult      = DIFFICULTY.playerDmgMult;
   player.turretSpeedMult = 1.05;
   if (hudName)    hudName.textContent    = player.def.name;
-  if (hudFaction) hudFaction.textContent = _factionLabel(player.def.faction).toUpperCase();
-}
-
-// ─── Combined menu: 2-column vehicle + battle mode selector ──────────────────
-// ── Shared: faction + vehicle column HTML (reused in menu and online lobby) ───
-function _menuTankColsHtml() {
-  const key = ALL_TANKS[_selIdx];
-  const def = CONFIG.TANK_DEFS[key];
-  function bar(val, max) {
-    const n = Math.min(8, Math.max(0, Math.round(val / max * 8)));
-    return '\u25A0'.repeat(n) + '\u25A1'.repeat(8 - n);
-  }
-  const _maxSelIdx = _mercsEnabled ? ALL_TANKS.length - 1 : 11;
-  const arrowL = _selIdx > 0 ? '\u25C4' : '\u00A0';
-  const arrowR = _selIdx < _maxSelIdx ? '\u25BA' : '\u00A0';
-
-  let html = '';
-
-  // Left column: faction selector
-  html += '<div class="menu-col">';
-  html += '<div class="menu-section-label">FACTION</div>';
-  html += '<div class="faction-select">';
-  for (const [fkey, fname] of [['american','Allies'],['russian','Soviets'],['german','Axis'],['mercenary','Mercs']].filter(([k]) => k !== 'mercenary' || _mercsEnabled)) {
-    const sel = fkey === _faction;
-    html += `<div class="faction-opt${sel ? ' faction-selected' : ''}" data-faction="${fkey}">`;
-    html += `<div class="faction-name">${fname}</div>`;
-    html += '</div>';
-  }
-  html += '</div>';
-  html += '</div>';
-
-  // Middle column: vehicle selector
-  html += '<div class="menu-col">';
-  html += '<div class="menu-section-label">VEHICLE</div>';
-  html += '<div class="ts-nav">';
-  const isObliterator = (key === 'obliterator');
-  const cs = isObliterator ? _getMercObliteratorStats() : null;
-  const displayName = (isObliterator && cs?.customName) ? cs.customName : def.name;
-  html += `<button class="ts-arrow" data-dir="left" ${_selIdx <= 0 ? 'disabled' : ''}>${arrowL}</button>`;
-  html += `<span class="ts-name">${displayName}</span>`;
-  html += `<button class="ts-arrow" data-dir="right" ${_selIdx >= _maxSelIdx ? 'disabled' : ''}>${arrowR}</button>`;
-  html += '</div>';
-  const armourVal = cs ? cs.frontArmour : def.frontArmour;
-  const fpVal     = cs ? cs.firepower   : def.firepower;
-  const spdVal    = cs ? cs.maxSpeed    : def.maxSpeed;
-  const rtVal     = cs ? cs.reloadTime  : def.reloadTime;
-  const rdDisp    = (rtVal * DIFFICULTY.reloadMult).toFixed(1);
-  const rdBar     = bar(5 - parseFloat(rdDisp), 5);
-  function adjBtns(stat, minusD, plusD) {
-    if (!isObliterator) return '';
-    return `<span class="merc-adj-pair">` +
-           `<button class="merc-adj" data-stat="${stat}" data-delta="${minusD}">−</button>` +
-           `<button class="merc-adj" data-stat="${stat}" data-delta="${plusD}">+</button>` +
-           `</span>`;
-  }
-  if (isObliterator) html += '<div class="ts-customise-label">CUSTOMISE LOADOUT</div>';
-  html += '<div class="ts-stats">';
-  html += `<div class="ts-row"><span class="ts-label">Armour</span><span class="ts-bar">${bar(armourVal, 100)}</span><span class="ts-val">${armourVal}</span>${adjBtns('frontArmour', -5, 5)}</div>`;
-  html += `<div class="ts-row"><span class="ts-label">Firepower</span><span class="ts-bar">${bar(fpVal, 100)}</span><span class="ts-val">${fpVal}</span>${adjBtns('firepower', -5, 5)}</div>`;
-  html += `<div class="ts-row"><span class="ts-label">Speed</span><span class="ts-bar">${bar(spdVal, 56)}</span><span class="ts-val">${spdVal} km/h</span>${adjBtns('maxSpeed', -5, 5)}</div>`;
-  html += `<div class="ts-row"><span class="ts-label">Reload</span><span class="ts-bar">${rdBar}</span><span class="ts-val">${rdDisp}s</span>${adjBtns('reloadTime', 0.5, -0.5)}</div>`;
-  html += '</div>';
-  if (isObliterator && _mercEditorEnabled) {
-    html += '<button class="merc-edit-btn" id="merc-edit-btn">EDIT</button>';
-  }
-  html += `<div class="ts-counter">${_selIdx + 1} / ${ALL_TANKS.length}</div>`;
-  html += '</div>';
-
-  return html;
-}
-
-// ── Shared: wire faction + vehicle arrow interactions ─────────────────────────
-// (all interaction handled by the delegated listener on overlayControls below)
-function _wireMenuTankControls(_container) { /* no-op */ }
-
-// ── Merc tank editor ─────────────────────────────────────────────────────────
-function _mercEditorHtml() {
-  const cs  = _getMercObliteratorStats();
-  const def = CONFIG.TANK_DEFS.obliterator;
-
-  function statRow(label, stat, step, min, max, unit = '') {
-    const v = cs[stat];
-    const disp = Number.isInteger(v) ? v : v.toFixed(step < 0.1 ? 2 : 1);
-    return `<div class="me-row">` +
-      `<span class="me-label">${label}</span>` +
-      `<button class="me-adj" data-stat="${stat}" data-delta="${-step}" data-min="${min}" data-max="${max}">−</button>` +
-      `<span class="me-val" id="mev-${stat}">${disp}${unit}</span>` +
-      `<button class="me-adj" data-stat="${stat}" data-delta="${step}" data-min="${min}" data-max="${max}">+</button>` +
-      `</div>`;
-  }
-  function visRow(label, prop, step, min, max, unit = '') {
-    const v = cs[prop];
-    const disp = v.toFixed(step < 0.1 ? 2 : 2);
-    return `<div class="me-row">` +
-      `<span class="me-label">${label}</span>` +
-      `<button class="me-vis" data-prop="${prop}" data-delta="${-step}" data-min="${min}" data-max="${max}">−</button>` +
-      `<span class="me-val" id="mev-${prop}">${disp}${unit}</span>` +
-      `<button class="me-vis" data-prop="${prop}" data-delta="${step}" data-min="${min}" data-max="${max}">+</button>` +
-      `</div>`;
-  }
-
-  const rdDisp = (cs.reloadTime * DIFFICULTY.reloadMult).toFixed(1);
-
-  return `<div class="me-panel">
-    <div class="me-title">OBLITERATOR IV EDITOR
-      <button class="me-close" id="me-close-btn">✕</button>
-    </div>
-    <div class="me-body">
-      <div class="me-section me-section-name">
-        <div class="me-section-label">DESIGNATION</div>
-        <input class="me-name-input" id="me-name-input" type="text" maxlength="24"
-          placeholder="Obliterator IV" value="${cs.customName || ''}">
-      </div>
-      <div class="me-cols">
-        <div class="me-col">
-          <div class="me-section-label">COMBAT</div>
-          ${statRow('Front armour', 'frontArmour', 5, 5, 200)}
-          ${statRow('Side armour',  'sideArmour',  5, 5, 200)}
-          ${statRow('Rear armour',  'rearArmour',  5, 5, 200)}
-          ${statRow('Firepower',    'firepower',   5, 5, 200)}
-          ${statRow('Reload (s)',   'reloadTime',  0.5, 0.5, 10)}
-          ${statRow('Trt speed',    'turretSpeed', 5, 5, 200)}
-          ${statRow('Accuracy',     'accuracy',    5, 5, 200)}
-          <div class="me-section-label" style="margin-top:8px">MOBILITY</div>
-          ${statRow('Top speed',  'maxSpeed', 5, 5, 150, ' km/h')}
-          ${statRow('XC speed',   'xcSpeed',  5, 5, 150, ' km/h')}
-          ${statRow('Accel',      'accel',    5, 5, 200)}
-          ${statRow('Turn rate',  'turnRate', 5, 5, 200)}
-        </div>
-        <div class="me-col">
-          <div class="me-section-label">BODY</div>
-          ${visRow('Width/Length', 'bodyScaleXZ', 0.05, 0.5, 2.5)}
-          ${visRow('Height',       'bodyScaleY',  0.05, 0.5, 2.5)}
-          ${visRow('Raise',        'bodyRaise',   0.05, -0.5, 1.0)}
-          <div class="me-section-label" style="margin-top:8px">TURRET</div>
-          ${visRow('Width/Length', 'turretScaleXZ', 0.05, 0.5, 3.0)}
-          ${visRow('Height',       'turretScaleY',  0.05, 0.5, 3.0)}
-          ${visRow('Raise',        'turretRaise',   0.05, -0.5, 1.5)}
-          <div class="me-section-label" style="margin-top:8px">GUN BARREL</div>
-          ${visRow('Length', 'gunLengthMult', 0.1, 0.2, 4.0)}
-          ${visRow('Radius', 'gunRadiusMult', 0.1, 0.2, 4.0)}
-        </div>
-      </div>
-      <div class="me-footer">
-        <button class="me-btn me-btn-reset" id="me-reset-btn">Reset to defaults</button>
-        <button class="me-btn me-btn-done"  id="me-done-btn">Done</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-// (all interaction handled by the delegated listener on overlayControls below)
-function _wireMercEditor(_container) { /* no-op */ }
-
-function menuScreenHtml() {
-  let html = '<div class="menu-combined">';
-  html += _menuTankColsHtml();
-
-  // Right column: mode selector
-  html += '<div class="menu-col">';
-  html += '<div class="menu-section-label">BATTLE MODE</div>';
-  html += '<div class="mode-select">';
-  const modeNames = ['Arcade', 'Attrition', 'Strategy', ...(_lanEnabled ? ['Online'] : [])];
-  const modeDescs = [
-    'Endless waves \u00B7 Solo \u00B7 Tank upgrades by kills \u00B7 3 lives',
-    'Fixed squad of 5 \u00B7 Permanent losses \u00B7 Escalating enemy',
-    'Budget purchase \u00B7 Objective capture \u00B7 AI buys too',
-    ...(_lanEnabled ? ['Up to 16 players \u00B7 Coop or Vs \u00B7 Pick any tank'] : []),
-  ];
-  if (_modeSelIdx >= modeNames.length) _modeSelIdx = modeNames.length - 1;
-  for (let i = 0; i < modeNames.length; i++) {
-    const sel = i === _modeSelIdx;
-    html += `<div class="mode-opt${sel ? ' mode-selected' : ''}" data-mode-idx="${i}">`;
-    html += `<div class="mode-name">${sel ? '<span class="mode-sel-arrow">\u25B6</span> ' : ''}${modeNames[i]}</div>`;
-    html += `<div class="mode-desc">${modeDescs[i]}</div>`;
-    html += '</div>';
-  }
-  html += '</div>';
-  html += '</div>';
-
-  html += '</div>';
-  html += `<button class="menu-start-btn" id="menu-start-btn">START</button>`;
-  return html;
-}
-
-// ── Online lobby pre-room: tank selector + connect controls ───────────────────
-function _onlinePreRoomHtml() {
-  let html = '<div class="menu-combined">';
-  html += _menuTankColsHtml();
-
-  // Right column: online connect controls
-  html += '<div class="menu-col lan-online-col">';
-  html += `<div class="lan-name-row">` +
-    `<input id="lan-name-input" class="lan-input lan-name-input" type="text" maxlength="16" placeholder="Player" value="${_lanPlayerName}" />` +
-    `${_lanTeamSelHtml('lan-team-sel', _lanMyTeam)}` +
-    `</div>`;
-  html += `<div class="lan-host-row" style="margin-top:12px">` +
-    `<button id="lan-host-btn" class="lan-btn">Host Game</button>` +
-    `<select id="lan-max-players" class="lan-team-sel">` +
-    `${[2,3,4,5,6,8,10,12,16].map(n => `<option value="${n}"${n === _lanMaxPlayers ? ' selected' : ''}>${n} players</option>`).join('')}` +
-    `</select>` +
-    `<select id="lan-game-type" class="lan-team-sel" style="margin-left:6px">` +
-    `<option value="deathmatch"${!_ctfMode ? ' selected' : ''}>Deathmatch</option>` +
-    `<option value="ctf"${_ctfMode ? ' selected' : ''}>Capture the Flag</option>` +
-    `</select>` +
-    `</div>`;
-  html += `<div class="lan-join-row" style="margin-top:8px">` +
-    `<button id="lan-scan-btn" class="lan-btn">Join A Game</button>` +
-    `<input id="lan-code-input" class="lan-input lan-code-input" type="text" maxlength="4" placeholder="CODE" value="${_lanRoomCode}" />` +
-    `<button id="lan-join-btn" class="lan-btn">Join</button>` +
-    `</div>`;
-  html += `<div id="lan-scan-results" class="lan-scan-results"></div>`;
-  html += `<span id="lan-scan-status" class="lan-scan-status"></span>`;
-  html += `<div class="lan-status">${_lanStatus}</div>`;
-  html += `<div style="margin-top:10px">` +
-    `<button id="lan-back-btn" class="lan-btn lan-btn-danger">Back to Main Menu</button>` +
-    `</div>`;
-  html += '</div>';
-
-  html += '</div>';
-  return html;
-}
-
-// ─── Mode selection HTML (kept for reference) ─────────────────────────────────
-function modeSelectHtml() {
-  const descs = [
-    'Endless waves · Tank upgrades by kills · 3 lives · Solo',
-    'Fixed squad of 5 · Permanent losses · Escalating enemy · Tab = switch tank',
-    'Budget + purchase · Objective capture · Enemy AI buys too · Tab = switch tank',
-  ];
-  const names = ['Arcade', 'Attrition', 'Strategy'];
-  let html = '<div class="mode-select">';
-  for (let i = 0; i < 3; i++) {
-    const sel = i === _modeSelIdx;
-    html += `<div class="mode-opt${sel ? ' mode-selected' : ''}">`;
-    html += `<div class="mode-name">${sel ? '▶ ' : ''}${names[i]}</div>`;
-    html += `<div class="mode-desc">${descs[i]}</div>`;
-    html += '</div>';
-  }
-  html += '</div>';
-  return html;
+  if (hudFaction) hudFaction.textContent = factionLabel(player.def.faction).toUpperCase();
 }
 
 // Combined roster for Strategy mode — all 3 main factions (no mercs)
@@ -3629,67 +3293,6 @@ function _strategyRoster() {
     ...FACTION_ROSTERS.russian,
     ...FACTION_ROSTERS.german,
   ];
-}
-
-// ─── Purchase screen HTML (Strategy) ─────────────────────────────────────────
-function purchaseHtml() {
-  const roster  = _strategyRoster();
-  const cost    = _purchaseCost();
-  const total   = _purchaseTotal();
-  const remaining = _strategyBudget - cost;
-  const canStart  = total > 0 && remaining >= 0;
-
-  let html = `<div class="purchase-screen">`;
-
-  // Objective explanation
-  html += `<div class="purchase-info">` +
-    `<span class="purchase-info-title">MISSION OBJECTIVE</span> ` +
-    `Assemble your squad within the point budget, then fight to the battlefield. ` +
-    `Locate the marked objective (yellow beacon), move your tanks inside the ring, and hold it until the capture bar fills. ` +
-    `Defeat all enemies or complete the capture to advance to the next level.` +
-    `</div>`;
-
-  html += `<div class="purchase-budget">Budget: <span class="${remaining < 0 ? 'budget-over' : 'budget-ok'}">${remaining} pts remaining</span>  ·  ${total} tanks</div>`;
-  html += `<div class="purchase-list">`;
-
-  const _factionHeaderOf = key =>
-    FACTION_ROSTERS.american.includes(key) ? 'ALLIES' :
-    FACTION_ROSTERS.russian.includes(key)  ? 'SOVIETS' : 'AXIS';
-  function bar(val, max) {
-    const b = Math.min(8, Math.max(0, Math.round(val / max * 8)));
-    return '█'.repeat(b) + '░'.repeat(8 - b);
-  }
-  let _lastHeader = null;
-  for (let i = 0; i < roster.length; i++) {
-    const key    = roster[i];
-    const def    = CONFIG.TANK_DEFS[key];
-    const n      = _purchaseSquad[key] ?? 0;
-    const sel    = i === _purchaseSelIdx;
-    const header = _factionHeaderOf(key);
-    const canAdd = _purchaseCost() + TANK_COSTS[key] <= _strategyBudget && total < 8;
-    if (header !== _lastHeader) {
-      html += `<div class="purchase-faction-header">${header}</div>`;
-      _lastHeader = header;
-    }
-    html += `<div class="purchase-row${sel ? ' purchase-selected' : ''}" data-idx="${i}">`;
-    html += `<span class="pur-name">${def.name}</span>`;
-    html += `<span class="pur-stats">${bar(def.frontArmour, 100)} ARM  ${bar(def.firepower, 100)} FP  ${bar(def.maxSpeed, 56)} SPD</span>`;
-    html += `<span class="pur-cost">${TANK_COSTS[key]} pts</span>`;
-    html += `<span class="pur-qty">` +
-      `<button class="pur-adj" data-key="${key}" data-delta="-1" ${n <= 0 ? 'disabled' : ''}>◄</button>` +
-      `<span class="pur-count">${n}</span>` +
-      `<button class="pur-adj" data-key="${key}" data-delta="1" ${!canAdd ? 'disabled' : ''}>►</button>` +
-      `</span>`;
-    html += `</div>`;
-  }
-
-  html += `</div>`;
-  html += `<div class="purchase-hint">Click ◄/► to adjust  ·  Enter = START BATTLE</div>`;
-  if (remaining < 0) html += `<div class="purchase-error">⚠ Over budget — reduce squad</div>`;
-  if (total === 0)   html += `<div class="purchase-error">⚠ Select at least one tank</div>`;
-  html += `<button class="pur-start-btn" id="pur-start-btn" ${canStart ? '' : 'disabled'}>START BATTLE</button>`;
-  html += `</div>`;
-  return html;
 }
 
 // ─── Delegated overlay-controls listeners ────────────────────────────────────
@@ -3906,7 +3509,7 @@ function updateOverlay() {
     overlayScore.textContent = '';
     overlayHint.textContent  = '';
     if (overlayControls) {
-      overlayControls.innerHTML = _mercEditorHtml();
+      overlayControls.innerHTML = mercEditorHtml(_uiState());
       _wireMercEditor(overlayControls);
     }
     if (_prevCanvas) {
@@ -3922,7 +3525,7 @@ function updateOverlay() {
     overlayScore.textContent = '';
     overlayHint.textContent  = '';
     if (overlayControls) {
-      overlayControls.innerHTML = lanLobbyHtml();
+      overlayControls.innerHTML = lanLobbyHtml(_uiState());
       const inRoom = !!_lanRoomCode && _lanMode;
       const menuWarnEl = document.getElementById('menu-warn');
       if (!inRoom) {
@@ -3946,7 +3549,7 @@ function updateOverlay() {
     overlayScore.textContent = '';
     overlayHint.textContent  = '';
     if (overlayControls) {
-      overlayControls.innerHTML = purchaseHtml();
+      overlayControls.innerHTML = purchaseHtml(_uiState());
     }
     return;
   }
@@ -3955,7 +3558,7 @@ function updateOverlay() {
     overlayTitle.textContent = 'TREADS OF WAR';
     overlaySub.textContent   = 'Select vehicle and battle mode';
     if (overlayControls) {
-      overlayControls.innerHTML = menuScreenHtml();
+      overlayControls.innerHTML = menuScreenHtml(_uiState());
     }
     overlayScore.textContent = '';
     overlayHint.textContent  = '\u25C4 / \u25BA  Vehicle   \u00B7   \u25B2 / \u25BC  Mode   \u00B7   Enter  Start';
@@ -4021,7 +3624,7 @@ function updateOverlay() {
     }
     overlayHint.textContent = _lanMode ? '' : 'Press R to return to menu';
     if (_lanMode && overlayControls) {
-      overlayControls.innerHTML = _lanEndScreenHtml(false);
+      overlayControls.innerHTML = lanEndScreenHtml(false);
       _wireLanEndButtons();
     }
 
@@ -4032,7 +3635,7 @@ function updateOverlay() {
       overlayScore.textContent = '';
       overlayHint.textContent  = '';
       if (overlayControls) {
-        overlayControls.innerHTML = _lanEndScreenHtml(true);
+        overlayControls.innerHTML = lanEndScreenHtml(true);
         _wireLanEndButtons();
       }
     } else {
@@ -4042,17 +3645,6 @@ function updateOverlay() {
       overlayHint.textContent  = 'Press R to play again';
     }
   }
-}
-
-function _lanEndScreenHtml(won) {
-  return `
-    <div class="lan-lobby">
-      ${won ? '' : `<div class="lan-status" style="font-size:13px;color:rgba(255,100,80,0.85)">● Your tank was destroyed</div>`}
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <button id="lan-menu-btn" class="lan-btn">Main Menu</button>
-        <button id="lan-lobby-btn" class="lan-btn">Online Lobby</button>
-      </div>
-    </div>`;
 }
 
 function _wireLanEndButtons() {
