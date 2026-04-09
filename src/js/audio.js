@@ -14,19 +14,21 @@ function _noiseBuffer(ctx, seconds) {
 // ── Audio manager ──────────────────────────────────────────────────────────────
 export class AudioManager {
   constructor() {
-    this._ctx       = null;
-    this._master    = null;
+    this._ctx        = null;
+    this._master     = null;
     // Engine voice nodes (long-lived)
-    this._engOsc    = null;
-    this._engGain   = null;
-    this._engFilter = null;
-    this._noiseGain = null;
+    this._engOsc     = null;
+    this._engGain    = null;
+    this._engFilter  = null;
+    this._noiseGain  = null;   // low metallic crunch
+    this._squeakGain = null;   // high-frequency track squeak
   }
 
   // Call from a user-gesture handler (keydown etc.) to unlock the AudioContext.
   resume() {
     if (!this._ctx) {
       this._ctx    = new (window.AudioContext || window.webkitAudioContext)();
+      this._ctx.resume();
       this._master = this._ctx.createGain();
       this._master.gain.value = 0.55;
       this._master.connect(this._ctx.destination);
@@ -37,97 +39,128 @@ export class AudioManager {
   }
 
   // ── Continuous engine voice ────────────────────────────────────────────────
+  // Two noise layers give the "uneven squeak of wheels and metal tracks":
+  //   low crunch  (350 Hz bandpass) — heavy metallic grinding
+  //   high overtone (~700 Hz bandpass) — matches shorter-period waveform in original
   _startEngine() {
     const ctx = this._ctx;
 
-    // Sawtooth oscillator for diesel rumble
-    const osc   = ctx.createOscillator();
-    osc.type    = 'sawtooth';
-    osc.frequency.value = 50;
+    // Diesel drone — very low sawtooth, heavily low-passed
+    const osc  = ctx.createOscillator();
+    osc.type   = 'sawtooth';
+    osc.frequency.value = 28;   // deep diesel idle
 
-    const filt  = ctx.createBiquadFilter();
-    filt.type   = 'lowpass';
-    filt.frequency.value = 280;
-    filt.Q.value = 0.8;
+    const filt = ctx.createBiquadFilter();
+    filt.type  = 'lowpass';
+    filt.frequency.value = 100;
+    filt.Q.value = 0.5;
 
     const oscGain = ctx.createGain();
-    oscGain.gain.value = 0.08;
+    oscGain.gain.value = 0.05;
 
     osc.connect(filt);
     filt.connect(oscGain);
     oscGain.connect(this._master);
     osc.start();
 
-    // Looping noise layer for track rattle
-    const noiseSrc        = ctx.createBufferSource();
-    noiseSrc.buffer       = _noiseBuffer(ctx, 2.0);
-    noiseSrc.loop         = true;
+    // Shared noise source — split into two filtered paths
+    const ns  = ctx.createBufferSource();
+    ns.buffer = _noiseBuffer(ctx, 2.0);
+    ns.loop   = true;
 
-    const noiseFilt       = ctx.createBiquadFilter();
-    noiseFilt.type        = 'bandpass';
-    noiseFilt.frequency.value = 220;
-    noiseFilt.Q.value     = 1.2;
+    // Low metallic crunch: heavy grinding / track links hitting sprocket
+    const nf1 = ctx.createBiquadFilter();
+    nf1.type  = 'bandpass';
+    nf1.frequency.value = 350;
+    nf1.Q.value = 2.5;
 
-    const noiseGain       = ctx.createGain();
-    noiseGain.gain.value  = 0.0;   // silent until moving
+    const ng1 = ctx.createGain();
+    ng1.gain.value = 0.0;
 
-    noiseSrc.connect(noiseFilt);
-    noiseFilt.connect(noiseGain);
-    noiseGain.connect(this._master);
-    noiseSrc.start();
+    ns.connect(nf1); nf1.connect(ng1); ng1.connect(this._master);
 
-    this._engOsc    = osc;
-    this._engGain   = oscGain;
-    this._engFilter = filt;
-    this._noiseGain = noiseGain;
+    // Higher metallic overtone: ~700 Hz — original buffer 0 is ~27-sample period
+    const nf2 = ctx.createBiquadFilter();
+    nf2.type  = 'bandpass';
+    nf2.frequency.value = 700;
+    nf2.Q.value = 3.0;
+
+    const ng2 = ctx.createGain();
+    ng2.gain.value = 0.0;
+
+    ns.connect(nf2); nf2.connect(ng2); ng2.connect(this._master);
+    ns.start();
+
+    this._engOsc     = osc;
+    this._engGain    = oscGain;
+    this._engFilter  = filt;
+    this._noiseGain  = ng1;
+    this._squeakGain = ng2;
   }
 
   // speed: 0..1 normalised (0 = stationary, 1 = full throttle)
   setEngineSpeed(speed) {
     if (!this._ctx) return;
     const t = this._ctx.currentTime;
-    // Pitch: 48 Hz idle → 155 Hz at full throttle
-    this._engOsc.frequency.setTargetAtTime(48 + speed * 107, t, 0.08);
-    // Volume: quiet idle rumble, louder under load
-    this._engGain.gain.setTargetAtTime(0.07 + speed * 0.11, t, 0.06);
-    this._noiseGain.gain.setTargetAtTime(speed * 0.055, t, 0.05);
-    // Filter cutoff rises a little with speed (brighter sound)
-    this._engFilter.frequency.setTargetAtTime(240 + speed * 200, t, 0.1);
+    // Diesel pitch: 28 Hz idle → 65 Hz at full throttle
+    this._engOsc.frequency.setTargetAtTime(28 + speed * 37, t, 0.12);
+    // Rumble volume: always present, mild rise under load
+    this._engGain.gain.setTargetAtTime(0.04 + speed * 0.03, t, 0.08);
+    // Low metallic crunch: rises linearly with speed
+    this._noiseGain.gain.setTargetAtTime(speed * 0.08, t, 0.06);
+    // High squeak: only audible above 30% throttle, then rises quickly
+    this._squeakGain.gain.setTargetAtTime(Math.max(0, speed - 0.3) * 0.045, t, 0.05);
+    // Filter tracks speed slightly
+    this._engFilter.frequency.setTargetAtTime(80 + speed * 60, t, 0.12);
   }
 
   // ── Player cannon fire ─────────────────────────────────────────────────────
+  // Three layers: sub-bass cannon thud + muffled concussion + brief propellant crack
   playFire() {
     if (!this._ctx) return;
     const ctx = this._ctx;
     const t   = ctx.currentTime;
 
-    // Low-frequency thud
-    const osc = ctx.createOscillator();
-    osc.type  = 'sine';
-    osc.frequency.setValueAtTime(90, t);
-    osc.frequency.exponentialRampToValueAtTime(22, t + 0.28);
+    // Sub-bass cannon thud — deep sine dropping from 55 Hz to 18 Hz
+    const boom = ctx.createOscillator();
+    boom.type  = 'sine';
+    boom.frequency.setValueAtTime(55, t);
+    boom.frequency.exponentialRampToValueAtTime(18, t + 0.5);
 
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.60, t);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+    const bg = ctx.createGain();
+    bg.gain.setValueAtTime(0.95, t);
+    bg.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
 
-    osc.connect(og);
-    og.connect(this._master);
-    osc.start(t); osc.stop(t + 0.32);
+    boom.connect(bg); bg.connect(this._master);
+    boom.start(t); boom.stop(t + 0.6);
 
-    // Noise blast
-    const ns        = ctx.createBufferSource();
-    ns.buffer       = _noiseBuffer(ctx, 0.35);
-    const nf        = ctx.createBiquadFilter();
-    nf.type         = 'lowpass';
-    nf.frequency.value = 900;
+    // Muffled concussion wave — lowpass noise, heavy air-pressure feel
+    const ns1 = ctx.createBufferSource();
+    ns1.buffer = _noiseBuffer(ctx, 0.6);
+    const nf1  = ctx.createBiquadFilter();
+    nf1.type   = 'lowpass';
+    nf1.frequency.value = 320;
 
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.65, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    const ng1 = ctx.createGain();
+    ng1.gain.setValueAtTime(0.75, t);
+    ng1.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
 
-    ns.connect(nf); nf.connect(ng); ng.connect(this._master);
-    ns.start(t); ns.stop(t + 0.35);
+    ns1.connect(nf1); nf1.connect(ng1); ng1.connect(this._master);
+    ns1.start(t); ns1.stop(t + 0.6);
+
+    // Sharp propellant crack — very brief highpass burst
+    const ns2 = ctx.createBufferSource();
+    ns2.buffer = _noiseBuffer(ctx, 0.06);
+    const nf2  = ctx.createBiquadFilter();
+    nf2.type   = 'highpass';
+    nf2.frequency.value = 3000;
+
+    const ng2 = ctx.createGain();
+    ng2.gain.setValueAtTime(0.30, t);
+    ng2.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+    ns2.connect(nf2); nf2.connect(ng2); ng2.connect(this._master);
+    ns2.start(t); ns2.stop(t + 0.07);
   }
 
   // ── Explosion (distance-attenuated) ───────────────────────────────────────
