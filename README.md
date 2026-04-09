@@ -1,6 +1,8 @@
 # Treads of War
 
-A browser-based 3D tank combat game built with Three.js. Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
+A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (Superior Software, 1988, Acorn Archimedes). Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
+
+**Runs entirely in your browser — no download required.**
 
 **Play it live:** https://treads.togneri.net
 
@@ -8,9 +10,15 @@ A browser-based 3D tank combat game built with Three.js. Flat-shaded polygon aes
 
 ---
 
+## Inspiration
+
+Conqueror (1988) by Superior Software was one of the definitive tank combat games for the Acorn Archimedes — flat-shaded rolling hills, a roster of WWII vehicles with genuine stat differences, and satisfying armour-penetrating physics. Treads of War is a browser reimplementation of that experience, built from scratch with Three.js.
+
+---
+
 ## Game modes
 
-**Arcade** — Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light → medium → medium-heavy → heavy). Three lives. Waves grow larger at the heavy class tier.
+**Arcade** — Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light to medium to medium-heavy to heavy). Three lives. Waves grow larger at the heavy class tier.
 
 **Attrition** — Fixed squad of 5 allied tanks, permanent losses. Enemy squads escalate each battle through 4 tiers. Switch between surviving tanks with Q/E. Smoke grenades and HE ammo available.
 
@@ -23,29 +31,30 @@ A browser-based 3D tank combat game built with Three.js. Flat-shaded polygon aes
 ## Features
 
 - Procedural Fourier terrain — six overlapping sine waves, unique every battle
-- Chunk-streamed world: 11×11 grid of chunks loaded around the player
+- Chunk-streamed world: 11x11 grid of chunks loaded around the player
 - Roads, rivers, ponds, destructible trees, farmhouse buildings
 - Persistent track marks and shell craters per battle
 - Dynamic weather: clear, rain, fog, dust storm — transitions mid-battle
 - AP and HE ammo; ballistic shell arcs with gravity
 - Directional armour (front/side/rear) with ricochet probability by angle
-- Damage states: half speed → quarter speed → immobilised → catastrophic
+- Damage states: half speed to quarter speed to immobilised to catastrophic
 - Wreck recovery: low-overkill kills leave recoverable wrecks (Attrition/Strategy)
-- Aim assist, gun-sight mode (V key, 14° FOV), mouse aim option
+- Aim assist, gun-sight mode (V key, 14 degree FOV), mouse aim option
 - Minimap with roads, water, objective, enemy positions (spotter-gated in Strategy)
 - Obliterator IV editor: fully customisable stat and visual editor for the Mercenary faction
+- Works on desktop and modern mobile browsers (mobile: beta)
 
 ---
 
 ## Tank roster
 
-16 tanks across 4 factions. Stats derived from original Archimedes binary data.
+16 tanks across 4 factions.
 
 | Faction | Tanks |
 |---|---|
-| American | M24 Chaffee, M36 90mmGMC, Sherman Firefly, M26 Pershing |
-| German | Panzer III, Panther, Tiger I, King Tiger |
-| Russian | T-34/76, KV-1S, KV-85, JS-II |
+| Allied | M24 Chaffee, M36 90mmGMC, Sherman Firefly, M26 Pershing |
+| Axis | Panzer III, Panther, Tiger I, King Tiger |
+| Soviet | T-34/76, KV-1S, KV-85, JS-II |
 | Mercenary (experimental) | Marauder Mk II, Interceptor, Vulture Type I, Obliterator IV |
 
 ---
@@ -157,10 +166,15 @@ src/js/         Game modules: main.js, config.js, tank.js, ai.js, combat.js,
                 terrain.js, weather.js, particles.js, models.js, audio.js,
                 input.js, game.js, modes.js, net.js, ctf.js
 relay/          WebSocket relay server (Node.js)
-data/           Reference binary data extracted from original Archimedes ROM
 analysis/       Binary analysis notes and tools
 deploy.sh       rsync + relay rebuild in one step
 serve.sh        Local dev server (Python http.server)
 docker-compose.yml
 nginx-sample.conf
 ```
+
+---
+
+## Legal
+
+Fan project. Unofficial and non-commercial. No original assets from Conqueror (1988) are included. Contact: [email protected]
