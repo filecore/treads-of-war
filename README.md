@@ -1,6 +1,6 @@
 # Treads of War
 
-A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (Superior Software, 1988, Acorn Archimedes). Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
+A browser-based 3D tank combat game built with Three.js. Inspired by [Conqueror](https://en.wikipedia.org/wiki/Conqueror_(video_game)) by Superior Software (Acorn Archimedes, 1988). Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
 
 **Runs entirely in your browser - no download required.**
 
