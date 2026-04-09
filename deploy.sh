@@ -1,5 +1,5 @@
 #!/bin/bash
-# deploy.sh — push game and relay to treads.example.com.
+# deploy.sh — rsync src/ and relay/ to the server, then rebuild the relay container.
 # Self-heal: strip Windows CR characters if script was saved with CRLF endings
 sed -i 's/\r//' "$0" 2>/dev/null || true
 set -e
