@@ -4,8 +4,6 @@ A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (
 
 **Runs entirely in your browser — no download required.**
 
-**Play it live:** https://treads.togneri.net
-
 ---
 
 ## Inspiration
