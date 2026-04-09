@@ -2,13 +2,13 @@
 
 A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (Superior Software, 1988, Acorn Archimedes). Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
 
-**Runs entirely in your browser — no download required.**
+**Runs entirely in your browser - no download required.**
 
 ---
 
 ## Inspiration
 
-Conqueror (1988) by Superior Software was one of the definitive tank combat games for the Acorn Archimedes — flat-shaded rolling hills, a roster of WWII vehicles with genuine stat differences, and satisfying armour-penetrating physics. Treads of War is a browser reimplementation of that experience, built from scratch with Three.js. 
+Conqueror (1988) by Superior Software was one of the definitive tank combat games for the Acorn Archimedes - flat-shaded rolling hills, a roster of WWII vehicles with genuine stat differences, and satisfying armour-penetrating physics. Treads of War is a browser reimplementation of that experience, built from scratch with Three.js. 
 
 ---
 
@@ -20,23 +20,23 @@ This has been a long-runing passion project that I was just working on locally. 
 
 ## Game modes
 
-**Arcade** — Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light to medium to medium-heavy to heavy). Three lives. Waves grow larger at the heavy class tier.
+**Arcade** - Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light to medium to medium-heavy to heavy). Three lives. Waves grow larger at the heavy class tier.
 
-**Attrition** — Fixed squad of 5 allied tanks, permanent losses. Enemy squads escalate each battle through 4 tiers. Switch between surviving tanks with Q/E. Smoke grenades and HE ammo available.
+**Attrition** - Fixed squad of 5 allied tanks, permanent losses. Enemy squads escalate each battle through 4 tiers. Switch between surviving tanks with Q/E. Smoke grenades and HE ammo available.
 
-**Strategy** — Budget purchase screen before each battle. Buy any mix of tanks from your faction within the budget. Win by holding the objective ring for 60 continuous seconds. All abilities available: smoke, artillery barrage, spotter plane. Supply crates spawn on the map.
+**Strategy** - Budget purchase screen before each battle. Buy any mix of tanks from your faction within the budget. Win by holding the objective ring for 60 continuous seconds. All abilities available: smoke, artillery barrage, spotter plane. Supply crates spawn on the map.
 
-**Online** — Up to 16 players (8v8) over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz. Client-side prediction with server correction. 4 team colours, room codes, ping display, CTF mode available.
+**Online** - Up to 16 players (8v8) over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz. Client-side prediction with server correction. 4 team colours, room codes, ping display, CTF mode available.
 
 ---
 
 ## Features
 
-- Procedural Fourier terrain — six overlapping sine waves, unique every battle
+- Procedural Fourier terrain - six overlapping sine waves, unique every battle
 - Chunk-streamed world: 11x11 grid of chunks loaded around the player
 - Roads, rivers, ponds, destructible trees, farmhouse buildings
 - Persistent track marks and shell craters per battle
-- Dynamic weather: clear, rain, fog, dust storm — transitions mid-battle
+- Dynamic weather: clear, rain, fog, dust storm - transitions mid-battle
 - AP and HE ammo; ballistic shell arcs with gravity
 - Directional armour (front/side/rear) with ricochet probability by angle
 - Damage states: half speed to quarter speed to immobilised to catastrophic
@@ -50,7 +50,7 @@ This has been a long-runing passion project that I was just working on locally. 
 
 ## Tank roster
 
-16 tanks across 4 factions.
+16 tanks across 4 historically-inspired factions (well, 3 historically-inspired and one totally inaccurate).
 
 | Faction | Tanks |
 |---|---|
@@ -93,7 +93,7 @@ Online mode requires the relay server:
 
 ```bash
 cd relay && npm install && node relay-server.js
-# Listens on port 8765 — players must be able to reach it on your LAN
+# Listens on port 8765 - players must be able to reach it on your LAN
 ```
 
 ---
@@ -119,7 +119,7 @@ services:
     restart: unless-stopped
 ```
 
-### Nginx — proxy `/relay` to the relay container
+### Nginx - proxy `/relay` to the relay container
 
 ```nginx
 location = /relay {
@@ -139,7 +139,7 @@ location = /relay/discover {
 
 Verify: `curl http://localhost:<port>/relay/discover` should return `{"name":"Treads of War Relay","rooms":[]}`.
 
-If serving over HTTPS via a reverse proxy (e.g. Nginx Proxy Manager), enable **Websockets Support** on the proxy host. The game auto-switches between `ws://` (HTTP) and `wss://` (HTTPS).
+If serving over HTTPS via a reverse proxy (e.g. Traefik, Caddy, NPM), enable **Websockets Support** on the proxy host. The game auto-switches between `ws://` (HTTP) and `wss://` (HTTPS).
 
 ### Deploy script
 
@@ -154,7 +154,7 @@ Rsyncs `src/` and `relay/` to the remote server, then SSHs in to rebuild and res
 ## Tech stack
 
 - **Renderer**: Three.js (WebGL), no build step, vanilla ES modules
-- **Audio**: Web Audio API (no audio files — all synthesised)
+- **Audio**: Web Audio API (no audio files - all synthesised)
 - **Networking**: WebSocket relay (Node.js) for Online mode
 - **Deployment**: nginx static serving + Docker Compose
 
