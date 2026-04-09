@@ -2493,7 +2493,8 @@ function _runLanFrame(dt, now) {
       }
     }
   }
-  updateMinimap();
+  _mmTimer += dt;
+  if (_mmTimer >= 0.1) { _mmTimer = 0; updateMinimap(); }
 }
 
 const LAN_TEAM_NAMES  = ['Gold', 'Blue', 'Red', 'Green'];
@@ -4427,6 +4428,7 @@ function updateMinimap() {
 }
 
 let fpsCount = 0, fpsTime = performance.now();
+let _mmTimer = 0;   // minimap throttle — redraws at ~10 Hz
 let prevPauseKey = false;
 
 // ─── Artillery support ────────────────────────────────────────────────────────
@@ -6062,8 +6064,9 @@ function animate(now) {
     }
   }
 
-  // ── Minimap ───────────────────────────────────────────────────────────────────
-  updateMinimap();
+  // ── Minimap (throttled to ~10 Hz) ────────────────────────────────────────────
+  _mmTimer += dt;
+  if (_mmTimer >= 0.1) { _mmTimer = 0; updateMinimap(); }
   input.tick();
 }
 
