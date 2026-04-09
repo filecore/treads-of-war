@@ -1,8 +1,4 @@
-# Treads of War - Full Game Description (v4.8, 07-03-2026)
-
-> A browser-based 3D tank combat game built with Three.js. Inspired by Conqueror (Superior Software, 1988, Acorn Archimedes).
-
----
+# Treads of War - full game description
 
 ## Tech Stack
 
