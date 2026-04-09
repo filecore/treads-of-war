@@ -23,14 +23,13 @@ import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAME
 import { Net, LAN_SNAP_HZ }   from './net.js';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
-const ASSIST_RANGE       = 80;   // world units — aim assist activates within this distance
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
 // Reload and aim-assist strength are now difficulty-driven (DIFFICULTY.reloadMult / .aimAssistStrength)
 const DEATH_CAM_DURATION = 4.0;  // seconds of death-camera orbit before overlay appears
 const DEATH_CAM_SPEED    = 0.35; // radians per second — orbit rotation speed
 const DEATH_CAM_RADIUS   = 30;   // world units — orbit radius around wreck
 const DEATH_CAM_HEIGHT   = 18;   // world units above wreck
-const SIGHT_FOV          = 14;   // degrees — gun-sight camera field of view (~4× zoom)
+// SIGHT_FOV / ASSIST_RANGE live in config.js (CONFIG.SIGHT_FOV / CONFIG.ASSIST_RANGE)
 const SIGHT_YAW_SENS     = 0.0018; // turret rad per mouse pixel in sight mode
 const SIGHT_ELEV_SENS    = 0.0012; // elevation rad per mouse pixel in sight mode
 const ELEV_MIN           = -0.08;  // ~-4.6° gun depression
@@ -5139,7 +5138,7 @@ document.addEventListener('pointerlockchange', () => {
 
 function _enterSightMode() {
   _sightMode = true;
-  camera.fov = SIGHT_FOV;
+  camera.fov = CONFIG.SIGHT_FOV;
   camera.updateProjectionMatrix();
   renderer.domElement.requestPointerLock();
 }
@@ -5360,7 +5359,7 @@ function animate(now) {
     if (_manualTurret) _manualTurretPauseTimer = 6.0;
     else if (_manualTurretPauseTimer > 0) _manualTurretPauseTimer -= dt;
     let assistTarget = null;
-    let assistDist   = (!_sightMode && !_mouseAimEnabled && _manualTurretPauseTimer <= 0 && _aimAssist && input.simpleMode) ? ASSIST_RANGE : 0;
+    let assistDist   = (!_sightMode && !_mouseAimEnabled && _manualTurretPauseTimer <= 0 && _aimAssist && input.simpleMode) ? CONFIG.ASSIST_RANGE : 0;
     for (const e of enemies) {
       if (!e.alive) continue;
       const dx = e.position.x - player.position.x;
