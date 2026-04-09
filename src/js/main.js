@@ -73,22 +73,31 @@ scene.fog = new THREE.Fog(CONFIG.FOG_COLOR, CONFIG.FOG_NEAR, CONFIG.FOG_FAR);
 const _skyR   = CONFIG.FOG_FAR * 0.88;
 const _skyGeo = new THREE.SphereGeometry(_skyR, 16, 8);
 {
-  const topC   = new THREE.Color(CONFIG.COLOURS.skyTop);
-  const horizC = new THREE.Color(CONFIG.COLOURS.skyHorizon);
-  const cnt    = _skyGeo.attributes.position.count;
-  const cols   = new Float32Array(cnt * 3);
+  // Store raw sRGB/255 values; SRGBColorSpace flag tells Three.js r152+ to
+  // perform the sRGB→linear conversion before uploading to the GPU.
+  const top = CONFIG.COLOURS.skyTop;
+  const hor = CONFIG.COLOURS.skyHorizon;
+  const tR = (top >> 16) & 0xFF, tG = (top >> 8) & 0xFF, tB = top & 0xFF;
+  const hR = (hor >> 16) & 0xFF, hG = (hor >> 8) & 0xFF, hB = hor & 0xFF;
+  const cnt  = _skyGeo.attributes.position.count;
+  const cols = new Float32Array(cnt * 3);
   for (let i = 0; i < cnt; i++) {
     const y = _skyGeo.attributes.position.getY(i);
     const t = THREE.MathUtils.clamp(y / _skyR, 0, 1);
-    const c = horizC.clone().lerp(topC, t);
-    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+    cols[i * 3]     = (hR + (tR - hR) * t) / 255;
+    cols[i * 3 + 1] = (hG + (tG - hG) * t) / 255;
+    cols[i * 3 + 2] = (hB + (tB - hB) * t) / 255;
   }
-  _skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const _initColAttr = new THREE.Float32BufferAttribute(cols, 3);
+  _initColAttr.colorSpace = THREE.SRGBColorSpace;
+  _skyGeo.setAttribute('color', _initColAttr);
 }
 const _sky = new THREE.Mesh(_skyGeo,
   new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false, fog: false }));
 _sky.renderOrder = -1;
+_sky.visible = false;   // sky driven by scene.background (set by WeatherManager)
 scene.add(_sky);
+scene.background = new THREE.Color(CONFIG.COLOURS.skyTop);
 
 // ─── Weather ──────────────────────────────────────────────────────────────────
 const weather = new WeatherManager(scene);
@@ -4872,6 +4881,8 @@ function animate(now) {
   if (!game.isPlaying) {
     // Keep fire/smoke alive on wrecks during death cam
     particles.update(dt);
+    weather.update(dt);
+    weather.applyToScene(scene.fog, _skyGeo);
     if (hudSight) hudSight.style.display = 'none';
     _sky.position.copy(camera.position);
     renderer.render(scene, camera);
@@ -4882,6 +4893,10 @@ function animate(now) {
   // ── LAN duel game loop (takes over from normal loop when active) ─────────────
   if (_lanMode && _lanGameActive) {
     _runLanFrame(dt, now);
+    {
+      const spd = (Math.abs(player.leftSpeed) + Math.abs(player.rightSpeed)) * 0.5;
+      audio.setEngineSpeed(Math.min(spd / player.maxSpeed, 1));
+    }
     weather.update(dt);
     weather.applyToScene(scene.fog, _skyGeo);
     _sky.position.copy(camera.position);
