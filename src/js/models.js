@@ -319,11 +319,23 @@ function buildFaceMesh(faces, verts, turret_start, forTurret, mat, ox, oz, maxY,
 
 // ── Public builder ────────────────────────────────────────────────────────────
 // Returns { grp, turretGroup, muzzleDist, muzzleHeight, hitRadius }
-export function buildAuthenticModel(def, defKey, isEnemy = false) {
+// vis: optional visual overrides (Obliterator editor) — { bodyScaleXZ, bodyScaleY, bodyRaise,
+//      turretScaleXZ, turretScaleY, turretRaise, gunLengthMult, gunRadiusMult }
+export function buildAuthenticModel(def, defKey, isEnemy = false, colorOverride = null, vis = null) {
   const modelName = DEF_TO_MODEL[defKey] ?? 'Sherman Firefly';
   const { v: verts, f: faces, t: turret_start } = MODEL_DATA[modelName];
-  const baseHex = BASE_COLORS[def.faction] ?? BASE_COLORS.american;
+  const baseHex = colorOverride != null ? colorOverride : (BASE_COLORS[def.faction] ?? BASE_COLORS.american);
   const base    = new THREE.Color(baseHex);
+
+  // Visual overrides
+  const bodyScaleXZ   = vis?.bodyScaleXZ   ?? 1.0;
+  const bodyScaleY    = vis?.bodyScaleY    ?? 1.0;
+  const bodyRaise     = vis?.bodyRaise     ?? 0.0;
+  const turretScaleXZ = vis?.turretScaleXZ ?? 1.0;
+  const turretScaleY  = vis?.turretScaleY  ?? 1.0;
+  const turretRaise   = vis?.turretRaise   ?? 0.0;
+  const gunLengthMult = vis?.gunLengthMult ?? 1.0;
+  const gunRadiusMult = vis?.gunRadiusMult ?? 1.0;
 
   // Per-tank material instances so each hull can be charred independently
   const hullMat  = makeMat();
@@ -346,15 +358,21 @@ export function buildAuthenticModel(def, defKey, isEnemy = false) {
 
   const grp = new THREE.Group();
 
+  // ── Hull group (applies body scale / raise independently from turret) ──────
+  const hullGroup = new THREE.Group();
+  hullGroup.scale.set(bodyScaleXZ, bodyScaleY, bodyScaleXZ);
+  hullGroup.position.y = bodyRaise;
+  grp.add(hullGroup);
+
   // ── Hull mesh (non-track hull faces) ──────────────────────────────────────
   const hullMesh = buildBakedMesh(faces, verts, turret_start, false, base, hullMat, 0, 0, maxY, 0, s => !isTrack(s), null, hullModelCy);
-  if (hullMesh) grp.add(hullMesh);
+  if (hullMesh) hullGroup.add(hullMesh);
 
   // ── Track mesh (track_sides / turret_track_sides) ─────────────────────────
   // Dark steel grey — same material for all factions, not a tint of the hull colour.
   // forcedBrightness=1.0 means TRACK_COLOR is used exactly as-is (no dot/quantise).
   const trackMesh = buildBakedMesh(faces, verts, turret_start, false, TRACK_COLOR, trackMat, 0, 0, maxY, 0, isTrack, 1.0);
-  if (trackMesh) grp.add(trackMesh);
+  if (trackMesh) hullGroup.add(trackMesh);
 
   // ── Turret pivot: XZ centroid of turret-specific vertices ─────────────────
   let tcx = 0, tcz = 0, tcyn = 0, n = 0;
@@ -368,7 +386,9 @@ export function buildAuthenticModel(def, defKey, isEnemy = false) {
   if (n > 0) { tcx /= n; tcz /= n; tcyn /= n; }
 
   const turretGroup = new THREE.Group();
-  turretGroup.position.set(tcx, tcy, tcz);
+  // Turret sits on the scaled hull deck; XZ pivot also tracks body scale
+  turretGroup.position.set(tcx * bodyScaleXZ, tcy * bodyScaleY + bodyRaise + turretRaise, tcz * bodyScaleXZ);
+  turretGroup.scale.set(turretScaleXZ, turretScaleY, turretScaleXZ);
   grp.add(turretGroup);
 
   // ── Turret mesh: ConvexGeometry from turret vertices ─────────────────────
@@ -395,9 +415,10 @@ export function buildAuthenticModel(def, defKey, isEnemy = false) {
   }
   const minTZ_local = minTZ_hull - tcz;  // in turretGroup local space
 
-  const gunLen = 0.60 + def.firepower / 100 * 0.90;
-  const gunGeo = new THREE.CylinderGeometry(0.055, 0.055, gunLen, 6);
-  const gun    = new THREE.Mesh(gunGeo, GUN_MAT);
+  const gunLen    = (0.60 + def.firepower / 100 * 0.90) * gunLengthMult;
+  const gunRadius = 0.055 * gunRadiusMult;
+  const gunGeo    = new THREE.CylinderGeometry(gunRadius, gunRadius, gunLen, 6);
+  const gun       = new THREE.Mesh(gunGeo, GUN_MAT);
   gun.rotation.x = Math.PI / 2;
   // Gun Y in turretGroup local space: tcyn is world Y, tcy is pivot Y
   gun.position.set(0, tcyn - tcy, minTZ_local - gunLen * 0.5);

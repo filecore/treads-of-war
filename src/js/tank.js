@@ -7,7 +7,7 @@ import { buildAuthenticModel } from './models.js';
 
 // ── Physics scaling ────────────────────────────────────────────────────────────
 // Tank stat values (0–100 range) are scaled to world units per second.
-const SPEED_SCALE = 0.20;    // stat 55 → 11.0 wu/s  (Sherman)
+const SPEED_SCALE = 0.23;    // stat 55 → 12.65 wu/s  (Sherman) — 15% speed increase
 const ACCEL_SCALE = 0.15;    // stat 40 →  6.0 wu/s²  (snappier acceleration)
 // Turn rate: diffSpeed (wu/s) × turnRate_stat × TURN_SCALE = yaw rad/s
 // Tuned so Sherman (turnRate=50) with one track stopped does ~4s per circle
@@ -24,9 +24,9 @@ const SLOPE_EPS  = 4;     // world-unit sampling radius for slope detection
 const SLOPE_FLAT = 0.03;  // gradient below this → road speed
 const SLOPE_MAX  = 0.20;  // gradient above this → full XC speed penalty
 
-// Third-person camera
-const CAM_BEHIND   = 25;    // units behind tank
-const CAM_UP       = 12;    // units above terrain
+// Third-person camera — values driven by CONFIG (platform-specific overrides applied there)
+const CAM_BEHIND   = CONFIG.CAM_BEHIND;   // units behind tank
+const CAM_UP       = CONFIG.CAM_UP;       // units above terrain
 const CAM_LAG      = 0.03;  // position lerp per frame — lower = more lag
 const CAM_LOOK_LAG = 0.05;  // look-at lerp per frame
 const CAM_HEAD_LAG = 0.025; // camera heading lag — prevents wild swinging on turns
@@ -46,7 +46,7 @@ const _lookAt    = new THREE.Vector3();
 
 // ── Tank class ─────────────────────────────────────────────────────────────────
 export class Tank {
-  constructor(scene, defKey = 'sherman', isEnemy = false) {
+  constructor(scene, defKey = 'sherman', isEnemy = false, colorOverride = null, visualOverrides = null) {
     this.def    = CONFIG.TANK_DEFS[defKey];
     this.defKey = defKey;
 
@@ -72,11 +72,14 @@ export class Tank {
     this.damageMult      = 1.0;   // set by difficulty system for the player tank
     this.turretSpeedMult = 1.0;   // set to 1.05 for player
     this.roadBonus       = false; // set each frame by main.js; suppresses XC slope penalty
+    this.waterMult       = 1.0;  // set each frame by main.js; <1 = speed penalty in water
+    this.weatherMult     = 1.0;  // set each frame by main.js; <1 = speed penalty in bad weather
+    this.ctfCarrying     = false; // flag carrier speed penalty applied in speed formula
 
     this.position = new THREE.Vector3(0, 0, 0);
 
     // Build authentic model from original Archimedes vertex data
-    const built = buildAuthenticModel(this.def, defKey, isEnemy);
+    const built = buildAuthenticModel(this.def, defKey, isEnemy, colorOverride, visualOverrides);
     this.mesh         = built.grp;
     this.turretGroup  = built.turretGroup;
     this._hitRadius   = built.hitRadius;
@@ -99,16 +102,17 @@ export class Tank {
   update(dt, input) {
     const def = this.def;
     const a   = this.accel;
-    // HP-based speed penalty: half speed below 50%, quarter below 25%, immobile below 12%
-    if (this.hp < 12) { this.leftSpeed = 0; this.rightSpeed = 0; }
-    const hpMod = this.hp < 25 ? 0.25 : this.hp < 50 ? 0.5 : 1.0;
+    // HP-based speed penalty: half speed below 50%, quarter below 25%, 5% (crawl) below 12%
+    const hpMod = this.hp < 12 ? 0.05 : this.hp < 25 ? 0.25 : this.hp < 50 ? 0.5 : 1.0;
     // Cross-country speed: blend road↔XC based on terrain gradient at current pos
     const px0  = this.position.x, pz0 = this.position.z;
     const gx   = (getAltitude(px0 + SLOPE_EPS, pz0) - getAltitude(px0 - SLOPE_EPS, pz0)) / (2 * SLOPE_EPS);
     const gz   = (getAltitude(px0, pz0 + SLOPE_EPS) - getAltitude(px0, pz0 - SLOPE_EPS)) / (2 * SLOPE_EPS);
     const rawSlope    = Math.min(1, Math.max(0, (Math.sqrt(gx * gx + gz * gz) - SLOPE_FLAT) / (SLOPE_MAX - SLOPE_FLAT)));
     const slopeFactor = this.roadBonus ? 0 : rawSlope;  // roads are graded — ignore slope penalty
-    const max  = (this.maxSpeed + (this.xcSpeed - this.maxSpeed) * slopeFactor) * hpMod;
+    const roadMult = this.roadBonus ? 1.25 : 1.0;       // roads: +25% speed bonus
+    const ctfMult = this.ctfCarrying ? 0.75 : 1.0;
+    const max  = (this.maxSpeed + (this.xcSpeed - this.maxSpeed) * slopeFactor) * hpMod * roadMult * this.waterMult * this.weatherMult * ctfMult;
     const fri  = CONFIG.FRICTION;
     // Clamp existing track speeds to new effective max (e.g. entering steep slope)
     this.leftSpeed  = Math.max(-max, Math.min(max,  this.leftSpeed));
@@ -154,6 +158,16 @@ export class Tank {
     const cosH = Math.cos(this.heading);
     this.position.x += -sinH * avgSpeed * dt;
     this.position.z += -cosH * avgSpeed * dt;
+
+    // ── Map boundary clamp — prevent tanks from passing through the black wall ──
+    const _mapH = CONFIG.MAP_HALF;
+    if (this.position.x < -_mapH || this.position.x > _mapH ||
+        this.position.z < -_mapH || this.position.z > _mapH) {
+      this.position.x = Math.max(-_mapH, Math.min(_mapH, this.position.x));
+      this.position.z = Math.max(-_mapH, Math.min(_mapH, this.position.z));
+      this.leftSpeed  = 0;
+      this.rightSpeed = 0;
+    }
 
     // ── Terrain hug (multi-point to prevent hull clipping on slopes) ───────────
     // A rigid body rests on the highest combination of front/rear/side contact
@@ -240,18 +254,20 @@ export class Tank {
     const sinTank = Math.sin(this.heading);
     const cosTank = Math.cos(this.heading);
 
-    // Camera sits behind tank in the smoothed heading direction
+    // Camera sits behind tank; pull back slightly at speed for forward visibility
+    const spd = (Math.abs(this.leftSpeed) + Math.abs(this.rightSpeed)) * 0.5;
+    const dynamicDistMult = 1.0 + Math.min(1, spd / this.maxSpeed) * 0.10;
     _camTarget.set(
-      this.position.x + sinCam * CAM_BEHIND,
+      this.position.x + sinCam * CAM_BEHIND * dynamicDistMult,
       this.position.y + CAM_UP,
-      this.position.z + cosCam * CAM_BEHIND,
+      this.position.z + cosCam * CAM_BEHIND * dynamicDistMult,
     );
 
-    // Look slightly ahead of where the tank faces so terrain is visible
+    // Look ahead of where the tank faces so terrain is visible
     _lookAt.set(
-      this.position.x - sinTank * 4,
-      this.position.y + 2.0,
-      this.position.z - cosTank * 4,
+      this.position.x - sinTank * CONFIG.CAM_LOOK_FWD,
+      this.position.y + CONFIG.CAM_LOOK_Y,
+      this.position.z - cosTank * CONFIG.CAM_LOOK_FWD,
     );
 
     // Snap _camPos/_camLook on first frame

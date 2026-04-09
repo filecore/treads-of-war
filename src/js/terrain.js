@@ -4,10 +4,21 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 
+// ─── Water visibility flag ─────────────────────────────────────────────────────
+export let terrainWaterEnabled = true;
+export function setTerrainWaterEnabled(v) { terrainWaterEnabled = v; }
+
+// ─── Terrain phase offset (randomised per game start) ─────────────────────────
+let _terrainOX = 0, _terrainOZ = 0;
+export function setTerrainOffset(ox, oz) {
+  _terrainOX = ox;
+  _terrainOZ = oz;
+}
+
 // ─── Fourier altitude function ────────────────────────────────────────────────
 export function getAltitude(worldX, worldZ) {
-  const x = worldX * CONFIG.TERRAIN_FREQ;
-  const z = worldZ * CONFIG.TERRAIN_FREQ;
+  const x = (worldX + _terrainOX) * CONFIG.TERRAIN_FREQ;
+  const z = (worldZ + _terrainOZ) * CONFIG.TERRAIN_FREQ;
 
   const sum = (
     2 * Math.sin(x  -  2 * z) +
@@ -78,7 +89,7 @@ function triColor(p0x, p0y, p0z, p1x, p1y, p1z, p2x, p2y, p2z, outR, outG, outB,
   const avgAlt = (p0y + p1y + p2y) / 3;
   let r, g, b;
 
-  if (avgAlt <= CONFIG.SEA_LEVEL + 0.5) {
+  if (terrainWaterEnabled && avgAlt <= CONFIG.SEA_LEVEL + 0.5) {
     // Flat water — no shading variation
     const hex = CONFIG.COLOURS.water;
     r = ((hex >> 16) & 0xff) / 255;
@@ -180,7 +191,7 @@ function buildChunkMesh(chunkX, chunkZ) {
 const _TREE_TYPES = [
   // Type 0: Tall conifer — narrow dark-green cone, thin trunk (most common)
   {
-    weight: 5,
+    weight: 7.5,
     trunkGeo: new THREE.CylinderGeometry(0.10, 0.18, 1.5, 6),
     trunkMat: new THREE.MeshLambertMaterial({ color: 0x664422, flatShading: true }),
     makeParts(scl) {
@@ -195,7 +206,7 @@ const _TREE_TYPES = [
   },
   // Type 1: Large deciduous — faceted icosahedron canopy, bright vivid green (rare)
   {
-    weight: 1,
+    weight: 1.25,
     trunkGeo: new THREE.CylinderGeometry(0.18, 0.28, 2.2, 6),
     trunkMat: new THREE.MeshLambertMaterial({ color: 0x664422, flatShading: true }),
     makeParts(scl) {
@@ -211,7 +222,7 @@ const _TREE_TYPES = [
   },
   // Type 2: Medium tiered conifer — two stacked cones
   {
-    weight: 3,
+    weight: 4.5,
     trunkGeo: new THREE.CylinderGeometry(0.12, 0.20, 1.2, 6),
     trunkMat: new THREE.MeshLambertMaterial({ color: 0x664422, flatShading: true }),
     makeParts(scl) {
@@ -233,7 +244,7 @@ const _TREE_TYPES = [
   },
   // Type 3: Small conifer — compact single cone
   {
-    weight: 3,
+    weight: 4.5,
     trunkGeo: new THREE.CylinderGeometry(0.08, 0.14, 0.9, 6),
     trunkMat: new THREE.MeshLambertMaterial({ color: 0x554422, flatShading: true }),
     makeParts(scl) {
@@ -261,8 +272,11 @@ function _pickTreeType(rngVal) {
 
 // ─── Terrain objects (trees) ──────────────────────────────────────────────────
 
-const TREES_PER_CHUNK = 6;
-const TREE_MIN_ALT    = CONFIG.SEA_LEVEL + 4;  // no trees on water or beach
+const TREE_GROUPS     = 3;   // cluster anchors per chunk
+const TREES_PER_GROUP = 3;   // trees per cluster
+const TREES_SCATTER   = 1;   // solo scatter trees (total per chunk: 3×3+1 = 10)
+const CLUMP_R         = 10;  // cluster radius in world units
+const TREE_MIN_ALT    = CONFIG.SEA_LEVEL + 1;  // no trees on water; start just above water line
 
 // Cheap deterministic RNG seeded by chunk coordinates
 class SeededRng {
@@ -312,18 +326,31 @@ function buildChunkObjects(chunkX, chunkZ, roadFilter = null) {
   const rng      = new SeededRng((chunkX * 73856093) ^ (chunkZ * 19349663));
   const treeData = [];
 
-  for (let i = 0; i < TREES_PER_CHUNK; i++) {
-    const wx  = wx0 + rng.next() * CTS;
-    const wz  = wz0 + rng.next() * CTS;
-    const alt = getAltitude(wx, wz);
-    if (alt < TREE_MIN_ALT) { rng.next(); rng.next(); rng.next(); continue; }
-
-    const s       = 0.80 + rng.next() * 0.40;        // scale ±15% around 1.0
+  // Always consume 3 rng calls per candidate so RNG sequence stays position-independent
+  function tryPlace(wx, wz) {
+    const s       = 0.80 + rng.next() * 0.40;
     const typeIdx = _TREE_TYPES.indexOf(_pickTreeType(rng.next()));
     const rotY    = rng.next() * Math.PI * 2;
-
-    if (roadFilter && roadFilter(wx, wz)) continue;
+    const alt     = getAltitude(wx, wz);
+    if (alt < TREE_MIN_ALT) return;
+    if (roadFilter && roadFilter(wx, wz)) return;
     treeData.push({ wx, wz, alt, s, typeIdx, rotY });
+  }
+
+  // Clustered trees — most trees spawn in groups for a natural woodland feel
+  for (let g = 0; g < TREE_GROUPS; g++) {
+    const ax = wx0 + rng.next() * CTS;
+    const az = wz0 + rng.next() * CTS;
+    for (let t = 0; t < TREES_PER_GROUP; t++) {
+      const ang = rng.next() * Math.PI * 2;
+      const r   = rng.next() * CLUMP_R;
+      tryPlace(ax + Math.cos(ang) * r, az + Math.sin(ang) * r);
+    }
+  }
+
+  // Scatter trees — a few solo placements for variety
+  for (let i = 0; i < TREES_SCATTER; i++) {
+    tryPlace(wx0 + rng.next() * CTS, wz0 + rng.next() * CTS);
   }
 
   return { group: _rebuildTreeGroup(treeData, null), treeData };
@@ -447,5 +474,7 @@ export class ChunkManager {
     this.objects.clear();
     this.treeData.clear();
     this.deadTrees.clear();
+    this._cx = null;
+    this._cz = null;
   }
 }

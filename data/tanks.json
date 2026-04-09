@@ -1,0 +1,78 @@
+{
+  "_source": "Extracted from !Conqueror/!RunImage,8000-ef4c, offset 0x0BB8, 128-byte records",
+  "_notes": "Road/XC speeds are literal km/h. Armour and penetration are 0-200 scale.",
+  "tanks": [
+    {
+      "key": "pz3",
+      "name": "Panzer III",
+      "faction": "german",
+      "binary": { "frontalArmour": 55, "sideArmour": 30, "rearArmour": 40, "penetration": 59, "roadSpeed": 40, "xcSpeed": 25 }
+    },
+    {
+      "key": "panther",
+      "name": "Panther",
+      "faction": "german",
+      "binary": { "frontalArmour": 120, "sideArmour": 57, "rearArmour": 46, "penetration": 124, "roadSpeed": 46, "xcSpeed": 25 }
+    },
+    {
+      "key": "tiger",
+      "name": "Tiger I",
+      "faction": "german",
+      "binary": { "frontalArmour": 110, "sideArmour": 80, "rearArmour": 80, "penetration": 110, "roadSpeed": 38, "xcSpeed": 20 }
+    },
+    {
+      "key": "kingtiger",
+      "name": "King Tiger",
+      "faction": "german",
+      "binary": { "frontalArmour": 200, "sideArmour": 90, "rearArmour": 90, "penetration": 185, "roadSpeed": 35, "xcSpeed": 20 }
+    },
+    {
+      "key": "m24",
+      "name": "M24 Chaffee",
+      "faction": "american",
+      "binary": { "frontalArmour": 40, "sideArmour": 20, "rearArmour": 19, "penetration": 70, "roadSpeed": 56, "xcSpeed": 40 }
+    },
+    {
+      "key": "m36",
+      "name": "M36 90mmGMC",
+      "faction": "american",
+      "binary": { "frontalArmour": 60, "sideArmour": 22, "rearArmour": 20, "penetration": 135, "roadSpeed": 48, "xcSpeed": 29 }
+    },
+    {
+      "key": "sherman",
+      "name": "Sherman Firefly",
+      "faction": "american",
+      "binary": { "frontalArmour": 93, "sideArmour": 38, "rearArmour": 38, "penetration": 121, "roadSpeed": 40, "xcSpeed": 25 }
+    },
+    {
+      "key": "pershing",
+      "name": "M26 Pershing",
+      "faction": "american",
+      "binary": { "frontalArmour": 120, "sideArmour": 76, "rearArmour": 51, "penetration": 135, "roadSpeed": 32, "xcSpeed": 20 }
+    },
+    {
+      "key": "t34",
+      "name": "T-34/76",
+      "faction": "russian",
+      "binary": { "frontalArmour": 73, "sideArmour": 60, "rearArmour": 40, "penetration": 69, "roadSpeed": 55, "xcSpeed": 38 }
+    },
+    {
+      "key": "kv1s",
+      "name": "KV-1S",
+      "faction": "russian",
+      "binary": { "frontalArmour": 86, "sideArmour": 60, "rearArmour": 40, "penetration": 69, "roadSpeed": 45, "xcSpeed": 30 }
+    },
+    {
+      "key": "kv85",
+      "name": "KV-85",
+      "faction": "russian",
+      "binary": { "frontalArmour": 86, "sideArmour": 60, "rearArmour": 40, "penetration": 96, "roadSpeed": 40, "xcSpeed": 26 }
+    },
+    {
+      "key": "js2",
+      "name": "JS-II",
+      "faction": "russian",
+      "binary": { "frontalArmour": 186, "sideArmour": 95, "rearArmour": 60, "penetration": 145, "roadSpeed": 37, "xcSpeed": 20 }
+    }
+  ]
+}
