@@ -9,14 +9,14 @@ const PARAMS = {
   clear: {
     fogNear: 300, fogFar: 800,
     fogColor:   [0x9A, 0xB5, 0xC2],
-    skyZenith:  [0x33, 0x44, 0x88],
+    skyZenith:  [0x44, 0x88, 0xCC],
     skyHorizon: [0x9A, 0xB5, 0xC2],
     speedMult: 1.0, detectMult: 1.0, fireIntervalMult: 1.0, engageRangeMult: 1.0,
   },
   rain: {
     fogNear: 150, fogFar: 400,
     fogColor:   [0x5A, 0x65, 0x70],
-    skyZenith:  [0x3A, 0x45, 0x50],
+    skyZenith:  [0x55, 0x66, 0x77],
     skyHorizon: [0x5A, 0x65, 0x70],
     speedMult: 0.85, detectMult: 0.70, fireIntervalMult: 1.0, engageRangeMult: 1.0,
   },
@@ -199,6 +199,12 @@ class DustPool {
   }
 }
 
+// sRGB byte value → linear (matches Three.js r152+ colour management)
+function _sl(c) {
+  const x = c / 255;
+  return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+}
+
 // ── WeatherManager ────────────────────────────────────────────────────────────
 // One weather type per battle. Mid-battle transition lerps all parameters over
 // TRANSITION_SECS seconds. Particles fade in/out proportionally.
@@ -214,7 +220,6 @@ export class WeatherManager {
     this._secondary  = null;   // optional second simultaneous condition (non-clear)
     this._camera     = null;
     this._pendingMsg = null;
-    this._skyDirty   = true;
     this._battleTime = 0;
     this._changeAt   = Infinity;
     this._changed    = false;
@@ -262,7 +267,6 @@ export class WeatherManager {
       this._changeAt = Infinity;
     }
 
-    this.markSkyDirty();
     const label = this._secondary
       ? `${WEATHER_LABELS[type]} + ${WEATHER_LABELS[this._secondary].split('—')[0].trim()}`
       : (WEATHER_LABELS[type] ?? type);
@@ -301,7 +305,6 @@ export class WeatherManager {
           if (old === 'dust' && this._secondary !== 'dust' && this._dust) { this._dust.dispose(); this._dust = null; }
         }
       }
-      this.markSkyDirty();
     }
 
     // Update particle opacity (fade in/out with transition) and positions
@@ -324,7 +327,10 @@ export class WeatherManager {
   }
 
   // Apply current (lerped) fog and sky to the scene.
-  applyToScene(sceneFog, skyGeo) {
+  // skyMat: MeshBasicMaterial with CanvasTexture — canvas is redrawn here.
+  // skyBg: scene.background Color — direct .r/.g/.b to bypass ColorManagement.
+  // skyCanvas: the raw 1×128 HTMLCanvasElement used by skyMat.map.
+  applyToScene(sceneFog, skyMat, skyBg, skyCanvas) {
     const a = PARAMS[this._current] ?? PARAMS.clear;
     const b = this._next ? PARAMS[this._next] : null;
     const t = this._transT;
@@ -342,37 +348,44 @@ export class WeatherManager {
       return s ? (pv + s.fogColor[i]) / 2 : pv;
     });
     sceneFog.color.setRGB(
-      Math.max(0, Math.min(255, fc[0])) / 255,
-      Math.max(0, Math.min(255, fc[1])) / 255,
-      Math.max(0, Math.min(255, fc[2])) / 255,
+      _sl(Math.max(0, Math.min(255, fc[0]))),
+      _sl(Math.max(0, Math.min(255, fc[1]))),
+      _sl(Math.max(0, Math.min(255, fc[2]))),
     );
 
-    if (this._skyDirty) {
-      this._skyDirty = false;
-      const colAttr = skyGeo.getAttribute('color');
-      const skyR    = skyGeo.parameters?.radius ?? 1;
-      const zc = a.skyZenith.map((v, i)  => {
-        const pv = lerp(v, b ? b.skyZenith[i]  : v);
-        return s ? (pv + s.skyZenith[i])  / 2 : pv;
-      });
-      const hc = a.skyHorizon.map((v, i) => {
-        const pv = lerp(v, b ? b.skyHorizon[i] : v);
-        return s ? (pv + s.skyHorizon[i]) / 2 : pv;
-      });
-      const czR = zc.map(v => Math.max(0, Math.min(255, v)));
-      const chR = hc.map(v => Math.max(0, Math.min(255, v)));
-      const cnt = colAttr.count;
-      for (let i = 0; i < cnt; i++) {
-        const y     = skyGeo.attributes.position.getY(i);
-        const blend = Math.max(0, Math.min(1, y / skyR));
-        colAttr.setXYZ(i,
-          (chR[0] + (czR[0] - chR[0]) * blend) / 255,
-          (chR[1] + (czR[1] - chR[1]) * blend) / 255,
-          (chR[2] + (czR[2] - chR[2]) * blend) / 255,
-        );
-      }
-      colAttr.needsUpdate = true;
-    }
+    // Horizon = fog colour (sr/sg/sb already clamped to 0-255).
+    const sr = Math.max(0, Math.min(255, Math.round(fc[0])));
+    const sg = Math.max(0, Math.min(255, Math.round(fc[1])));
+    const sb = Math.max(0, Math.min(255, Math.round(fc[2])));
+
+    // Zenith — lerp the per-weather deep-sky colour.
+    const zc = a.skyZenith.map((v, i) => {
+      const pv = lerp(v, b ? b.skyZenith[i] : v);
+      return s ? (pv + s.skyZenith[i]) / 2 : pv;
+    });
+    const zr = Math.max(0, Math.min(255, Math.round(zc[0])));
+    const zg = Math.max(0, Math.min(255, Math.round(zc[1])));
+    const zb = Math.max(0, Math.min(255, Math.round(zc[2])));
+
+    // Redraw 1×128 canvas gradient. Canvas flipY means:
+    //   canvas top (y=0)  → UV V=1 → north pole (zenith)
+    //   canvas mid        → UV V=0.5 → equator (horizon)
+    //   canvas bottom     → UV V=0 → south pole (below terrain)
+    const ctx = skyCanvas.getContext('2d');
+    const h   = skyCanvas.height;
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0,   `rgb(${zr},${zg},${zb})`);
+    grad.addColorStop(0.5, `rgb(${sr},${sg},${sb})`);
+    grad.addColorStop(1,   `rgb(${sr},${sg},${sb})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1, h);
+    skyMat.map.needsUpdate = true;
+
+    // scene.background fallback — direct .r/.g/.b bypasses ColorManagement so
+    // gl.clearColor gets raw sRGB-range floats.
+    skyBg.r = sr / 255;
+    skyBg.g = sg / 255;
+    skyBg.b = sb / 255;
   }
 
   // Generic lerp helper for scalar multipliers; secondary condition stacks on top
@@ -393,7 +406,6 @@ export class WeatherManager {
   getEngageRangeMultiplier()  { return this._getMult('engageRangeMult'); }
 
   consumeMessage() { const m = this._pendingMsg; this._pendingMsg = null; return m; }
-  markSkyDirty()   { this._skyDirty = true; }
 
   _disposeParticles() {
     if (this._rain) { this._rain.dispose(); this._rain = null; }
