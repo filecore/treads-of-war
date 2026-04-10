@@ -1587,9 +1587,13 @@ function _showSquadHUD() {
   el.innerHTML = parts.join(' ');
 }
 
+// Fixed seed used for all LAN games — ensures host and clients render the same map.
+const LAN_MAP_SEED = 0xC0FFEE42;
+
 // ─── Map rebuild (randomises terrain offset, roads, buildings, trees) ────────
-function _rebuildMap() {
-  const seed = (Math.random() * 0xFFFFFFFF) >>> 0;
+// Pass a fixed seed (e.g. LAN_MAP_SEED) for deterministic maps; omit for random.
+function _rebuildMap(seed = null) {
+  seed = seed ?? ((Math.random() * 0xFFFFFFFF) >>> 0);
   // Shift the Fourier terrain sample point so hills/valleys vary each game
   setTerrainOffset((seed & 0xFFF) - 2048, ((seed >> 12) & 0xFFF) - 2048);
   // Rebuild roads first (buildings + water need them for exclusion zones)
@@ -1881,6 +1885,9 @@ async function startLanClient(roomCode) {
 }
 
 function _initLanGame(rosterMap) {
+  // Rebuild the map with a fixed seed so all players get the same terrain,
+  // roads, buildings, and water regardless of what single-player maps were loaded.
+  _rebuildMap(LAN_MAP_SEED);
   clearCraters(); _resetSmoke(); _resetArtillery(); _resetSpotter();
   _resetEncounters();
   for (const e of enemies) e.dispose(scene);
