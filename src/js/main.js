@@ -1786,7 +1786,7 @@ async function startLanHost() {
     await _lanNet.host(_relayUrl, _lanRoomCode, _lanMaxPlayers);
     // Immediately send our own hello back to ourselves? No — host just waits.
   } catch (e) {
-    _lanStatus = `Cannot reach relay server (${e.message})`;
+    _lanStatus = e.message;
     updateOverlay();
   }
 }
@@ -1875,7 +1875,7 @@ async function startLanClient(roomCode) {
   try {
     await _lanNet.join(_relayUrl, _lanRoomCode);
   } catch (e) {
-    _lanStatus = `Cannot reach relay server (${e.message})`;
+    _lanStatus = e.message;
     updateOverlay();
   }
 }

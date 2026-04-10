@@ -169,7 +169,7 @@ export class Net {
 
     await new Promise((res, rej) => {
       this._ws.onopen  = res;
-      this._ws.onerror = () => rej(new Error(`Cannot reach relay server at ${serverUrl}`));
+      this._ws.onerror = () => rej(new Error('Cannot reach relay server — check your connection'));
     });
 
     // Register with the relay server
