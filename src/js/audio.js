@@ -53,7 +53,7 @@ export class AudioManager {
     const ctx = this._ctx;
 
     const osc = ctx.createOscillator();
-    osc.type          = 'sawtooth';
+    osc.type          = 'triangle';  // sawtooth was too buzzy; triangle is softer
     osc.frequency.value = 57;   // constant — never changes
 
     // Mild lowpass at 2 kHz: softens the very harshest ultra-high harmonics
@@ -116,11 +116,12 @@ export class AudioManager {
     const ns  = ctx.createBufferSource();
     ns.buffer = _noiseBuffer(ctx, 0.18);
 
-    // Lowpass at 350 Hz covers the 160–280 Hz dominant range of the original
+    // Bandpass centred on the measured dominant frequency (173 Hz peak, 140–330 Hz range).
+    // Lowpass was letting through too much sub-100 Hz content, causing the "pop".
     const lpf = ctx.createBiquadFilter();
-    lpf.type  = 'lowpass';
-    lpf.frequency.value = 350;
-    lpf.Q.value = 1.0;
+    lpf.type  = 'bandpass';
+    lpf.frequency.value = 200;
+    lpf.Q.value = 1.2;
 
     const g = ctx.createGain();
     g.gain.setValueAtTime(1.4, t);                          // instant onset
