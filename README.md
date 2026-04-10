@@ -16,7 +16,7 @@ Conqueror (1988) by Superior Software was one of the definitive tank combat game
 
 ## AI disclosure
 
-This has been a long-runing passion project that I was just working on locally. Recently, I was able to utilise Claude Code to help with improvements and feature development. This sped things up VASTLY, really as a hobbyist I was shocked how much progress I made. That's why I decdided to put in on Github (old habits from my childhood are just to develop locally for my own sake).
+This has been a long-runing passion project that I was just working on locally. Recently, I was able to utilise Claude Code to help with improvements and feature development. This sped things up VASTLY, really as a hobbyist I was shocked how much progress I made. That's why I decdided to put in on Github (old habits from my childhood are just to develop locally for my own sake, because typically I make things just for me, not to share).
 
 I'm sure everybody is sick of vibe-coded slop, and I'm sure by now large chunks of the codebase fit this category. Is that important? This is a game. It doesn't require or store any sensitive information. If Claude can help me get it out faster and with more and better features, then that's fine by me. I'm learning a lot and having fun, and that's really my aim here. If you don't like AI assistance in projects, feel free to move along. 
 
