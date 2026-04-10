@@ -4,12 +4,20 @@
 sed -i 's/\r//' "$0" 2>/dev/null || true
 set -e
 
-TREADS_REMOTE="oxide@192.168.0.101:/home/oxide/docker/nginx/nginx-subdomain-togneri-treads/www-data/treads/"
+TREADS_REMOTE="oxide@192.168.0.101:/home/oxide/docker/nginx/nginx-subdomain-togneri-treads/www-data/"
 
 # ── 1. Push game + zip to treads.togneri.net ──────────────────────────────────
 echo ""
 echo "Syncing to treads.togneri.net..."
-rsync -av --delete src/ "${TREADS_REMOTE}"
+# Exclude subdirectories that belong to other builds; use --checksum to avoid
+# WSL2 mtime issues when files are edited on the Windows-mounted drive.
+rsync -av --checksum --delete \
+  --exclude='treads/' \
+  --exclude='treads-combined/' \
+  --exclude='treads-mobile/' \
+  --exclude='treads-mobile-lan/' \
+  --exclude='treads_of_war_source_v*.zip' \
+  src/ "${TREADS_REMOTE}"
 for zipfile in treads_of_war_source_v*.zip; do
   [ -f "$zipfile" ] && scp "$zipfile" "oxide@192.168.0.101:/home/oxide/docker/nginx/nginx-subdomain-togneri-treads/www-data/treads/"
 done
