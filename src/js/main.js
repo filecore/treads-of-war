@@ -67,37 +67,40 @@ const SPOTTER_DURATION   = 25;   // seconds enemy positions remain visible after
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(CONFIG.FOG_COLOR, CONFIG.FOG_NEAR, CONFIG.FOG_FAR);
 
-// ─── Sky gradient dome ────────────────────────────────────────────────────────
-// Vertex-coloured sphere rendered inside-out, follows camera to always surround
-// the player. Gradient from skyTop (zenith) to skyHorizon (equator) matches fog.
-const _skyR   = CONFIG.FOG_FAR * 0.88;
-const _skyGeo = new THREE.SphereGeometry(_skyR, 16, 8);
-{
-  // Store raw sRGB/255 values; SRGBColorSpace flag tells Three.js r152+ to
-  // perform the sRGB→linear conversion before uploading to the GPU.
-  const top = CONFIG.COLOURS.skyTop;
-  const hor = CONFIG.COLOURS.skyHorizon;
-  const tR = (top >> 16) & 0xFF, tG = (top >> 8) & 0xFF, tB = top & 0xFF;
-  const hR = (hor >> 16) & 0xFF, hG = (hor >> 8) & 0xFF, hB = hor & 0xFF;
-  const cnt  = _skyGeo.attributes.position.count;
-  const cols = new Float32Array(cnt * 3);
-  for (let i = 0; i < cnt; i++) {
-    const y = _skyGeo.attributes.position.getY(i);
-    const t = THREE.MathUtils.clamp(y / _skyR, 0, 1);
-    cols[i * 3]     = (hR + (tR - hR) * t) / 255;
-    cols[i * 3 + 1] = (hG + (tG - hG) * t) / 255;
-    cols[i * 3 + 2] = (hB + (tB - hB) * t) / 255;
-  }
-  const _initColAttr = new THREE.Float32BufferAttribute(cols, 3);
-  _initColAttr.colorSpace = THREE.SRGBColorSpace;
-  _skyGeo.setAttribute('color', _initColAttr);
-}
-const _sky = new THREE.Mesh(_skyGeo,
-  new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false, fog: false }));
+
+// ─── Sky sphere ───────────────────────────────────────────────────────────────
+// CanvasTexture on MeshBasicMaterial avoids all shader/ColorManagement edge cases.
+// Sphere UV: V=0 = south pole (below terrain), V=0.5 = equator (eye level),
+// V=1 = north pole (zenith). Canvas flipY maps canvas-top → V=1 (zenith).
+// Gradient is redrawn each frame by WeatherManager.applyToScene().
+const _skyR      = CONFIG.FOG_FAR * 0.88;
+const _skyGeo    = new THREE.SphereGeometry(_skyR, 16, 8);
+const _skyCanvas = document.createElement('canvas');
+_skyCanvas.width  = 1;
+_skyCanvas.height = 128;
+// Initial fill so the first frame isn't black before applyToScene runs.
+{ const _ic = _skyCanvas.getContext('2d'); _ic.fillStyle = '#9ab5c2'; _ic.fillRect(0, 0, 1, 128); }
+const _skyTex = new THREE.CanvasTexture(_skyCanvas);
+_skyTex.colorSpace = THREE.SRGBColorSpace;
+const _skyMat = new THREE.MeshBasicMaterial({
+  map: _skyTex,
+  side: THREE.BackSide,
+  depthTest: false,
+  depthWrite: false,
+  fog: false,
+});
+const _sky = new THREE.Mesh(_skyGeo, _skyMat);
 _sky.renderOrder = -1;
-_sky.visible = false;   // sky driven by scene.background (set by WeatherManager)
+_sky.frustumCulled = false;
 scene.add(_sky);
-scene.background = new THREE.Color(CONFIG.COLOURS.skyTop);
+
+// ─── Sky background fallback ──────────────────────────────────────────────────
+// Belt-and-suspenders: scene.background fills any sky pixels the sphere misses.
+// Direct .r/.g/.b assignment bypasses ColorManagement entirely so gl.clearColor
+// gets raw sRGB-range values (e.g. 0x9A/255 ≈ 0.604) and displays correctly.
+const _skyBg = new THREE.Color();
+_skyBg.r = 0x9A / 255; _skyBg.g = 0xB5 / 255; _skyBg.b = 0xC2 / 255;
+scene.background = _skyBg;
 
 // ─── Weather ──────────────────────────────────────────────────────────────────
 const weather = new WeatherManager(scene);
@@ -105,7 +108,7 @@ const weather = new WeatherManager(scene);
 // ─── Renderer ─────────────────────────────────────────────────────────────────
 const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setClearColor(0x000000, 1);   // black fallback — masked by sky sphere in practice
+renderer.setClearColor(0x000000, 1);
 document.getElementById('canvas-wrap').appendChild(renderer.domElement);
 
 // ─── Camera ───────────────────────────────────────────────────────────────────
@@ -366,11 +369,13 @@ const _boundaryWalls = [];
 {
   const M    = CONFIG.MAP_HALF;
   const W    = M * 2 + 600;   // wide enough to cover corners from any angle
-  const H    = 180;
+  const H    = 60;
   const half = H / 2;
 
-  // Solid dark void planes — sit just beyond the boundary, fog blends them naturally
-  const voidMat = new THREE.MeshBasicMaterial({ color: 0x040810, side: THREE.DoubleSide });
+  // Void planes sit just beyond the boundary. Colour matches the clear-sky fog colour
+  // so they blend into the sky in clear weather (only 5% fog at that distance).
+  // In rain/fog/dust the dense fog already covers them — any colour would work.
+  const voidMat = new THREE.MeshBasicMaterial({ color: 0x9AB5C2, side: THREE.DoubleSide });
   const voidDefs = [
     { x:  0,   z: -(M + 1), ry:  0 },
     { x:  0,   z:  (M + 1), ry:  Math.PI },
@@ -1261,7 +1266,6 @@ function spawnArcadeWave() {
   wingmen = []; wingmanAIs = [];
   allTanks = [player, ...enemies];
   const { label: _wLabelA } = weather.init('arcade', 60 + enemies.length * 15);
-  weather.markSkyDirty();
   if (hudEncounter) { hudEncounter.textContent = _wLabelA; hudEncounter.style.opacity = '1'; _encounterTimer = 4.0; }
 }
 
@@ -1319,7 +1323,6 @@ function spawnAttritionBattle() {
   _spawnEnemyList(enemyTypes);
   allTanks = [..._playerSquad, ...enemies];
   const { label: _wLabelAt } = weather.init('attrition', 120);
-  weather.markSkyDirty();
   if (hudEncounter) { hudEncounter.textContent = _wLabelAt; hudEncounter.style.opacity = '1'; _encounterTimer = 4.0; }
   _showSquadHUD();
 }
@@ -1379,7 +1382,6 @@ function spawnStrategyBattle() {
   _spawnCrates();
   _buildObjective();
   const { label: _wLabelSt } = weather.init('strategy', 180);
-  weather.markSkyDirty();
   if (hudEncounter) { hudEncounter.textContent = _wLabelSt; hudEncounter.style.opacity = '1'; _encounterTimer = 4.0; }
   _showSquadHUD();
 }
@@ -1961,7 +1963,6 @@ function _initLanGame(rosterMap) {
   _demoAI         = null;
 
   weather.init('online', 300);
-  weather.markSkyDirty();
 
   game.start();
   if (hudMode)  hudMode.textContent  = 'LAN';
@@ -4882,7 +4883,7 @@ function animate(now) {
     // Keep fire/smoke alive on wrecks during death cam
     particles.update(dt);
     weather.update(dt);
-    weather.applyToScene(scene.fog, _skyGeo);
+    weather.applyToScene(scene.fog, _skyMat, _skyBg, _skyCanvas);
     if (hudSight) hudSight.style.display = 'none';
     _sky.position.copy(camera.position);
     renderer.render(scene, camera);
@@ -4898,7 +4899,7 @@ function animate(now) {
       audio.setEngineSpeed(Math.min(spd / player.maxSpeed, 1));
     }
     weather.update(dt);
-    weather.applyToScene(scene.fog, _skyGeo);
+    weather.applyToScene(scene.fog, _skyMat, _skyBg, _skyCanvas);
     _sky.position.copy(camera.position);
     renderer.render(scene, camera);
     input.tick();
@@ -5477,7 +5478,7 @@ function animate(now) {
 
   // ── Dynamic weather ───────────────────────────────────────────────────────────
   weather.update(dt);
-  weather.applyToScene(scene.fog, _skyGeo);
+  weather.applyToScene(scene.fog, _skyMat, _skyBg, _skyCanvas);
   const _wMsg = weather.consumeMessage();
   if (_wMsg && hudEncounter) {
     hudEncounter.textContent = _wMsg;
