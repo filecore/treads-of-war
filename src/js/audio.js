@@ -2,10 +2,12 @@
 // All sounds are generated procedurally — no audio files required.
 // AudioContext is created lazily on the first call to resume() (requires a user gesture).
 //
-// Engine design informed by spectral analysis of the original 1988 Archimedes game:
-//   — No sustained engine drone: original is essentially silent at idle.
-//   — Movement: bandpass noise at ~170 Hz, AM-modulated by track-link LFO.
-//   — Cannon: bell-curve envelope (~15 ms rise, ~25 ms decay); dominant ~200 Hz.
+// Engine design from spectral analysis of the original 1988 Archimedes game audio:
+//   — Sawtooth-like waveform at 57 Hz CONSTANT (pitch does NOT change with speed).
+//   — High harmonics of the sawtooth (9th–10th, ~513–570 Hz) are the audible squeak.
+//   — Previous lowpass at 200 Hz was killing those harmonics — removed.
+//   — Speed changes only volume and track-link LFO rate (3 Hz idle → 14 Hz max).
+//   — Shot: instant onset, dominant 160–280 Hz, ~150 ms decay.
 
 // ── Shared noise buffer factory ────────────────────────────────────────────────
 function _noiseBuffer(ctx, seconds) {
@@ -22,9 +24,9 @@ export class AudioManager {
     this._ctx       = null;
     this._master    = null;
     // Engine voice nodes (long-lived)
-    this._ns        = null;   // looped noise source
-    this._bpf       = null;   // bandpass shaping track clatter
-    this._gMain     = null;   // main gain (AM target)
+    this._osc       = null;   // sawtooth at 57 Hz — constant pitch
+    this._lpf       = null;   // mild lowpass (keeps squeak, softens very top)
+    this._gMain     = null;   // main gain — AM target, scales with speed
     this._lfo       = null;   // track-link AM oscillator
     this._lfoScale  = null;   // AM depth
   }
@@ -44,40 +46,43 @@ export class AudioManager {
   }
 
   // ── Continuous engine voice ────────────────────────────────────────────────
-  // Filtered noise AM-modulated at track-link cadence.
-  // Silent at idle; rises with speed.  No pitched drone.
+  // Sawtooth at 57 Hz — pitch is fixed; speed changes only gain and LFO rate.
+  // The 9th–10th harmonics (~513–570 Hz) give the characteristic high squeak.
+  // Track-link LFO imposes the rhythmic squeak cadence (3 Hz slow, 14 Hz fast).
   _startEngine() {
     const ctx = this._ctx;
 
-    const ns  = ctx.createBufferSource();
-    ns.buffer = _noiseBuffer(ctx, 3.0);
-    ns.loop   = true;
+    const osc = ctx.createOscillator();
+    osc.type          = 'sawtooth';
+    osc.frequency.value = 57;   // constant — never changes
 
-    const bpf     = ctx.createBiquadFilter();
-    bpf.type      = 'bandpass';
-    bpf.frequency.value = 170;
-    bpf.Q.value   = 1.8;
+    // Mild lowpass at 2 kHz: softens the very harshest ultra-high harmonics
+    // but leaves the audible squeak band (500–700 Hz) fully intact.
+    const lpf = ctx.createBiquadFilter();
+    lpf.type          = 'lowpass';
+    lpf.frequency.value = 2000;
+    lpf.Q.value       = 0.5;
 
-    const gMain   = ctx.createGain();
-    gMain.gain.value = 0.0;   // silent at rest
+    const gMain = ctx.createGain();
+    gMain.gain.value  = 0.0;   // silent at rest
 
-    // LFO: AM modulation simulating track-link impacts
-    const lfo     = ctx.createOscillator();
-    lfo.type      = 'sine';
-    lfo.frequency.value = 4;
+    // LFO: audio-rate AM — rhythmic track-link impacts
+    const lfo = ctx.createOscillator();
+    lfo.type          = 'sine';
+    lfo.frequency.value = 3;   // 3 Hz idle
 
     const lfoScale = ctx.createGain();
-    lfoScale.gain.value = 0.0;
+    lfoScale.gain.value = 0.0; // no modulation at rest
 
     lfo.connect(lfoScale);
     lfoScale.connect(gMain.gain);
 
-    ns.connect(bpf); bpf.connect(gMain); gMain.connect(this._master);
-    ns.start();
+    osc.connect(lpf); lpf.connect(gMain); gMain.connect(this._master);
+    osc.start();
     lfo.start();
 
-    this._ns       = ns;
-    this._bpf      = bpf;
+    this._osc      = osc;
+    this._lpf      = lpf;
     this._gMain    = gMain;
     this._lfo      = lfo;
     this._lfoScale = lfoScale;
@@ -88,43 +93,41 @@ export class AudioManager {
     if (!this._ctx) return;
     const t = this._ctx.currentTime;
 
-    // Main gain: silent at rest, rises with movement
-    const base = speed < 0.05 ? 0.0 : 0.04 + speed * 0.18;
-    this._gMain.gain.setTargetAtTime(base, t, 0.10);
+    // Pitch: UNCHANGED — sawtooth stays at 57 Hz regardless of speed.
 
-    // BPF centre rises slightly with speed (track link frequency goes up)
-    this._bpf.frequency.setTargetAtTime(150 + speed * 100, t, 0.15);
+    // Volume: silent at rest; rises proportionally with movement
+    const base = speed < 0.05 ? 0.0 : 0.015 + speed * 0.08;
+    this._gMain.gain.setTargetAtTime(base, t, 0.12);
 
-    // LFO rate: 4 Hz idle → 16 Hz full throttle
-    this._lfo.frequency.setTargetAtTime(4 + speed * 12, t, 0.15);
+    // Track-link LFO: 3 Hz idle → 14 Hz max (measured from original)
+    this._lfo.frequency.setTargetAtTime(3 + speed * 11, t, 0.15);
 
     // AM depth: none at rest, deepens with speed
-    this._lfoScale.gain.setTargetAtTime(speed * 0.10, t, 0.10);
+    this._lfoScale.gain.setTargetAtTime(speed * 0.07, t, 0.12);
   }
 
   // ── Player cannon fire ─────────────────────────────────────────────────────
-  // Measured envelope from original: ~15 ms linear rise, ~25 ms exponential fall.
-  // Dominant frequency ~200 Hz.  No high-frequency squeak, no sub-bass drone.
+  // Original measured: instant onset (<1 ms), dominant 160–280 Hz, ~150 ms decay.
   playFire() {
     if (!this._ctx) return;
     const ctx = this._ctx;
     const t   = ctx.currentTime;
 
     const ns  = ctx.createBufferSource();
-    ns.buffer = _noiseBuffer(ctx, 0.06);
+    ns.buffer = _noiseBuffer(ctx, 0.18);
 
-    const bpf = ctx.createBiquadFilter();
-    bpf.type  = 'bandpass';
-    bpf.frequency.value = 220;
-    bpf.Q.value = 1.4;
+    // Lowpass at 350 Hz covers the 160–280 Hz dominant range of the original
+    const lpf = ctx.createBiquadFilter();
+    lpf.type  = 'lowpass';
+    lpf.frequency.value = 350;
+    lpf.Q.value = 1.0;
 
-    const g   = ctx.createGain();
-    g.gain.setValueAtTime(0.0, t);
-    g.gain.linearRampToValueAtTime(1.1, t + 0.015);    // 15 ms rise (measured)
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.040);  // 25 ms fall
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(1.4, t);                          // instant onset
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);  // 150 ms decay
 
-    ns.connect(bpf); bpf.connect(g); g.connect(this._master);
-    ns.start(t); ns.stop(t + 0.05);
+    ns.connect(lpf); lpf.connect(g); g.connect(this._master);
+    ns.start(t); ns.stop(t + 0.18);
   }
 
   // ── Explosion (distance-attenuated) ───────────────────────────────────────
@@ -146,7 +149,6 @@ export class AudioManager {
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
 
-    // Sub-bass boom
     const sub = ctx.createOscillator();
     sub.type  = 'sine';
     sub.frequency.setValueAtTime(55, t);
