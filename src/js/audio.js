@@ -2,10 +2,10 @@
 // All sounds are generated procedurally — no audio files required.
 // AudioContext is created lazily on the first call to resume() (requires a user gesture).
 //
-// Engine design is based on spectral analysis of the original Archimedes game:
-//   — Idle engine: ~55 Hz fundamental (pitched looped sample), rises to ~210 Hz at speed.
-//   — Track-link AM modulation: ~3.5 Hz at idle, up to ~15 Hz at full throttle.
-//   — Cannon shot: very percussive (~10 ms body), dominant ~200 Hz, no deep sub-bass.
+// Engine design informed by spectral analysis of the original 1988 Archimedes game:
+//   — No sustained engine drone: original is essentially silent at idle.
+//   — Movement: bandpass noise at ~170 Hz, AM-modulated by track-link LFO.
+//   — Cannon: bell-curve envelope (~15 ms rise, ~25 ms decay); dominant ~200 Hz.
 
 // ── Shared noise buffer factory ────────────────────────────────────────────────
 function _noiseBuffer(ctx, seconds) {
@@ -22,9 +22,9 @@ export class AudioManager {
     this._ctx       = null;
     this._master    = null;
     // Engine voice nodes (long-lived)
-    this._osc       = null;   // sawtooth oscillator — pitch scales with speed
-    this._lpf       = null;   // lowpass shaping harmonics
-    this._gMain     = null;   // main engine gain (AM target)
+    this._ns        = null;   // looped noise source
+    this._bpf       = null;   // bandpass shaping track clatter
+    this._gMain     = null;   // main gain (AM target)
     this._lfo       = null;   // track-link AM oscillator
     this._lfoScale  = null;   // AM depth
   }
@@ -44,44 +44,40 @@ export class AudioManager {
   }
 
   // ── Continuous engine voice ────────────────────────────────────────────────
-  // Sawtooth oscillator whose pitch tracks tank speed, amplitude-modulated by
-  // a low-frequency oscillator simulating rhythmic track-link impacts.
-  // Based on measured original: 55 Hz at idle → ~210 Hz at full throttle.
-  // Track-link rate: 3.5 Hz idle → ~15 Hz full throttle.
+  // Filtered noise AM-modulated at track-link cadence.
+  // Silent at idle; rises with speed.  No pitched drone.
   _startEngine() {
     const ctx = this._ctx;
 
-    // Sawtooth oscillator — rich harmonics mimic the original's looped sample
-    const osc = ctx.createOscillator();
-    osc.type          = 'sawtooth';
-    osc.frequency.value = 55;   // idle pitch
+    const ns  = ctx.createBufferSource();
+    ns.buffer = _noiseBuffer(ctx, 3.0);
+    ns.loop   = true;
 
-    // Lowpass shapes the harmonic stack: passes fundamental + 2–3 overtones
-    const lpf = ctx.createBiquadFilter();
-    lpf.type          = 'lowpass';
-    lpf.frequency.value = 220;  // just above 4th harmonic at idle
-    lpf.Q.value       = 0.8;
+    const bpf     = ctx.createBiquadFilter();
+    bpf.type      = 'bandpass';
+    bpf.frequency.value = 170;
+    bpf.Q.value   = 1.8;
 
-    const gMain = ctx.createGain();
-    gMain.gain.value  = 0.04;   // quiet at rest
+    const gMain   = ctx.createGain();
+    gMain.gain.value = 0.0;   // silent at rest
 
-    // LFO: audio-rate AM — gain sums with the base value
-    const lfo = ctx.createOscillator();
-    lfo.type          = 'sine';
-    lfo.frequency.value = 3.5;  // ~3.5 Hz measured at idle
+    // LFO: AM modulation simulating track-link impacts
+    const lfo     = ctx.createOscillator();
+    lfo.type      = 'sine';
+    lfo.frequency.value = 4;
 
     const lfoScale = ctx.createGain();
-    lfoScale.gain.value = 0.0;  // no modulation at rest
+    lfoScale.gain.value = 0.0;
 
     lfo.connect(lfoScale);
     lfoScale.connect(gMain.gain);
 
-    osc.connect(lpf); lpf.connect(gMain); gMain.connect(this._master);
-    osc.start();
+    ns.connect(bpf); bpf.connect(gMain); gMain.connect(this._master);
+    ns.start();
     lfo.start();
 
-    this._osc      = osc;
-    this._lpf      = lpf;
+    this._ns       = ns;
+    this._bpf      = bpf;
     this._gMain    = gMain;
     this._lfo      = lfo;
     this._lfoScale = lfoScale;
@@ -92,60 +88,43 @@ export class AudioManager {
     if (!this._ctx) return;
     const t = this._ctx.currentTime;
 
-    // Pitch: 55 Hz idle → 210 Hz full speed (matches original spectral analysis)
-    this._osc.frequency.setTargetAtTime(55 + speed * 155, t, 0.25);
+    // Main gain: silent at rest, rises with movement
+    const base = speed < 0.05 ? 0.0 : 0.04 + speed * 0.18;
+    this._gMain.gain.setTargetAtTime(base, t, 0.10);
 
-    // LPF opens as engine revs — preserves character at all speeds
-    this._lpf.frequency.setTargetAtTime(200 + speed * 500, t, 0.20);
+    // BPF centre rises slightly with speed (track link frequency goes up)
+    this._bpf.frequency.setTargetAtTime(150 + speed * 100, t, 0.15);
 
-    // Main gain: soft at rest, louder when moving
-    const base = 0.03 + speed * 0.12;
-    this._gMain.gain.setTargetAtTime(base, t, 0.12);
+    // LFO rate: 4 Hz idle → 16 Hz full throttle
+    this._lfo.frequency.setTargetAtTime(4 + speed * 12, t, 0.15);
 
-    // Track-link LFO: 3.5 Hz idle → 15 Hz full throttle
-    this._lfo.frequency.setTargetAtTime(3.5 + speed * 11.5, t, 0.18);
-
-    // AM depth: no modulation at rest, deepens with speed
-    this._lfoScale.gain.setTargetAtTime(speed * 0.08, t, 0.12);
+    // AM depth: none at rest, deepens with speed
+    this._lfoScale.gain.setTargetAtTime(speed * 0.10, t, 0.10);
   }
 
   // ── Player cannon fire ─────────────────────────────────────────────────────
-  // Original is extremely percussive (~10 ms body), dominant ~200 Hz.
-  // Sawtooth burst through a bandpass, plus a brief highpass crack.
-  // No long sub-bass component — that was causing the "champagne pop" effect.
+  // Measured envelope from original: ~15 ms linear rise, ~25 ms exponential fall.
+  // Dominant frequency ~200 Hz.  No high-frequency squeak, no sub-bass drone.
   playFire() {
     if (!this._ctx) return;
     const ctx = this._ctx;
     const t   = ctx.currentTime;
 
-    // Initial crack: very brief highpass noise burst
-    const ns1 = ctx.createBufferSource();
-    ns1.buffer = _noiseBuffer(ctx, 0.02);
-    const nf1  = ctx.createBiquadFilter();
-    nf1.type   = 'highpass';
-    nf1.frequency.value = 2200;
-    const ng1  = ctx.createGain();
-    ng1.gain.setValueAtTime(0.9, t);
-    ng1.gain.exponentialRampToValueAtTime(0.001, t + 0.015);
-    ns1.connect(nf1); nf1.connect(ng1); ng1.connect(this._master);
-    ns1.start(t); ns1.stop(t + 0.02);
+    const ns  = ctx.createBufferSource();
+    ns.buffer = _noiseBuffer(ctx, 0.06);
 
-    // Shot body: sawtooth pitch-drops through bandpass at ~200 Hz
-    // Matches original's measured dominant frequency at shot onset
-    const osc = ctx.createOscillator();
-    osc.type  = 'sawtooth';
-    osc.frequency.setValueAtTime(70, t);
-    osc.frequency.exponentialRampToValueAtTime(28, t + 0.08);
     const bpf = ctx.createBiquadFilter();
     bpf.type  = 'bandpass';
-    bpf.frequency.value = 210;
-    bpf.Q.value = 0.7;
-    const og  = ctx.createGain();
-    og.gain.setValueAtTime(0.0, t);
-    og.gain.linearRampToValueAtTime(1.3, t + 0.003);    // 3 ms attack
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.08);  // fast decay
-    osc.connect(bpf); bpf.connect(og); og.connect(this._master);
-    osc.start(t); osc.stop(t + 0.09);
+    bpf.frequency.value = 220;
+    bpf.Q.value = 1.4;
+
+    const g   = ctx.createGain();
+    g.gain.setValueAtTime(0.0, t);
+    g.gain.linearRampToValueAtTime(1.1, t + 0.015);    // 15 ms rise (measured)
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.040);  // 25 ms fall
+
+    ns.connect(bpf); bpf.connect(g); g.connect(this._master);
+    ns.start(t); ns.stop(t + 0.05);
   }
 
   // ── Explosion (distance-attenuated) ───────────────────────────────────────
@@ -189,7 +168,6 @@ export class AudioManager {
     const ctx = this._ctx;
     const t   = ctx.currentTime;
 
-    // Metallic clang: bandpass noise
     const ns        = ctx.createBufferSource();
     ns.buffer       = _noiseBuffer(ctx, 0.55);
     const nf        = ctx.createBiquadFilter();
@@ -201,7 +179,6 @@ export class AudioManager {
     ng.gain.setValueAtTime(0.55, t);
     ng.gain.exponentialRampToValueAtTime(0.001, t + 0.50);
 
-    // Low impact thud
     const osc  = ctx.createOscillator();
     osc.type   = 'sine';
     osc.frequency.setValueAtTime(160, t);
@@ -223,7 +200,6 @@ export class AudioManager {
     const ctx = this._ctx;
     const t   = ctx.currentTime;
 
-    // Sharp crack: sawtooth burst dropping fast
     const crack = ctx.createOscillator();
     crack.type  = 'sawtooth';
     crack.frequency.setValueAtTime(2200, t);
@@ -234,7 +210,6 @@ export class AudioManager {
     crack.connect(cg); cg.connect(this._master);
     crack.start(t); crack.stop(t + 0.12);
 
-    // Whoosh: bandpass noise sweeping down
     const ns = ctx.createBufferSource();
     ns.buffer = _noiseBuffer(ctx, 0.30);
     const nf  = ctx.createBiquadFilter();
