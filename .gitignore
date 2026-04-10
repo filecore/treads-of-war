@@ -1,2 +1,6 @@
 # Build artifacts
 *.zip
+
+# Local-only directories (kept locally, not tracked in git)
+analysis/
+data/
