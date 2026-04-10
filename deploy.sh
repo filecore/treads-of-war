@@ -4,20 +4,14 @@
 sed -i 's/\r//' "$0" 2>/dev/null || true
 set -e
 
-TREADS_REMOTE="user@your-server:/home/user/docker/treads/www-data/"
+TREADS_REMOTE="user@your-server:/home/user/docker/treads/www-data/treads/"
 
-# ── 1. Push game + zip to treads.example.com ──────────────────────────────────
+# ── 1. Push game + zip to treads.example.com/treads/ ─────────────────────────
 echo ""
-echo "Syncing to treads.example.com..."
-# Exclude subdirectories that belong to other builds; use --checksum to avoid
-# WSL2 mtime issues when files are edited on the Windows-mounted drive.
-rsync -av --checksum --delete \
-  --exclude='treads/' \
-  --exclude='treads-combined/' \
-  --exclude='treads-mobile/' \
-  --exclude='treads-mobile-lan/' \
-  --exclude='treads_of_war_source_v*.zip' \
-  src/ "${TREADS_REMOTE}"
+echo "Syncing to treads.example.com/treads/..."
+# Use --checksum to avoid WSL2 mtime issues when files are edited on the
+# Windows-mounted drive (/mnt/c/).
+rsync -av --checksum --delete src/ "${TREADS_REMOTE}"
 for zipfile in treads_of_war_source_v*.zip; do
   [ -f "$zipfile" ] && scp "$zipfile" "user@your-server:/home/user/docker/treads/www-data/treads/"
 done
