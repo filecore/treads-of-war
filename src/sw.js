@@ -1,7 +1,7 @@
 // sw.js — Service worker for Treads of War PWA
 // Cache-first strategy; bump CACHE_NAME on every deploy to invalidate old caches
 
-const CACHE_NAME = 'treads-v1';
+const CACHE_NAME = 'treads-v2';
 
 const PRECACHE = [
   './index.html',

@@ -590,6 +590,99 @@ function createHouse(small = false) {
   return { group, w, d, h };
 }
 
+// ─── Church ───────────────────────────────────────────────────────────────────
+// Reddish-brown nave with a steeple tower at the rear end.
+const _churchWallMat = new THREE.MeshBasicMaterial({ color: 0x9B3A28, side: THREE.DoubleSide });
+const _churchRoofMat = new THREE.MeshLambertMaterial({ color: 0x6B2218, flatShading: true, side: THREE.DoubleSide });
+
+// Group pivot is at ground level, centre of the nave footprint.
+// Returns { group, w, d, h } where d includes the steeple tower depth.
+function createChurch() {
+  const w     = 4.5;   // nave width  (X)
+  const d     = 6.0;   // nave depth  (Z)
+  const h     = 3.0;   // nave wall height
+  const roofH = 1.8;   // nave roof peak above walls
+
+  const tW    = 2.2;   // tower width
+  const tD    = 2.2;   // tower depth
+  const tH    = 5.5;   // tower wall height (from ground)
+  const tCapH = 2.8;   // steeple pyramid height
+  const tZ    = d / 2 + tD / 2;   // tower centre in local +Z
+
+  const group = new THREE.Group();
+
+  // Nave walls
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), _churchWallMat);
+  walls.position.y = h / 2;
+  group.add(walls);
+
+  // Nave roof — ridge along Z, same construction as house
+  const rv = new Float32Array([
+    -w/2, h, -d/2,   w/2, h, -d/2,   0, h+roofH, -d/2,
+    -w/2, h,  d/2,   w/2, h,  d/2,   0, h+roofH,  d/2,
+    -w/2, h, -d/2,   0, h+roofH, -d/2,  -w/2, h,  d/2,
+     0, h+roofH, -d/2,  0, h+roofH,  d/2,  -w/2, h,  d/2,
+     w/2, h, -d/2,   0, h+roofH, -d/2,   w/2, h,  d/2,
+     0, h+roofH, -d/2,  0, h+roofH,  d/2,   w/2, h,  d/2,
+  ]);
+  const roofGeo = new THREE.BufferGeometry();
+  roofGeo.setAttribute('position', new THREE.BufferAttribute(rv, 3));
+  roofGeo.computeVertexNormals();
+  group.add(new THREE.Mesh(roofGeo, _churchRoofMat));
+
+  // Tower walls — attached at +Z end of nave
+  const tower = new THREE.Mesh(new THREE.BoxGeometry(tW, tH, tD), _churchWallMat);
+  tower.position.set(0, tH / 2, tZ);
+  group.add(tower);
+
+  // Steeple cap — four-sided pyramid atop the tower
+  const hW = tW / 2, hD = tD / 2;
+  const apexY = tH + tCapH;
+  const capVerts = new Float32Array([
+    -hW, tH, tZ-hD,   hW, tH, tZ-hD,   0, apexY, tZ,   // front face
+     hW, tH, tZ+hD,  -hW, tH, tZ+hD,   0, apexY, tZ,   // back face
+    -hW, tH, tZ+hD,  -hW, tH, tZ-hD,   0, apexY, tZ,   // left face
+     hW, tH, tZ-hD,   hW, tH, tZ+hD,   0, apexY, tZ,   // right face
+  ]);
+  const capGeo = new THREE.BufferGeometry();
+  capGeo.setAttribute('position', new THREE.BufferAttribute(capVerts, 3));
+  capGeo.computeVertexNormals();
+  group.add(new THREE.Mesh(capGeo, _churchRoofMat));
+
+  return { group, w, d: d + tD, h };
+}
+
+// Returns the world positions where two distinct road splines come within ~1.2×road-width
+// of each other — at most one result per road pair, deduped to 22 units.
+function _findCrossroads() {
+  const result      = [];
+  const interThresh2 = (ROAD_WIDTH * 1.2) * (ROAD_WIDTH * 1.2);
+  const dedupeThresh2 = 22 * 22;
+  for (let a = 0; a < _roadSplines.length - 1; a++) {
+    for (let b = a + 1; b < _roadSplines.length; b++) {
+      let foundPair = false;
+      for (let ai = 0; ai < _roadSplines[a].length && !foundPair; ai++) {
+        const ptA = _roadSplines[a][ai];
+        for (let bi = 0; bi < _roadSplines[b].length && !foundPair; bi++) {
+          const ptB = _roadSplines[b][bi];
+          const dx = ptA.x - ptB.x, dz = ptA.z - ptB.z;
+          if (dx * dx + dz * dz < interThresh2) {
+            const cx = (ptA.x + ptB.x) * 0.5, cz = (ptA.z + ptB.z) * 0.5;
+            let dupe = false;
+            for (const cr of result) {
+              const ddx = cx - cr.x, ddz = cz - cr.z;
+              if (ddx * ddx + ddz * ddz < dedupeThresh2) { dupe = true; break; }
+            }
+            if (!dupe) result.push({ x: cx, z: cz });
+            foundPair = true;
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
 // Houses clustered alongside roads. Entry format: { x, y, z, h, radius, meshes[], alive }
 const _buildings = [];
 
@@ -652,6 +745,42 @@ function _rebuildBuildings(seed) {
           meshes: [group], alive: true,
         });
       }
+    }
+  }
+
+  // ── Church placement — at most one per crossroads, rarer than houses ──
+  const crossroads = _findCrossroads();
+  for (const cr of crossroads) {
+    if (rng() > 0.55) continue;   // ~45 % chance per crossroads
+    let placed = false;
+    for (let attempt = 0; attempt < 12 && !placed; attempt++) {
+      const angle  = rng() * Math.PI * 2;
+      const dist   = ROAD_WIDTH * 1.5 + rng() * ROAD_WIDTH * 2.0;
+      const cx = cr.x + Math.cos(angle) * dist;
+      const cz = cr.z + Math.sin(angle) * dist;
+      const gy = getAltitude(cx, cz);
+      if (gy < CONFIG.SEA_LEVEL + 2) continue;
+      if (_isOnRoad(cx, cz, 5)) continue;
+      if (_waterAt(cx, cz).onPond) continue;
+      let tooClose = false;
+      for (const existing of _buildings) {
+        const edx = cx - existing.x, edz = cz - existing.z;
+        if (edx * edx + edz * edz < 15 * 15) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+      const { group, w, d, h } = createChurch();
+      group.position.set(cx, gy, cz);
+      // Face the gable end toward the crossroads
+      const faceX = cr.x - cx, faceZ = cr.z - cz;
+      group.rotation.y = Math.atan2(-faceX, -faceZ);
+      scene.add(group);
+      _buildings.push({
+        x: cx, y: gy, z: cz, w, d, h,
+        rotY: group.rotation.y,
+        radius: 5.5,
+        meshes: [group], alive: true,
+      });
+      placed = true;
     }
   }
 }
