@@ -5259,6 +5259,10 @@ function animate(now) {
   // ── Enemy AI ─────────────────────────────────────────────────────────────────
   // Suppress AI fire when player is inside a smoke cloud
   const _playerObscured = _isInSmoke(player.position.x, player.position.z);
+  // Tree cover: count live trees within 12 units; each reduces detect/engage range by 8%,
+  // capped at 35% reduction (0.65).  Computed once here, applied to all AI controllers.
+  const _treesNearPlayer  = chunkManager.getTreesNear(player.position.x, player.position.z, 12 * 12);
+  const _playerCoverMult  = Math.max(0.65, 1.0 - _treesNearPlayer.length * 0.08);
   for (let i = 0; i < enemies.length; i++) {
     const enemy = enemies[i];
     if (!enemy.alive) continue;
@@ -5266,7 +5270,7 @@ function animate(now) {
       enemy.leftSpeed  = 0;
       enemy.rightSpeed = 0;
     } else {
-      aiControllers[i].update(dt, player, combat, particles, _playerObscured, weather.getDetectionMultiplier(), weather.getFireIntervalMultiplier(), weather.getEngageRangeMultiplier());
+      aiControllers[i].update(dt, player, combat, particles, _playerObscured, weather.getDetectionMultiplier() * _playerCoverMult, weather.getFireIntervalMultiplier(), weather.getEngageRangeMultiplier() * _playerCoverMult);
     }
     enemy.update(dt, { skipAccel: true, turretLeft:false, turretRight:false, fire:false, fireOnce:false });
   }
