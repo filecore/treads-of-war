@@ -272,10 +272,13 @@ function _pickTreeType(rngVal) {
 
 // ─── Terrain objects (trees) ──────────────────────────────────────────────────
 
-const TREE_GROUPS     = 3;   // cluster anchors per chunk
-const TREES_PER_GROUP = 3;   // trees per cluster
-const TREES_SCATTER   = 1;   // solo scatter trees (total per chunk: 3×3+1 = 10)
-const CLUMP_R         = 10;  // cluster radius in world units
+const TREE_GROUPS     = 3;    // cluster anchors per chunk
+const TREES_PER_GROUP = 2;    // trees per small cluster
+const TREES_SCATTER   = 1;    // solo scatter trees
+const CLUMP_R         = 9;    // small cluster radius (world units)
+const FOREST_CHANCE   = 0.25; // per-cluster probability of being a mini-forest
+const FOREST_TREES    = 10;   // trees in a mini-forest cluster
+const FOREST_R        = 20;   // mini-forest radius (world units)
 const TREE_MIN_ALT    = CONFIG.SEA_LEVEL + 1;  // no trees on water; start just above water line
 
 // Cheap deterministic RNG seeded by chunk coordinates
@@ -326,10 +329,13 @@ function buildChunkObjects(chunkX, chunkZ, roadFilter = null) {
   const rng      = new SeededRng((chunkX * 73856093) ^ (chunkZ * 19349663));
   const treeData = [];
 
-  // Always consume 3 rng calls per candidate so RNG sequence stays position-independent
-  function tryPlace(wx, wz) {
+  // Always consume 3 rng calls per candidate so RNG sequence stays position-independent.
+  // overrideType >= 0 pins the species (used for forest clusters); the type rng value is
+  // still consumed so rejected candidates don't shift the sequence.
+  function tryPlace(wx, wz, overrideType = -1) {
     const s       = 0.80 + rng.next() * 0.40;
-    const typeIdx = _TREE_TYPES.indexOf(_pickTreeType(rng.next()));
+    const rngType = rng.next();
+    const typeIdx = overrideType >= 0 ? overrideType : _TREE_TYPES.indexOf(_pickTreeType(rngType));
     const rotY    = rng.next() * Math.PI * 2;
     const alt     = getAltitude(wx, wz);
     if (alt < TREE_MIN_ALT) return;
@@ -337,14 +343,20 @@ function buildChunkObjects(chunkX, chunkZ, roadFilter = null) {
     treeData.push({ wx, wz, alt, s, typeIdx, rotY });
   }
 
-  // Clustered trees — most trees spawn in groups for a natural woodland feel
+  // Clustered trees — 25 % of clusters grow into a mini-forest (more trees, larger radius,
+  // one dominant species); the rest are small loose pairs for background variety.
   for (let g = 0; g < TREE_GROUPS; g++) {
-    const ax = wx0 + rng.next() * CTS;
-    const az = wz0 + rng.next() * CTS;
-    for (let t = 0; t < TREES_PER_GROUP; t++) {
+    const ax       = wx0 + rng.next() * CTS;
+    const az       = wz0 + rng.next() * CTS;
+    const isForest = rng.next() < FOREST_CHANCE;
+    const domType  = Math.floor(rng.next() * _TREE_TYPES.length);  // always consumed
+    const count    = isForest ? FOREST_TREES : TREES_PER_GROUP;
+    const radius   = isForest ? FOREST_R    : CLUMP_R;
+    const override = isForest ? domType     : -1;
+    for (let t = 0; t < count; t++) {
       const ang = rng.next() * Math.PI * 2;
-      const r   = rng.next() * CLUMP_R;
-      tryPlace(ax + Math.cos(ang) * r, az + Math.sin(ang) * r);
+      const r   = rng.next() * radius;
+      tryPlace(ax + Math.cos(ang) * r, az + Math.sin(ang) * r, override);
     }
   }
 
