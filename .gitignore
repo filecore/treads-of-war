@@ -2,6 +2,9 @@
 *.zip
 !treaducation/treaducation.zip
 
+# Local deployment config (contains server IPs, paths, credentials)
+.deploy.conf
+
 # Audio working files
 src/audio/*.bak
 src/audio/preview/
