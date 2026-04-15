@@ -5,7 +5,7 @@
 // Players connect to ws://[server]:8765; all game traffic is relayed.
 // No WebRTC, no local installation required on player machines.
 //
-// npm install ws
+// Dependency: npm install ws
 
 const http = require('http');
 const { WebSocketServer } = require('ws');
