@@ -45,6 +45,14 @@ echo "Syncing to ${DOMAIN}..."
 # --checksum avoids WSL2 mtime issues when files are edited on a Windows-mounted drive
 rsync -av --checksum --delete src/ "${SSH_HOST}:${REMOTE_WEB_ROOT}"
 
+# ── 1b. Sync treaducation to server ───────────────────────────────────────
+if [ -d treaducation ]; then
+  echo ""
+  echo "Syncing treaducation..."
+  TREADUCATION_REMOTE="${REMOTE_WEB_ROOT%treads/}treaducation/"
+  rsync -av --checksum --delete treaducation/ "${SSH_HOST}:${TREADUCATION_REMOTE}"
+fi
+
 echo ""
 echo "Done. ${DOMAIN} updated."
 
