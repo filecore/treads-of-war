@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Treaducation - Teacher's Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #4a9edd;
+      --gold:    #f0e8b4;
+      --dimtext: rgba(180,210,240,0.65);
+      --bg:      #080e14;
+      --panel:   rgba(255,255,255,0.04);
+      --border:  rgba(74,158,221,0.22);
+    }
+
+    body {
+      background: var(--bg);
+      color: #c8d8ee;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* back bar */
+    .back-bar {
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .back-link {
+      color: var(--dimtext);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: var(--blue); }
+
+    /* hero */
+    .hero {
+      text-align: center;
+      padding: 48px 40px 36px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(8,20,36,0.98) 0%, rgba(8,14,20,1) 100%);
+    }
+    .hero-title {
+      font-size: 36px;
+      letter-spacing: 0.14em;
+      color: var(--blue);
+      text-transform: uppercase;
+      text-shadow: 0 0 40px rgba(74,158,221,0.35);
+      margin-bottom: 8px;
+    }
+    .hero-sub {
+      font-size: 12px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--dimtext);
+      margin-bottom: 24px;
+    }
+    .hero-intro {
+      max-width: 600px;
+      margin: 0 auto;
+      font-size: 13px;
+      color: var(--dimtext);
+      line-height: 1.75;
+    }
+
+    /* page body */
+    .page {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 40px 32px 80px;
+    }
+
+    /* section headings */
+    .section-title {
+      font-size: 12px;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+      margin-top: 48px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title:first-of-type { margin-top: 0; }
+
+    /* info cards */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 14px 18px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 8px;
+    }
+    .card p, .card li {
+      font-size: 13px;
+      color: var(--dimtext);
+      line-height: 1.65;
+    }
+    .card ul, .card ol {
+      padding-left: 18px;
+      margin-top: 4px;
+    }
+    .card li { margin-bottom: 3px; }
+
+    /* step blocks */
+    .step-block {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--blue);
+      padding: 18px 22px;
+      margin-bottom: 16px;
+    }
+    .step-block-title {
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .step-block-title span {
+      color: var(--blue);
+      opacity: 0.6;
+      margin-right: 8px;
+    }
+
+    .sub-heading {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-top: 12px;
+      margin-bottom: 5px;
+    }
+
+    p.body {
+      font-size: 13px;
+      color: var(--dimtext);
+      line-height: 1.7;
+      margin-bottom: 8px;
+    }
+
+    ul.body, ol.body {
+      font-size: 13px;
+      color: var(--dimtext);
+      line-height: 1.7;
+      padding-left: 18px;
+      margin-bottom: 8px;
+    }
+    ul.body li, ol.body li { margin-bottom: 3px; }
+
+    .callout {
+      border: 1px solid rgba(240,232,180,0.22);
+      background: rgba(240,232,180,0.04);
+      padding: 10px 16px;
+      margin: 10px 0;
+      font-size: 13px;
+      color: rgba(240,232,180,0.7);
+      line-height: 1.65;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .tag {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(74,158,221,0.7);
+      background: rgba(74,158,221,0.08);
+      border: 1px solid rgba(74,158,221,0.22);
+      padding: 2px 6px;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 24px 20px;
+      font-size: 11px;
+      color: rgba(180,210,240,0.25);
+    }
+    footer a { color: rgba(74,158,221,0.55); text-decoration: none; }
+    footer a:hover { color: var(--blue); }
+  </style>
+</head>
+<body>
+
+  <div class="back-bar">
+    <a href="index.html" class="back-link">- Back to Treaducation</a>
+  </div>
+
+  <div class="hero">
+    <div class="hero-title">Teacher's Guide</div>
+    <div class="hero-sub">Treaducation - Code &amp; Learn</div>
+    <p class="hero-intro">
+      For teachers or session leaders running Treaducation with a group.
+      You don't need to be a programmer. The material is self-guiding - your job is
+      to keep students moving, help them get unstuck, and ask the right questions.
+    </p>
+  </div>
+
+  <main class="page">
+
+    <!-- Overview -->
+    <h2 class="section-title">Overview</h2>
+
+    <div class="card">
+      <div class="card-title">What students will build</div>
+      <p>A two-player 3D tank battle game, running entirely in a browser. No downloads,
+      no accounts, no install. By the end of Step 5 each student has a working game
+      they built themselves - and can take home, share, and modify.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Who this is for</div>
+      <p>Curious beginners aged roughly 12-16. No prior coding experience required.
+      Students who have done a little HTML or JavaScript before will move faster,
+      but the material assumes nothing.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">What each student needs</div>
+      <ul>
+        <li>A laptop or desktop with Chrome or Firefox</li>
+        <li>A text editor - Notepad or TextEdit work fine; VS Code is better if available</li>
+        <li>An internet connection (Three.js loads from a CDN on first open)</li>
+        <li>The reference files open in a second browser tab to check work against</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Session planning</div>
+      <ul>
+        <li>Each step is roughly 45-60 minutes for a beginner working independently</li>
+        <li>Steps 3 and 5 tend to run longer - budget extra time or split them across sessions</li>
+        <li>Steps 1 and 2 work well together as a first session - short and satisfying</li>
+        <li>Five sessions of one hour each is a realistic schedule for most groups</li>
+        <li>Fast finishers: point them at the "What's next?" ideas in the README, or ask them to explain their code to a classmate</li>
+      </ul>
+    </div>
+
+
+    <!-- Your role -->
+    <h2 class="section-title">Your role as facilitator</h2>
+
+    <p class="body">
+      You don't need to know JavaScript to run these sessions. The step files are the
+      answer key. If a student is stuck, the first step is always: "Open the reference file
+      and compare your code to it line by line." That skill - reading and comparing code - is
+      itself something worth learning.
+    </p>
+
+    <div class="callout">
+      The most important rule: let students struggle a little before helping. Five minutes
+      of being stuck and then solving it themselves is worth more than being shown the answer.
+      Ten minutes stuck with no progress is when to step in.
+    </div>
+
+    <p class="body">Useful things to say when a student is stuck:</p>
+    <ul class="body">
+      <li>"Open the reference file. Find the part that does this. What's different in yours?"</li>
+      <li>"Open the browser console (F12, then Console tab). What does it say?"</li>
+      <li>"Read it out loud to me." (Students often spot their own errors while explaining.)</li>
+      <li>"Did you save the file before refreshing the browser?"</li>
+    </ul>
+
+    <p class="body" style="margin-top:12px;">
+      The browser console (F12) is your most powerful tool. Almost every error appears
+      there in plain English. You don't need to understand JavaScript to read
+      "Uncaught ReferenceError: camera is not defined" and help a student find where
+      they forgot to declare a variable.
+    </p>
+
+
+    <!-- Step by step -->
+    <h2 class="section-title">Step by step</h2>
+
+    <!-- Step 1 -->
+    <div class="step-block">
+      <div class="step-block-title"><span>01</span> Hello World</div>
+
+      <p class="body">Students create a blank HTML file and get a rotating green cube on screen.
+      This is the hardest step emotionally - starting from nothing is daunting. Once the cube
+      appears, confidence jumps sharply.</p>
+
+      <div class="sub-heading">Key concepts introduced</div>
+      <ul class="body">
+        <li><strong>Scene</strong> - the container that holds everything in the 3D world</li>
+        <li><strong>Camera</strong> - the viewpoint we look through</li>
+        <li><strong>Renderer</strong> - the engine that draws the scene onto the screen</li>
+        <li><strong>Animation loop</strong> - a function that runs ~60 times per second and redraws the scene</li>
+      </ul>
+
+      <div class="sub-heading">Common mistakes</div>
+      <ul class="body">
+        <li>Forgetting to append the renderer to the page body - the canvas exists but is invisible</li>
+        <li>Missing or broken importmap - Three.js won't load, everything fails silently</li>
+        <li>Not calling requestAnimationFrame inside animate - the cube appears but doesn't move</li>
+        <li>Camera still at 0,0,0 (inside the cube) - screen appears solid green</li>
+      </ul>
+
+      <div class="sub-heading">Good questions to ask</div>
+      <ul class="body">
+        <li>"What would happen if we removed the animate() call at the bottom?"</li>
+        <li>"Why do we need all three things - scene, camera, and renderer? What does each one do?"</li>
+        <li>"What would you change to make the cube red instead of green?"</li>
+      </ul>
+
+      <div class="tag-row">
+        <span class="tag">Scene / Camera / Renderer</span>
+        <span class="tag">BoxGeometry</span>
+        <span class="tag">Animation loop</span>
+        <span class="tag">requestAnimationFrame</span>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-block">
+      <div class="step-block-title"><span>02</span> Flat Terrain</div>
+
+      <p class="body">The cube is replaced with an open landscape - a flat plane, a grid overlay,
+      a sky colour, and fog that hides the edge. OrbitControls let students fly around.
+      This step is short and satisfying.</p>
+
+      <div class="sub-heading">Key concepts introduced</div>
+      <ul class="body">
+        <li><strong>PlaneGeometry</strong> - a flat surface that acts as the ground</li>
+        <li><strong>Fog</strong> - fades objects to the background colour with distance, hiding the world edge</li>
+        <li><strong>OrbitControls</strong> - an add-on that lets the mouse rotate, pan, and zoom the camera</li>
+      </ul>
+
+      <div class="sub-heading">Common mistakes</div>
+      <ul class="body">
+        <li>Forgetting to rotate the plane - PlaneGeometry starts vertical like a wall, not flat like a floor</li>
+        <li>Fog colour different from background - leaves a visible hard edge at the horizon</li>
+        <li>OrbitControls import path wrong - Three.js add-ons need a slightly different path than the core library</li>
+      </ul>
+
+      <div class="sub-heading">Good questions to ask</div>
+      <ul class="body">
+        <li>"Comment out the fog line. What changes? Why might we want fog in a game?"</li>
+        <li>"What does OrbitControls actually do? What controls it - the library or your code?"</li>
+        <li>"How would you change the sky to sunset orange?"</li>
+      </ul>
+
+      <div class="tag-row">
+        <span class="tag">PlaneGeometry</span>
+        <span class="tag">GridHelper</span>
+        <span class="tag">Fog</span>
+        <span class="tag">OrbitControls</span>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-block">
+      <div class="step-block-title"><span>03</span> Tank and Controls</div>
+
+      <p class="body">The longest step. Students build a tank from three grouped boxes, add keyboard
+      controls, and get the camera to follow behind. The key concept - delta time - is introduced
+      here and is worth spending time on.</p>
+
+      <div class="sub-heading">Key concepts introduced</div>
+      <ul class="body">
+        <li><strong>THREE.Group</strong> - a container that holds multiple objects so they move together</li>
+        <li><strong>Keyboard events</strong> - listening for keydown and keyup to track which keys are held</li>
+        <li><strong>translateZ</strong> - moves an object along its own forward axis, regardless of which way it's pointing</li>
+        <li><strong>Delta time</strong> - the time since the last frame; makes movement speed consistent across different hardware</li>
+      </ul>
+
+      <div class="sub-heading">The delta time concept - worth explaining</div>
+      <p class="body">Without delta time, a game runs faster on a fast computer and slower on a slow one.
+      Delta time fixes this: instead of moving 1 unit per frame, the tank moves 10 units per second,
+      and each frame it moves 10 * dt. A fast machine takes many small steps; a slow one takes fewer
+      but larger ones. The result is the same.</p>
+
+      <div class="callout">
+        Try this with the class: find the movement line in step3-tank.html, remove the dt multiplier,
+        and watch the tank become uncontrollably fast. That's what a game without delta time feels
+        like on a fast machine.
+      </div>
+
+      <div class="sub-heading">Common mistakes</div>
+      <ul class="body">
+        <li>Not calling clock.getDelta() every frame - movement stutters or stops</li>
+        <li>Camera position updated once at setup but not each frame - camera stays still while tank moves</li>
+        <li>Barrel position inside the group wrong - pokes through the hull or floats above it</li>
+        <li>Keys object declared in the wrong scope - keydown event can't find it</li>
+      </ul>
+
+      <div class="sub-heading">Good questions to ask</div>
+      <ul class="body">
+        <li>"Why does translateZ always move forward, even when the tank is pointing sideways?"</li>
+        <li>"How would you make the tank move faster? Slower? Turn faster?"</li>
+        <li>"What would happen if you forgot to update the camera position every frame?"</li>
+      </ul>
+
+      <div class="tag-row">
+        <span class="tag">THREE.Group</span>
+        <span class="tag">Keyboard input</span>
+        <span class="tag">translateZ</span>
+        <span class="tag">Delta time</span>
+        <span class="tag">Follow camera</span>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-block">
+      <div class="step-block-title"><span>04</span> Shooting</div>
+
+      <p class="body">Students add turret rotation, a firing mechanic, and a target that reacts to
+      being hit. This step introduces arrays of moving objects and collision detection - two patterns
+      that appear in almost every game ever made.</p>
+
+      <div class="sub-heading">Key concepts introduced</div>
+      <ul class="body">
+        <li><strong>Projectile array</strong> - an array that holds all active shells, updated every frame</li>
+        <li><strong>localToWorld</strong> - converts a position inside a group (the gun barrel tip) to a world position</li>
+        <li><strong>Box3 collision</strong> - a bounding box used to test whether a point is inside an object</li>
+        <li><strong>scene.remove and geometry.dispose</strong> - cleaning up objects that are no longer needed</li>
+      </ul>
+
+      <div class="sub-heading">The backwards loop - worth explaining</div>
+      <p class="body">When removing items from an array while looping through it, looping forwards
+      causes bugs: removing item 3 shifts item 4 into position 3, and the loop skips it.
+      Looping backwards avoids this - removing an item only affects indices below the current position,
+      which have already been processed.</p>
+
+      <div class="sub-heading">Common mistakes</div>
+      <ul class="body">
+        <li>Iterating the shells array forwards when removing - causes every other hit to be missed</li>
+        <li>Shell spawned at the tank body position rather than the barrel tip - shells appear inside the tank</li>
+        <li>Shell rotation not set to match the tank - shells fly sideways</li>
+        <li>Target bounding box not updated after moving - collision still uses the old position</li>
+      </ul>
+
+      <div class="sub-heading">Good questions to ask</div>
+      <ul class="body">
+        <li>"What happens if we never remove shells from the array? Try it and watch the console."</li>
+        <li>"How is this collision detection different from a real physics engine? What can't it do?"</li>
+        <li>"What would you change to make the turret rotate faster?"</li>
+      </ul>
+
+      <div class="tag-row">
+        <span class="tag">Turret rotation</span>
+        <span class="tag">Projectile array</span>
+        <span class="tag">localToWorld</span>
+        <span class="tag">Box3 collision</span>
+        <span class="tag">scene.add / remove</span>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-block">
+      <div class="step-block-title"><span>05</span> 1v1 - The Full Game</div>
+
+      <p class="body">A second player is added, health bars appear, and the game now has a win
+      condition and a reset. This step introduces factory functions - one of the most important
+      ideas in programming - and a dynamic camera that watches both players.</p>
+
+      <div class="sub-heading">Key concepts introduced</div>
+      <ul class="body">
+        <li><strong>Factory function</strong> - a function that creates and returns a new object each time it's called; call it twice to get two tanks</li>
+        <li><strong>Player data objects</strong> - grouping everything about a player (tank, health, keys) into one object that gets passed around</li>
+        <li><strong>Game state flags</strong> - a simple variable like gameOver = true that changes what the update loop does</li>
+        <li><strong>Reset function</strong> - a function that puts everything back to its starting state</li>
+        <li><strong>Dynamic camera</strong> - finds the midpoint between both players and pulls back as they separate</li>
+      </ul>
+
+      <div class="sub-heading">Common mistakes</div>
+      <ul class="body">
+        <li>Shells hitting their own owner - need to store which player fired each shell and skip that player on collision check</li>
+        <li>Reset function incomplete - some state resets but others don't, causing strange behaviour on the second game</li>
+        <li>Both players using the same keys object - one player controls both tanks</li>
+        <li>Health bar width not clamped - can go below 0% on edge cases</li>
+      </ul>
+
+      <div class="sub-heading">Good questions to ask</div>
+      <ul class="body">
+        <li>"What is a factory function? Why is it better than writing createTank() code twice?"</li>
+        <li>"How would you add a third player? What would you need to change?"</li>
+        <li>"What would a reload timer look like? Where would you add it?"</li>
+      </ul>
+
+      <div class="callout">
+        Great point for a class debrief. Ask students: what was the hardest part? What would you
+        add next? Having students play each other's games for five minutes before the debrief works well.
+      </div>
+
+      <div class="tag-row">
+        <span class="tag">Factory function</span>
+        <span class="tag">Player data objects</span>
+        <span class="tag">Dynamic camera</span>
+        <span class="tag">Health / win state</span>
+        <span class="tag">DOM HUD</span>
+      </div>
+    </div>
+
+
+    <!-- What's next -->
+    <h2 class="section-title">After step 5 - keeping momentum</h2>
+
+    <p class="body">Students who finish early or want to keep going have several natural directions.
+    The README.md in the download lists these - here is how to frame them as challenges:</p>
+
+    <ul class="body">
+      <li><strong>Add a reload timer</strong> - "Right now you can fire as fast as you can press Space. How would you add a 1-second wait between shots?"</li>
+      <li><strong>Add a boundary</strong> - "Tanks can drive off the edge forever. How would you stop that?"</li>
+      <li><strong>Add terrain height</strong> - "The ground is perfectly flat. Look up SimplexNoise and see if you can make hills."</li>
+      <li><strong>Add a third player</strong> - "The updatePlayer function takes a player object. What would it take to call it three times?"</li>
+      <li><strong>Look at the full game</strong> - the full Treads of War source is on GitHub. Much larger, but built on all the same ideas.</li>
+    </ul>
+
+
+    <!-- Troubleshooting -->
+    <h2 class="section-title">Common problems and fixes</h2>
+
+    <div class="card">
+      <div class="card-title">Nothing appears on screen</div>
+      <ul>
+        <li>Open the browser console (F12, Console tab) and read the error</li>
+        <li>Check the importmap block at the top is present and unmodified</li>
+        <li>Make sure the file was saved before refreshing</li>
+        <li>Try a hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Three.js won't load ("Failed to fetch" or blank screen)</div>
+      <ul>
+        <li>The CDN requires an internet connection - check the network</li>
+        <li>The importmap URL must be exactly right - compare character by character with the reference file</li>
+        <li>Some school networks block unpkg.com - check with IT, or download Three.js files locally</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Movement is very fast or very slow</div>
+      <ul>
+        <li>Delta time is almost certainly wrong - check that clock.getDelta() is called inside the animate loop, not outside it</li>
+        <li>Speed constants can be adjusted freely if they feel off</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Student is completely lost and can't make progress</div>
+      <ul>
+        <li>Open the reference file and the student's file side by side</li>
+        <li>Ask them to find one difference and fix it, then look for the next</li>
+        <li>It's fine to copy a section from the reference to get unstuck - ask them to explain what each copied line does</li>
+      </ul>
+    </div>
+
+  </main>
+
+  <footer>
+    Treaducation is part of <a href="https://treads.togneri.net/">Treads of War</a> -
+    a browser tank game by Jason Togneri.
+    Tutorial files are free to use for any educational purpose.
+  </footer>
+
+</body>
+</html>
