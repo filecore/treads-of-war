@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 1 — Hello World</title>
+  <style>
+    /* Remove the default white margin around the page */
+    body { margin: 0; overflow: hidden; }
+  </style>
+
+  <!--
+    IMPORT MAP
+    ----------
+    This tells the browser where to find Three.js.
+    Instead of downloading it yourself, the browser fetches it
+    from unpkg.com (a free CDN) the first time you open this file.
+    You don't need to install anything.
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+<script type="module">
+
+  /*
+    Welcome to Step 1!
+
+    Three.js works with three core objects — think of them like a film set:
+
+      Scene    — the world that contains everything (the film set itself)
+      Camera   — the viewpoint we look through (the camera on set)
+      Renderer — draws the scene onto the screen (the film projector)
+
+    Every Three.js project starts with these three things.
+  */
+
+  import * as THREE from 'three';
+
+
+  // ── 1. SCENE ──────────────────────────────────────────────────────────────
+  // Think of this as an empty stage. We add objects to it.
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111111); // dark grey background
+
+
+  // ── 2. CAMERA ─────────────────────────────────────────────────────────────
+  // PerspectiveCamera mimics how human eyes see:
+  // things farther away look smaller (perspective projection).
+  //
+  // Arguments:
+  //   fieldOfView  — how wide the view is, in degrees (like a camera lens)
+  //   aspectRatio  — width divided by height of the window
+  //   near         — don't draw things closer than this many units
+  //   far          — don't draw things farther than this many units
+  const camera = new THREE.PerspectiveCamera(
+    75,                                     // 75 degree field of view
+    window.innerWidth / window.innerHeight, // match the window shape
+    0.1,                                    // near clip
+    1000                                    // far clip
+  );
+
+  // Move the camera back 5 units so we can see the cube.
+  // (By default everything sits at position 0,0,0 — including the camera.)
+  camera.position.z = 5;
+
+
+  // ── 3. RENDERER ───────────────────────────────────────────────────────────
+  // The renderer creates a <canvas> element and draws to it each frame.
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  // Add the canvas to the HTML page so we can see it.
+  document.body.appendChild(renderer.domElement);
+
+
+  // ── 4. CUBE ───────────────────────────────────────────────────────────────
+  // Every visible 3D object needs two things:
+  //
+  //   Geometry — the shape (a list of points and triangles in 3D space)
+  //   Material — how the surface looks (colour, texture, shiny vs flat, etc.)
+  //
+  // A Mesh combines them into an object we can add to the scene.
+  const geometry = new THREE.BoxGeometry(1, 1, 1); // a 1x1x1 cube
+  const material = new THREE.MeshBasicMaterial({ color: 0x00aa44 }); // green
+  const cube = new THREE.Mesh(geometry, material);
+
+  scene.add(cube); // put the cube in the scene
+
+
+  // ── 5. ANIMATION LOOP ─────────────────────────────────────────────────────
+  // requestAnimationFrame tells the browser:
+  // "call this function just before the next screen refresh."
+  // The screen refreshes ~60 times per second, so our function
+  // runs ~60 times per second too.
+  //
+  // Each call we:
+  //   1. Update the world (rotate the cube a tiny bit)
+  //   2. Render it (draw the scene to the canvas)
+  //   3. Ask for the next frame
+  function animate() {
+    requestAnimationFrame(animate); // schedule the next frame
+
+    cube.rotation.x += 0.01; // rotate a little each frame
+    cube.rotation.y += 0.01;
+
+    renderer.render(scene, camera); // draw!
+  }
+
+  animate(); // start the loop
+
+
+  // ── 6. RESIZE HANDLING ────────────────────────────────────────────────────
+  // If the user resizes their browser window, the camera and renderer
+  // need to know about the new size.
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+</script>
+</body>
+</html>

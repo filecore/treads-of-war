@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Treads of War</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold:    #f0e8b4;
+      --green:   #7ab840;
+      --dimtext: rgba(180,200,140,0.65);
+      --bg:      #0e1408;
+      --panel:   rgba(255,255,255,0.04);
+      --border:  rgba(120,160,80,0.22);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: #ccd8b0;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      line-height: 1.65;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      text-align: center;
+      padding: clamp(56px,8vw,120px) clamp(20px,6vw,80px) clamp(40px,6vw,80px);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(20,30,10,0.95) 0%, rgba(14,20,8,0.98) 100%);
+      overflow: hidden;
+    }
+
+    /* animated scanlines */
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        180deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.09) 3px,
+        rgba(0,0,0,0.09) 4px
+      );
+      pointer-events: none;
+    }
+
+    .logo-wrap {
+      display: block;
+      position: relative;
+    }
+
+    /* Stylised flat-shaded polygon logo — SVG drawn in the same spirit
+       as the in-game terrain: bold flat colour fills, no gradients */
+    .logo-canvas {
+      width: clamp(260px, 60vw, 720px);
+      aspect-ratio: 1024 / 300;
+      display: block;
+      margin: 0 auto 12px;
+      filter: drop-shadow(0 4px 24px rgba(0,0,0,0.85));
+    }
+
+    .hero-sub {
+      font-size: clamp(10px, 1.4vw, 13px);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--dimtext);
+      margin-bottom: clamp(28px, 4vw, 48px);
+    }
+
+    .hero-cta-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      margin-top: clamp(28px, 4vw, 48px);
+    }
+    .hero-cta {
+      display: inline-block;
+      padding: 14px 42px;
+      border: 2px solid var(--green);
+      color: var(--gold);
+      font-family: inherit;
+      font-size: clamp(13px, 1.6vw, 17px);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      text-decoration: none;
+      background: rgba(120,184,64,0.12);
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .hero-cta:hover {
+      background: rgba(120,184,64,0.28);
+      border-color: var(--gold);
+    }
+    .hero-cta--mobile {
+      border-color: #c0392b;
+      background: rgba(192,57,43,0.12);
+      line-height: 1.3;
+      text-align: center;
+    }
+    .hero-cta--mobile:hover {
+      background: rgba(192,57,43,0.28);
+      border-color: #e74c3c;
+    }
+    .hero-cta--mobile .cta-sub {
+      display: block;
+      font-size: 0.65em;
+      letter-spacing: 0.15em;
+      opacity: 0.75;
+      margin-top: 3px;
+    }
+    .hero-flex-break { flex: 0 0 100%; height: 0; }
+    .hero-cta--learn {
+      border-color: #2980b9;
+      background: rgba(41,128,185,0.12);
+      padding-left: 80px;
+      padding-right: 80px;
+      text-align: center;
+    }
+    .hero-cta--learn:hover {
+      background: rgba(41,128,185,0.28);
+      border-color: #5dade2;
+    }
+
+    /* ── Layout ───────────────────────────────────────────────────────── */
+    .page {
+      max-width: 1274px;
+      margin: 0 auto;
+      padding: clamp(32px,5vw,72px) clamp(20px,5vw,48px) 80px;
+    }
+
+    section { margin-bottom: clamp(48px,7vw,88px); }
+
+    h2 {
+      font-size: clamp(14px, 2vw, 19px);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 24px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    p { color: var(--dimtext); font-size: clamp(13px,1.5vw,16px); margin-bottom: 16px; }
+    p:last-child { margin-bottom: 0; }
+
+    a { color: var(--green); }
+    a:hover { color: var(--gold); }
+
+    /* ── Screenshots ──────────────────────────────────────────────────── */
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(12px, 2vw, 24px);
+    }
+    @media (max-width: 560px) { .screenshot-grid { grid-template-columns: 1fr; } }
+
+    .shot-col { display: flex; flex-direction: column; gap: 12px; }
+
+    .shot-label {
+      font-size: clamp(13px, 1.7vw, 17px);
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .shot-frame {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background: #111a08;
+      border: 1px solid rgba(122,184,64,0.55);
+      box-shadow: 0 0 12px rgba(122,184,64,0.12), inset 0 0 0 1px rgba(122,184,64,0.08);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .shot-frame img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      image-rendering: pixelated;
+    }
+    /* placeholder shown when no image is supplied */
+    .shot-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      color: rgba(120,160,80,0.22);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-align: center;
+      padding: 12px;
+    }
+    .shot-placeholder svg { width: 48px; height: 48px; opacity: 0.25; }
+    .shot-placeholder span { text-transform: uppercase; }
+
+    /* ── Feature list ─────────────────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(10px, 1.5vw, 18px);
+    }
+    @media (max-width: 700px) { .feature-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 400px) { .feature-grid { grid-template-columns: 1fr; } }
+
+    .feature-card {
+      background: rgba(60,30,10,0.55);
+      border: 1px solid rgba(160,90,40,0.55);
+      box-shadow: 0 0 8px rgba(120,60,20,0.15), inset 0 0 0 1px rgba(160,90,40,0.08);
+      padding: 16px 18px;
+    }
+    .feature-card h3 {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #d4935a;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      font-size: 12px;
+      margin: 0;
+      color: rgba(220,175,130,0.65);
+    }
+
+    /* ── Disclaimer banner ────────────────────────────────────────────── */
+    .disclaimer {
+      border: 1px solid rgba(160,40,40,0.60);
+      background: rgba(160,40,40,0.05);
+      padding: clamp(16px,2.5vw,28px) clamp(18px,3vw,36px);
+      font-size: 12px;
+      color: rgba(180,200,140,0.45);
+      letter-spacing: 0.04em;
+      line-height: 1.7;
+    }
+    .disclaimer strong { color: rgba(180,200,140,0.70); }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 28px 20px;
+      font-size: 12px;
+      color: rgba(120,160,80,0.30);
+      letter-spacing: 0.10em;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Hero ──────────────────────────────────────────────────────────── -->
+  <div class="hero">
+    <div class="logo-wrap">
+      <canvas id="tow-logo" class="logo-canvas" width="1024" height="300" aria-label="Treads of War"></canvas>
+    </div>
+
+    <div class="hero-cta-group">
+      <a href="treads/" class="hero-cta">Play in browser</a>
+      <a href="treads-mobile/" class="hero-cta hero-cta--mobile">Play on mobile<span class="cta-sub">browser &mdash; BETA</span></a>
+      <span class="hero-flex-break"></span>
+      <a href="treaducation/" class="hero-cta hero-cta--learn">Treaducation: code &amp; learn</a>
+    </div>
+  </div>
+
+  <!-- ── Main content ───────────────────────────────────────────────────── -->
+  <main class="page">
+
+    <!-- The original game -->
+    <section id="original">
+      <h2>The Inspiration - Conqueror (1988)</h2>
+      <p>
+        <a href="https://en.wikipedia.org/wiki/Conqueror_(video_game)" style="color:var(--gold)"><strong>Conqueror</strong></a> was developed and released in 1988 by
+        <a href="https://en.wikipedia.org/wiki/Superior_Interactive" style="color:var(--gold)"><strong>Superior Software</strong></a> (later published by
+        Rainbow Arts for home computer ports) for the <a href="https://en.wikipedia.org/wiki/Acorn_Archimedes" style="color:var(--gold)"><strong>Acorn Archimedes</strong></a>,
+        one of the most technically advanced home computers of its era. Programmed in
+        ARM machine code, it pushed the 8 MHz ARM2 processor to its limits: smooth
+        flat-shaded 3D terrain, animated tank models, and real-time AI opponents -
+        all in 1988.
+      </p>
+      <p>
+        The game put you in command of a tank on a rolling, procedurally-generated
+        landscape, choosing from a roster of historically-inspired vehicles.
+        It filled my childhood imagination with tank battles straight out of <a href="https://en.wikipedia.org/wiki/The_Hotspur" target="_blank" rel="noopener">Hotspur</a> and <a href="https://en.wikipedia.org/wiki/Warlord_(DC_Thomson)" target="_blank" rel="noopener">Warlord</a> comics,
+        and I wanted to try and recapture that feeling several decades later.
+      </p>
+
+      <div class="screenshot-grid" style="margin-top:28px;">
+        <div class="shot-col">
+          <div class="shot-label">Conqueror - Acorn Archimedes (1988)</div>
+          <!--
+            To supply a screenshot: place an image file named
+            original_1.png  (or .jpg) in this directory.
+            The <img> src below will load it automatically.
+            Recommended resolution: any; displayed at 4:3, object-fit cover.
+          -->
+          <div class="shot-frame" id="orig-frame-1">
+            <img src="original_1.jpg" alt="Conqueror original screenshot 1"
+                 onerror="this.style.display='none'">
+            <div class="shot-placeholder" id="orig-ph-1">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="12" width="56" height="40" rx="2" stroke="#7ab840" stroke-width="2"/>
+                <polyline points="4,40 18,26 28,34 38,20 60,44" stroke="#7ab840" stroke-width="2" fill="none"/>
+                <circle cx="46" cy="22" r="5" stroke="#7ab840" stroke-width="2"/>
+              </svg>
+              <span>original_1.png<br/>(place file here)</span>
+            </div>
+          </div>
+          <div class="shot-frame" id="orig-frame-2">
+            <img src="original_2.png" alt="Conqueror original screenshot 2"
+                 onerror="this.style.display='none'">
+            <div class="shot-placeholder" id="orig-ph-2">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="12" width="56" height="40" rx="2" stroke="#7ab840" stroke-width="2"/>
+                <polyline points="4,40 18,26 28,34 38,20 60,44" stroke="#7ab840" stroke-width="2" fill="none"/>
+                <circle cx="46" cy="22" r="5" stroke="#7ab840" stroke-width="2"/>
+              </svg>
+              <span>original_2.png<br/>(place file here)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="shot-col">
+          <div class="shot-label">Treads of War - Browser / Three.js (2026)</div>
+          <div class="shot-frame" id="new-frame-1">
+            <img src="new_1.jpg" alt="Treads of War screenshot 1"
+                 onerror="this.style.display='none'">
+            <div class="shot-placeholder" id="new-ph-1">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="12" width="56" height="40" rx="2" stroke="#7ab840" stroke-width="2"/>
+                <polyline points="4,40 18,26 28,34 38,20 60,44" stroke="#7ab840" stroke-width="2" fill="none"/>
+                <circle cx="46" cy="22" r="5" stroke="#7ab840" stroke-width="2"/>
+              </svg>
+              <span>new_1.png<br/>(place file here)</span>
+            </div>
+          </div>
+          <div class="shot-frame" id="new-frame-2">
+            <img src="new_2.jpg" alt="Conqueror reimplementation screenshot 2"
+                 onerror="this.style.display='none'">
+            <div class="shot-placeholder" id="new-ph-2">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="12" width="56" height="40" rx="2" stroke="#7ab840" stroke-width="2"/>
+                <polyline points="4,40 18,26 28,34 38,20 60,44" stroke="#7ab840" stroke-width="2" fill="none"/>
+                <circle cx="46" cy="22" r="5" stroke="#7ab840" stroke-width="2"/>
+              </svg>
+              <span>new_2.png<br/>(place file here)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Personal note -->
+    <section id="story">
+      <h2>Recreating a childhood classic</h2>
+      <p>
+        I discovered Conqueror as a child and it never left me. The flat-shaded
+        rolling hills, the satisfying <em>clunk</em> of armour-piercing rounds,
+        the way a Tiger I would lumber into view over a ridge with its heavy guns
+        already tracking... there was nothing like it. The Archimedes was a
+        remarkable machine, and Conqueror showed exactly what it could do.
+      </p>
+      <p>
+        Decades later, lacking anything that quite recaptured that feeling, I
+        decided to rebuild it from memory and imagination in the browser, using
+        modern WebGL via Three.js. What began as a fairly close port quickly diverged and took
+        on an entire life of its own.
+      </p>
+    </section>
+
+    <!-- Reimplementation -->
+    <section id="reimpl">
+      <h2>Classic gameplay, updated and enhanced</h2>
+      <p>
+        The browser version takes the original as its inspiration - the same
+        flat-shaded aesthetic, the same basic tank roster and faction structure,
+        the same feel of armour values and projectile physics, but adding a
+        substantial layer of new features:
+      </p>
+
+      <div class="feature-grid" style="margin-top:24px; margin-bottom:24px;">
+        <div class="feature-card">
+          <h3>Richer Terrain</h3>
+          <p>Procedurally generated Fourier landscape with water, trees, roads, and buildings.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Particle Effects</h3>
+          <p>Shell impacts, smoke, explosions and track marks bring the battlefield to life.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Expanded Roster</h3>
+          <p>All original tanks plus extra variants; Mercenary faction with fictional vehicles.</p>
+        </div>
+        <div class="feature-card">
+          <h3>New Game Modes</h3>
+          <p>Arcade, Strategy (capture objectives), and competitive online play.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Weather Effects</h3>
+          <p>Rain, fog, and dust storms that affect visibility, detection range, and combat dynamics.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Mouse Aiming</h3>
+          <p>Optional mouse-aim turret control with rate-limited traversal and click-to-fire.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Difficulty Scaling</h3>
+          <p>Four AI difficulty presets from casual to punishing, adjustable per session.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Runs Anywhere</h3>
+          <p>Pure browser — no plugins, no install. Works on desktop and modern mobile.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Disclaimer -->
+    <section id="disclaimer">
+      <h2>Fan Project — Copyright Notice</h2>
+      <div class="disclaimer">
+        <p>
+          <strong>Conqueror (1988)</strong> was developed by
+          <strong>Superior Software</strong> and later published by Rainbow Arts.
+          All rights to the original game, its name, concept, and design remain with their
+          respective copyright holders. This browser reimplementation is an independent, unofficial,
+          non-commercial fan project created out of love for the original work.
+        </p>
+        <p>
+          No original code, assets, or data from the 1988 game have been used. The reimplementation
+          was written from scratch based on recollection and independent research.
+          <strong>We make no claim of copyright over any aspect of the original work.</strong>
+        </p>
+        <p>
+          If you are a rights holder and have any concerns, please reach out:
+          <a href="mailto:jason.togneri@gmail.com">jason.togneri@gmail.com</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- Play CTA -->
+    <section style="text-align:center; padding-bottom: 0;">
+      <div class="hero-cta-group" style="margin-top:0;">
+        <a href="treads/" class="hero-cta">Play in browser</a>
+        <a href="treads-mobile/" class="hero-cta hero-cta--mobile">Play on mobile<span class="cta-sub">browser &mdash; BETA</span></a>
+        <span class="hero-flex-break"></span>
+        <a href="treaducation/" class="hero-cta hero-cta--learn">Treaducation: code &amp; learn</a>
+      </div>
+      <p style="margin-top:18px; font-size:11px; color:rgba(120,160,80,0.35);">
+        Runs entirely in your browser &nbsp;&bull;&nbsp; No download required
+      </p>
+    </section>
+
+  </main>
+
+
+
+  <script>
+  // ── Treads of War logo ────────────────────────────────────────────────────
+  (function() {
+    const canvas = document.getElementById('tow-logo');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = 1024, H = 300;
+
+    const rng = (function(seed) {
+      let s = seed;
+      return function() { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    })(12345);
+
+    function drawLetterPath(ox, oy, pathFn, color, sc) {
+      ctx.save();
+      ctx.translate(ox, oy);
+      ctx.scale(sc, sc);
+      ctx.fillStyle = color;
+      pathFn(ctx);
+      ctx.restore();
+    }
+
+    const LP = {
+      T: (c) => { c.beginPath(); c.rect(0,0,60,18); c.rect(21,0,18,100); c.fill(); },
+      R: (c) => {
+        c.beginPath();
+        c.moveTo(0,0); c.lineTo(52,0); c.lineTo(56,4); c.lineTo(56,42);
+        c.lineTo(52,46); c.lineTo(56,46); c.lineTo(58,50); c.lineTo(58,100);
+        c.lineTo(40,100); c.lineTo(32,60); c.lineTo(18,60);
+        c.lineTo(18,100); c.lineTo(0,100); c.closePath();
+        c.moveTo(18,18); c.lineTo(36,18); c.lineTo(36,42); c.lineTo(18,42); c.closePath();
+        c.fill('evenodd');
+      },
+      E: (c) => { c.beginPath(); c.rect(0,0,18,100); c.rect(0,0,52,18); c.rect(0,42,44,16); c.rect(0,82,52,18); c.fill(); },
+      A: (c) => {
+        c.beginPath();
+        c.moveTo(0,100); c.lineTo(20,0); c.lineTo(40,0); c.lineTo(60,100);
+        c.lineTo(42,100); c.lineTo(38,80); c.lineTo(22,80); c.lineTo(18,100); c.closePath();
+        c.moveTo(27,46); c.lineTo(24,62); c.lineTo(36,62); c.lineTo(33,46); c.lineTo(30,28); c.closePath();
+        c.fill('evenodd');
+      },
+      D: (c) => {
+        c.beginPath();
+        c.moveTo(0,0); c.lineTo(36,0); c.lineTo(48,8); c.lineTo(56,22);
+        c.lineTo(56,78); c.lineTo(48,92); c.lineTo(36,100); c.lineTo(0,100); c.closePath();
+        c.moveTo(18,18); c.lineTo(32,18); c.lineTo(38,24); c.lineTo(38,76); c.lineTo(32,82); c.lineTo(18,82); c.closePath();
+        c.fill('evenodd');
+      },
+      S: (c) => { c.beginPath(); c.rect(0,0,54,18); c.rect(0,0,18,58); c.rect(0,42,54,16); c.rect(36,42,18,58); c.rect(0,82,54,18); c.fill(); },
+      O: (c) => {
+        c.beginPath();
+        c.moveTo(0,0); c.lineTo(54,0); c.lineTo(54,100); c.lineTo(0,100); c.closePath();
+        c.moveTo(18,18); c.lineTo(36,18); c.lineTo(36,82); c.lineTo(18,82); c.closePath();
+        c.fill('evenodd');
+      },
+      F: (c) => { c.beginPath(); c.rect(0,0,18,100); c.rect(0,0,50,18); c.rect(0,42,42,16); c.fill(); },
+      W: (c) => {
+        c.beginPath();
+        c.moveTo(0,0); c.lineTo(16,0); c.lineTo(22,68); c.lineTo(32,36);
+        c.lineTo(42,68); c.lineTo(48,0); c.lineTo(64,0);
+        c.lineTo(54,100); c.lineTo(40,100); c.lineTo(32,60);
+        c.lineTo(24,100); c.lineTo(10,100); c.closePath();
+        c.fill();
+      },
+    };
+
+    // Background
+    ctx.fillStyle = '#080f04';
+    ctx.fillRect(0, 0, W, H);
+    const grd = ctx.createRadialGradient(W/2, H/2-40, 50, W/2, H/2-40, 420);
+    grd.addColorStop(0, 'rgba(30,60,15,0.22)');
+    grd.addColorStop(1, 'rgba(8,15,4,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+
+    // TREADS
+    const sc1 = 1.72;
+    const treadsLetters = ['T','R','E','A','D','S'];
+    const treadsWidths  = [60, 58, 52, 60, 56, 54];
+    const treadsGap = 4;
+    const totalTreadsW = treadsWidths.reduce((a,b)=>a+b,0)*sc1 + (treadsLetters.length-1)*treadsGap;
+    const treadsStartX = (W - totalTreadsW) / 2;
+    const treadsY = 20;
+    const treadsH = 100 * sc1;
+
+    let cx = treadsStartX;
+    const treadsLetterX = [];
+    for (let i = 0; i < treadsLetters.length; i++) {
+      treadsLetterX.push(cx);
+      drawLetterPath(cx, treadsY, LP[treadsLetters[i]], '#38ba28', sc1);
+      cx += treadsWidths[i] * sc1 + treadsGap;
+    }
+    const tLeftEdge = treadsStartX;
+
+    // OF WAR
+    const sc2 = sc1 * 0.67;
+    const ofwarLetters = ['O','F','W','A','R'];
+    const ofwarWidths  = [54, 50, 64, 60, 58];
+    const readStartX = treadsLetterX[1];
+    const readEndX   = treadsLetterX[4] + treadsWidths[4] * sc1;
+    const readSpan   = readEndX - readStartX;
+    let ofwarScale = sc2, ofwarActualGap = 4;
+    const ofwarNaturalTotal = ofwarWidths.reduce((a,b)=>a+b,0)*sc2 + (ofwarLetters.length-1)*ofwarActualGap;
+    if (ofwarNaturalTotal > readSpan) {
+      ofwarScale = sc2 * (readSpan / ofwarNaturalTotal);
+    } else {
+      const lw = ofwarWidths.reduce((a,b)=>a+b,0) * ofwarScale;
+      ofwarActualGap = (readSpan - lw) / (ofwarLetters.length - 1);
+    }
+    const ofwarY = treadsY + treadsH * 0.68;
+    cx = readStartX;
+    for (let i = 0; i < ofwarLetters.length; i++) {
+      drawLetterPath(cx, ofwarY, LP[ofwarLetters[i]], '#c0963a', ofwarScale);
+      cx += ofwarWidths[i] * ofwarScale + ofwarActualGap;
+    }
+
+    // Grit / battle damage
+    ctx.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 500; i++) {
+      const x = rng()*W, y = rng()*H, r = rng()*2.5+0.3;
+      ctx.globalAlpha = rng()*0.18;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+    }
+    for (let i = 0; i < 150; i++) {
+      const x1 = rng()*W, y1 = rng()*H, len = rng()*25+2, angle = rng()*Math.PI*2;
+      ctx.globalAlpha = rng()*0.1;
+      ctx.beginPath(); ctx.moveTo(x1, y1);
+      ctx.lineTo(x1+Math.cos(angle)*len, y1+Math.sin(angle)*len);
+      ctx.lineWidth = rng()*1.2+0.3; ctx.strokeStyle = '#000'; ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 500; i++) {
+      const x = rng()*W, y = rng()*H, a = rng()*0.05;
+      const c = Math.floor(rng()*50+110);
+      ctx.fillStyle = `rgba(${c},${c-10},${c-25},${a})`;
+      ctx.fillRect(x, y, rng()*2+0.5, rng()*2+0.5);
+    }
+
+    // King Tiger
+    function drawKingTiger(tCtx, tx, ty, ts, colors) {
+      function tp(pts, fill) {
+        tCtx.beginPath();
+        tCtx.moveTo(tx+pts[0][0]*ts, ty+pts[0][1]*ts);
+        for (let i=1;i<pts.length;i++) tCtx.lineTo(tx+pts[i][0]*ts, ty+pts[i][1]*ts);
+        tCtx.closePath(); tCtx.fillStyle = fill; tCtx.fill();
+      }
+      tp([[-48,2],[66,2],[68,-1],[68,-16],[66,-19],[-48,-19],[-50,-16],[-50,-1]], colors.track);
+      for (let wx=-44; wx<=62; wx+=7) {
+        tCtx.fillStyle = colors.trackTeeth||'#141412';
+        tCtx.fillRect(tx+(wx-1)*ts, ty+2*ts, 2.5*ts, 2*ts);
+      }
+      for (let wx=-38; wx<=54; wx+=13) {
+        tCtx.beginPath(); tCtx.arc(tx+wx*ts, ty-9*ts, 5.5*ts, 0, Math.PI*2);
+        tCtx.fillStyle = colors.wheel; tCtx.fill();
+        tCtx.beginPath(); tCtx.arc(tx+wx*ts, ty-9*ts, 2*ts, 0, Math.PI*2);
+        tCtx.fillStyle = colors.wheelHub||colors.wheel; tCtx.fill();
+      }
+      tp([[-44,-19],[-56,-36],[48,-36],[62,-19]], colors.hullLower);
+      tp([[-56,-36],[-48,-42],[42,-42],[48,-36]], colors.hullUpper);
+      tp([[-44,-19],[-56,-36],[-60,-34],[-48,-17]], colors.hullRear);
+      tp([[48,-36],[62,-19],[66,-17],[52,-34]], colors.hullGlacis);
+      tp([[-48,-42],[-52,-44],[-26,-44],[-22,-42]], colors.engineDeck);
+      tp([[-16,-42],[-12,-56],[30,-56],[36,-42]], colors.turret);
+      tp([[-12,-56],[-8,-60],[26,-60],[30,-56]], colors.turretTop);
+      tp([[30,-56],[36,-42],[34,-42],[28,-54]], colors.turretFront);
+      tp([[-12,-56],[-16,-42],[-14,-42],[-10,-54]], colors.turretRear||colors.turret);
+      tp([[30,-48],[34,-46],[36,-52],[32,-54]], colors.mantlet||colors.turretFront);
+      tCtx.fillStyle = colors.barrel;
+      tCtx.fillRect(tx+36*ts, ty-56*ts, 40*ts, 4*ts);
+      tCtx.fillStyle = colors.barrelDark;
+      tCtx.fillRect(tx+36*ts, ty-53.5*ts, 40*ts, 1.5*ts);
+      tCtx.fillStyle = colors.muzzle;
+      tCtx.fillRect(tx+74*ts, ty-58*ts, 5*ts, 8*ts);
+      tp([[2,-60],[4,-65],[12,-65],[14,-60]], colors.cupola);
+      tp([[4,-65],[6,-67],[10,-67],[12,-65]], colors.cupolaTop);
+    }
+
+    const logoTankColors = {
+      track:'#1a1a18', trackTeeth:'#141412',
+      wheel:'#2a2820', wheelHub:'#1e1e18',
+      hullLower:'#4a4a28', hullGlacis:'#3a3a20', hullRear:'#353520',
+      hullUpper:'#6a6a3c', engineDeck:'#555530',
+      turret:'#5a5a30', turretTop:'#7a7a48', turretFront:'#4a4a25', turretRear:'#444428',
+      mantlet:'#4a4a28', barrel:'#4a4a28', barrelDark:'#3a3a1c', muzzle:'#3a3a1c',
+      cupola:'#7a7a48', cupolaTop:'#8a8a52',
+    };
+
+    const ofwarH = 100 * ofwarScale;
+    const tankY  = ofwarY + ofwarH + 2;
+    const tankX  = 595;
+    drawKingTiger(ctx, tankX, tankY, 0.72, logoTankColors);
+
+    // Smoke / dust cloud
+    const dustRightEdge = tankX - 48 * 0.72;
+    const dustMaxSpread = dustRightEdge - tLeftEdge;
+    for (let i = 0; i < 40; i++) {
+      const df = rng(), dist = df*dustMaxSpread, dx = dustRightEdge-dist;
+      const dy = tankY+(rng()-0.4)*10, rx = 18+rng()*20+df*15, ry = 8+rng()*6;
+      const alpha = 0.4-df*0.25+rng()*0.05;
+      const c = Math.floor(rng()*20+140);
+      const g = ctx.createRadialGradient(dx,dy,0,dx,dy,Math.max(rx,ry));
+      g.addColorStop(0,`rgba(${c},${c-10},${c-28},${Math.max(0.03,alpha)})`);
+      g.addColorStop(0.6,`rgba(${c},${c-10},${c-28},${Math.max(0.01,alpha*0.4)})`);
+      g.addColorStop(1,`rgba(${c},${c-10},${c-28},0)`);
+      ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(dx,dy,rx,ry,0,0,Math.PI*2); ctx.fill();
+    }
+    for (let i = 0; i < 50; i++) {
+      const df = rng(), dist = df*dustMaxSpread;
+      const dx = dustRightEdge-dist+(rng()-0.5)*20;
+      const maxRise = df*120, minRise = df*15;
+      const riseAmount = minRise+rng()*(maxRise-minRise), dy = tankY-riseAmount;
+      const rx = 14+df*28+rng()*16, ry = 10+df*16+rng()*10;
+      const hf = riseAmount/Math.max(1,maxRise);
+      const alpha = (0.38-df*0.18)*(1-hf*0.5)+rng()*0.04;
+      const c = Math.floor(rng()*18+142);
+      const g = ctx.createRadialGradient(dx,dy,0,dx,dy,Math.max(rx,ry));
+      g.addColorStop(0,`rgba(${c},${c-8},${c-25},${Math.max(0.02,alpha)})`);
+      g.addColorStop(0.5,`rgba(${c},${c-8},${c-25},${Math.max(0.01,alpha*0.35)})`);
+      g.addColorStop(1,`rgba(${c},${c-8},${c-25},0)`);
+      ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(dx,dy,rx,ry,0,0,Math.PI*2); ctx.fill();
+    }
+    for (let i = 0; i < 15; i++) {
+      const dist = rng()*dustMaxSpread*0.2;
+      const dx = dustRightEdge-dist+(rng()-0.5)*10, dy = tankY-rng()*25;
+      const rx = rng()*16+12, ry = rng()*12+8, alpha = rng()*0.12+0.3;
+      const c = Math.floor(rng()*12+150);
+      const g = ctx.createRadialGradient(dx,dy,0,dx,dy,Math.max(rx,ry));
+      g.addColorStop(0,`rgba(${c},${c-6},${c-22},${alpha})`);
+      g.addColorStop(0.5,`rgba(${c},${c-6},${c-22},${alpha*0.4})`);
+      g.addColorStop(1,`rgba(${c},${c-6},${c-22},0)`);
+      ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(dx,dy,rx,ry,0,0,Math.PI*2); ctx.fill();
+    }
+    for (let x = tLeftEdge+20; x < dustRightEdge; x+=7) {
+      const frac = (x-tLeftEdge)/(dustRightEdge-tLeftEdge);
+      ctx.fillStyle = `rgba(80,65,30,${Math.min(0.16,frac*0.2)})`;
+      ctx.fillRect(x, tankY+2, 3, 2);
+    }
+
+    // Scanlines + vignette
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    for (let y = 0; y < H; y+=4) ctx.fillRect(0, y, W, 1);
+    const vig = ctx.createRadialGradient(W/2,H/2,200,W/2,H/2,550);
+    vig.addColorStop(0,'rgba(0,0,0,0)');
+    vig.addColorStop(1,'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
+  })();
+  </script>
+
+  <script>
+    // Hide placeholder divs for any shot-frame where the img loaded successfully
+    document.querySelectorAll('.shot-frame img').forEach(img => {
+      img.addEventListener('load', () => {
+        const ph = img.nextElementSibling;
+        if (ph && ph.classList.contains('shot-placeholder')) ph.style.display = 'none';
+      });
+      if (img.complete && img.naturalWidth > 0) {
+        const ph = img.nextElementSibling;
+        if (ph && ph.classList.contains('shot-placeholder')) ph.style.display = 'none';
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 2 — Terrain</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+<script type="module">
+
+  /*
+    Step 2 — Flat terrain
+
+    Starting from Step 1's scene/camera/renderer setup, we'll:
+      - Replace the rotating cube with a flat green terrain
+      - Add a grid so movement will be visible later
+      - Add fog to hide the edge of the terrain (makes it look infinite)
+      - Add OrbitControls so we can look around freely
+
+    New import: OrbitControls (from the Three.js addons folder)
+  */
+
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  // We'll use this sky colour in multiple places, so store it in a variable.
+  const SKY_COLOUR = 0x87ceeb; // light blue
+
+
+  // ── Scene ─────────────────────────────────────────────────────────────────
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(SKY_COLOUR);
+
+
+  // ── FOG ───────────────────────────────────────────────────────────────────
+  // Fog gradually fades objects to the background colour as they get farther away.
+  // This hides the hard edge of our finite terrain, making it look endless.
+  //
+  // Arguments: colour (should match the sky), near distance, far distance.
+  // Objects start fading at 'near' and are fully invisible at 'far'.
+  scene.fog = new THREE.Fog(SKY_COLOUR, 100, 450);
+
+
+  // ── Camera ────────────────────────────────────────────────────────────────
+  const camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    2000 // increased far clip to match the larger world
+  );
+  // Position the camera above and slightly behind the centre so we can see the terrain.
+  camera.position.set(0, 40, 80);
+
+
+  // ── Renderer ──────────────────────────────────────────────────────────────
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+
+  // ── TERRAIN ───────────────────────────────────────────────────────────────
+  // PlaneGeometry creates a flat rectangle.
+  // By default it stands upright (like a wall).
+  // We rotate it -90 degrees around the X axis to lay it flat on the ground.
+  const terrainGeo = new THREE.PlaneGeometry(1000, 1000);
+  terrainGeo.rotateX(-Math.PI / 2); // -Math.PI/2 radians = -90 degrees
+  const terrainMat = new THREE.MeshBasicMaterial({ color: 0x3a5f2a }); // dark green
+  const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+  scene.add(terrain);
+
+
+  // ── GRID HELPER ───────────────────────────────────────────────────────────
+  // GridHelper draws a grid of lines on the ground.
+  // This makes it much easier to see movement and scale later on.
+  //
+  // Arguments: total size, number of grid divisions, centre line colour, grid colour
+  const grid = new THREE.GridHelper(1000, 100, 0x000000, 0x2a4a1a);
+  grid.position.y = 0.01; // raise very slightly above the terrain to avoid z-fighting
+                           // (z-fighting = two surfaces at the exact same depth flickering)
+  scene.add(grid);
+
+
+  // ── ORBIT CONTROLS ────────────────────────────────────────────────────────
+  // OrbitControls let you:
+  //   Left click + drag  — rotate the view
+  //   Right click + drag — pan
+  //   Scroll wheel       — zoom in/out
+  //
+  // In Step 3 we'll replace this with a camera that follows the tank.
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 0, 0); // orbit around the centre of the world
+
+
+  // ── Animation loop ────────────────────────────────────────────────────────
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update(); // OrbitControls needs this called every frame
+    renderer.render(scene, camera);
+  }
+  animate();
+
+
+  // ── Resize handling ───────────────────────────────────────────────────────
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+</script>
+</body>
+</html>

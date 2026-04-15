@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 3 — Tank</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #hint {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.5);
+      font-family: monospace;
+      font-size: 13px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+<div id="hint">W / S &mdash; drive &nbsp;&nbsp;&nbsp; A / D &mdash; turn</div>
+<script type="module">
+
+  /*
+    Step 3 — Tank and driving controls
+
+    New things this step:
+      - A tank built from multiple boxes joined in a Group
+      - Keyboard input stored in a 'keys' object
+      - Delta time so movement speed is consistent on all hardware
+      - A follow camera that trails behind the tank
+      - OrbitControls removed (we drive now!)
+  */
+
+  import * as THREE from 'three';
+
+  const SKY_COLOUR = 0x87ceeb;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(SKY_COLOUR);
+  scene.fog = new THREE.Fog(SKY_COLOUR, 80, 350);
+
+  const camera = new THREE.PerspectiveCamera(
+    70, window.innerWidth / window.innerHeight, 0.1, 1000
+  );
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Terrain (same as Step 2)
+  const terrainGeo = new THREE.PlaneGeometry(1000, 1000);
+  terrainGeo.rotateX(-Math.PI / 2);
+  scene.add(new THREE.Mesh(terrainGeo, new THREE.MeshBasicMaterial({ color: 0x3a5f2a })));
+  const grid = new THREE.GridHelper(1000, 100, 0x000000, 0x2a4a1a);
+  grid.position.y = 0.01;
+  scene.add(grid);
+
+
+  // ── BUILD A TANK ──────────────────────────────────────────────────────────
+  // We use THREE.Group to hold all the tank's parts together.
+  // Moving the Group moves all its children with it,
+  // and rotating it rotates everything around the group's centre.
+  //
+  // Think of it like a folder containing all the tank's pieces.
+  function createTank(bodyColour, turretColour) {
+
+    const tank = new THREE.Group();
+
+    // -- Hull (the main body) --
+    // A wide flat box sitting on the ground.
+    const hullMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 0.6, 3),
+      new THREE.MeshBasicMaterial({ color: bodyColour })
+    );
+    hullMesh.position.y = 0.5; // raise it so the bottom sits at y=0.2 (slightly above ground)
+    tank.add(hullMesh);
+
+    // -- Turret group --
+    // The turret is in its own sub-group so we can rotate it
+    // independently of the hull later (for aiming).
+    const turretGroup = new THREE.Group();
+    turretGroup.position.y = 1.0; // sit on top of the hull
+    tank.add(turretGroup);
+
+    // Turret box
+    turretGroup.add(new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 0.55, 1.2),
+      new THREE.MeshBasicMaterial({ color: turretColour })
+    ));
+
+    // -- Gun barrel --
+    // A long thin box extending forward from the turret.
+    // In Three.js, "forward" is the negative Z direction by default.
+    const barrelMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.22, 1.6),
+      new THREE.MeshBasicMaterial({ color: 0x222222 })
+    );
+    barrelMesh.position.z = -1.2; // extend forward (negative Z = forward)
+    barrelMesh.position.y = 0.05;
+    turretGroup.add(barrelMesh);
+
+    // Store a reference to the turretGroup on the tank object so we
+    // can access it later without searching through children.
+    tank.turretGroup = turretGroup;
+
+    return tank;
+  }
+
+  // Create one green tank and add it to the scene
+  const tank = createTank(0x4a7a2a, 0x3a6020);
+  scene.add(tank);
+
+
+  // ── KEYBOARD INPUT ────────────────────────────────────────────────────────
+  // We keep track of which keys are currently held down in a plain object.
+  //   keydown fires when a key is pressed   → set to true
+  //   keyup   fires when a key is released  → set to false
+  //
+  // The animation loop reads this every frame to know what to do.
+  // This is much smoother than responding directly inside keydown,
+  // because keydown only fires once per press (with a repeat delay).
+  const keys = {};
+  window.addEventListener('keydown', e => { keys[e.code] = true; });
+  window.addEventListener('keyup',   e => { keys[e.code] = false; });
+
+  // Movement speed constants
+  const DRIVE_SPEED = 10;  // units per second
+  const TURN_SPEED  = 2.0; // radians per second
+
+
+  // ── DELTA TIME (dt) ───────────────────────────────────────────────────────
+  // Delta time = seconds since the last frame.
+  // On a fast computer a frame might take 0.008s (120 fps).
+  // On a slow computer it might take 0.033s (30 fps).
+  //
+  // By multiplying movement by dt, the tank travels the same distance
+  // per second regardless of how fast the computer is.
+  //
+  // Without dt: tank moves 0.01 units/frame → faster on a faster machine
+  // With dt:    tank moves 10 * dt units/frame → always 10 units/second
+  const clock = new THREE.Clock();
+
+
+  // ── FOLLOW CAMERA ─────────────────────────────────────────────────────────
+  // Instead of orbit controls, we'll position the camera behind and above
+  // the tank every frame. These numbers control where "behind" is.
+  const CAM_BEHIND = 12; // how many units behind the tank
+  const CAM_UP     = 6;  // how many units above the tank
+
+  // A Vector3 we reuse each frame to avoid creating garbage
+  const camOffset = new THREE.Vector3();
+
+
+  // ── ANIMATION LOOP ────────────────────────────────────────────────────────
+  function animate() {
+    requestAnimationFrame(animate);
+
+    const dt = clock.getDelta(); // seconds since last frame (roughly 0.016)
+
+    // -- Move the tank --
+    // translateZ moves along the object's OWN local Z axis,
+    // so it always goes "forward" relative to where the tank is facing.
+    if (keys['KeyW']) tank.translateZ(-DRIVE_SPEED * dt); // forward
+    if (keys['KeyS']) tank.translateZ( DRIVE_SPEED * dt); // backward
+    if (keys['KeyA']) tank.rotation.y += TURN_SPEED * dt; // turn left
+    if (keys['KeyD']) tank.rotation.y -= TURN_SPEED * dt; // turn right
+
+    // -- Update the camera --
+    // We want the camera behind the tank, rotated to face the same direction.
+    // Step 1: define the offset in the tank's LOCAL space (0 right, 6 up, 12 back)
+    camOffset.set(0, CAM_UP, CAM_BEHIND);
+    // Step 2: rotate that offset so it matches the tank's current direction
+    camOffset.applyEuler(tank.rotation);
+    // Step 3: add the rotated offset to the tank's world position
+    camera.position.copy(tank.position).add(camOffset);
+    // Step 4: look at the tank (slightly above its base)
+    camera.lookAt(tank.position.x, tank.position.y + 1, tank.position.z);
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+
+  // ── Resize handling ───────────────────────────────────────────────────────
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+</script>
+</body>
+</html>

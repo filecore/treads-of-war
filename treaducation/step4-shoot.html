@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 4 — Shooting</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #hint {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.5);
+      font-family: monospace;
+      font-size: 13px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #score {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #ffffff;
+      font-family: monospace;
+      font-size: 22px;
+      pointer-events: none;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+<div id="score">Hits: 0</div>
+<div id="hint">W/S &mdash; drive &nbsp; A/D &mdash; turn &nbsp; Q/E &mdash; aim &nbsp; Space &mdash; fire</div>
+<script type="module">
+
+  /*
+    Step 4 — Shooting
+
+    New things this step:
+      - Turret rotates independently with Q and E
+      - Press Space to fire a shell
+      - Shells are stored in an array and move forward each frame
+      - A red target box to shoot at
+      - Simple collision detection using a bounding box
+      - Shells and the target are removed/respawned cleanly
+
+    Key concept: the 'shells' array acts as a pool of active objects.
+    We add to it when firing and remove from it when a shell hits or expires.
+  */
+
+  import * as THREE from 'three';
+
+  const SKY_COLOUR = 0x87ceeb;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(SKY_COLOUR);
+  scene.fog = new THREE.Fog(SKY_COLOUR, 80, 350);
+
+  const camera = new THREE.PerspectiveCamera(
+    70, window.innerWidth / window.innerHeight, 0.1, 1000
+  );
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Terrain
+  const terrainGeo = new THREE.PlaneGeometry(1000, 1000);
+  terrainGeo.rotateX(-Math.PI / 2);
+  scene.add(new THREE.Mesh(terrainGeo, new THREE.MeshBasicMaterial({ color: 0x3a5f2a })));
+  const grid = new THREE.GridHelper(1000, 100, 0x000000, 0x2a4a1a);
+  grid.position.y = 0.01;
+  scene.add(grid);
+
+
+  // ── TANK (same as Step 3) ─────────────────────────────────────────────────
+  function createTank(bodyColour, turretColour) {
+    const tank = new THREE.Group();
+
+    const hullMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 0.6, 3),
+      new THREE.MeshBasicMaterial({ color: bodyColour })
+    );
+    hullMesh.position.y = 0.5;
+    tank.add(hullMesh);
+
+    const turretGroup = new THREE.Group();
+    turretGroup.position.y = 1.0;
+    tank.add(turretGroup);
+
+    turretGroup.add(new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 0.55, 1.2),
+      new THREE.MeshBasicMaterial({ color: turretColour })
+    ));
+
+    const barrelMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.22, 1.6),
+      new THREE.MeshBasicMaterial({ color: 0x222222 })
+    );
+    barrelMesh.position.z = -1.2;
+    barrelMesh.position.y = 0.05;
+    turretGroup.add(barrelMesh);
+
+    tank.turretGroup = turretGroup;
+    return tank;
+  }
+
+  const tank = createTank(0x4a7a2a, 0x3a6020);
+  scene.add(tank);
+
+
+  // ── TARGET ────────────────────────────────────────────────────────────────
+  // A red box placed somewhere on the terrain for the player to shoot.
+  const targetMat = new THREE.MeshBasicMaterial({ color: 0xcc2222 });
+  const target = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 2, 2),
+    targetMat
+  );
+  scene.add(target);
+
+  function respawnTarget() {
+    // Pick a random position, but not too close to where the tank starts.
+    const angle = Math.random() * Math.PI * 2;
+    const dist  = 30 + Math.random() * 80;
+    target.position.set(
+      Math.cos(angle) * dist,
+      1,                       // y=1 so the bottom of the box (height 2) sits on the ground
+      Math.sin(angle) * dist
+    );
+    targetMat.color.setHex(0xcc2222); // reset to red after a hit flash
+  }
+  respawnTarget();
+
+
+  // ── SHELLS ────────────────────────────────────────────────────────────────
+  // 'shells' is an array of active shell objects.
+  // Each object has:
+  //   mesh  — the 3D sphere in the scene
+  //   life  — how many units of travel remain before it disappears
+  //
+  // Every frame we move each shell forward, reduce its life,
+  // check for collision, and remove it if it hits something or runs out.
+  const shells = [];
+  const SHELL_SPEED = 60;  // units per second
+  const SHELL_LIFE  = 140; // max units of travel
+
+  function fireShell() {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.18, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+    );
+
+    // -- Spawn position --
+    // We want the shell to appear at the tip of the barrel.
+    // The barrel tip is at z=-2.0 in the turretGroup's local space.
+    // localToWorld() converts a point from local space to world space,
+    // taking into account the turret's position AND the tank's position/rotation.
+    const spawnPoint = new THREE.Vector3(0, 0.05, -2.0);
+    tank.turretGroup.localToWorld(spawnPoint);
+    mesh.position.copy(spawnPoint);
+
+    // -- Travel direction --
+    // Set the shell's rotation to match the combined world angle of
+    // tank body + turret. Then translateZ(-speed) will move it
+    // exactly in the direction the gun is pointing.
+    mesh.rotation.y = tank.rotation.y + tank.turretGroup.rotation.y;
+
+    scene.add(mesh);
+    shells.push({ mesh, life: SHELL_LIFE });
+  }
+
+
+  // ── KEYBOARD INPUT ────────────────────────────────────────────────────────
+  const keys = {};
+  window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'Space') {
+      e.preventDefault(); // stop the page from scrolling on spacebar
+      fireShell();
+    }
+  });
+  window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+  const DRIVE_SPEED  = 10;
+  const TURN_SPEED   = 2.0;
+  const TURRET_SPEED = 1.8; // radians per second
+
+
+  // ── COLLISION DETECTION ───────────────────────────────────────────────────
+  // Box3 is an axis-aligned bounding box (AABB).
+  // We call setFromObject(target) each frame to get the target's current bounds,
+  // then check if any shell's position is inside that box.
+  const targetBox = new THREE.Box3();
+
+
+  // ── SCORE ─────────────────────────────────────────────────────────────────
+  let hits = 0;
+  const scoreEl = document.getElementById('score');
+
+
+  // ── Clock and camera constants ────────────────────────────────────────────
+  const clock = new THREE.Clock();
+  const CAM_BEHIND = 12;
+  const CAM_UP     = 6;
+  const camOffset  = new THREE.Vector3();
+
+
+  // ── ANIMATION LOOP ────────────────────────────────────────────────────────
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+
+    // Drive and turn
+    if (keys['KeyW']) tank.translateZ(-DRIVE_SPEED * dt);
+    if (keys['KeyS']) tank.translateZ( DRIVE_SPEED * dt);
+    if (keys['KeyA']) tank.rotation.y += TURN_SPEED * dt;
+    if (keys['KeyD']) tank.rotation.y -= TURN_SPEED * dt;
+
+    // Rotate the turret (Q = left, E = right)
+    // Note: we rotate turretGroup.rotation.y, not tank.rotation.y
+    if (keys['KeyQ']) tank.turretGroup.rotation.y += TURRET_SPEED * dt;
+    if (keys['KeyE']) tank.turretGroup.rotation.y -= TURRET_SPEED * dt;
+
+    // Update target bounding box (needs to happen before shell loop)
+    targetBox.setFromObject(target);
+
+    // Update all active shells
+    // We iterate backwards so we can safely splice (remove) items mid-loop.
+    for (let i = shells.length - 1; i >= 0; i--) {
+      const s = shells[i];
+
+      // Move the shell forward along its facing direction
+      const travelDist = SHELL_SPEED * dt;
+      s.mesh.translateZ(-travelDist);
+      s.life -= travelDist;
+
+      // Check if this shell hit the target
+      if (targetBox.containsPoint(s.mesh.position)) {
+        hits++;
+        scoreEl.textContent = 'Hits: ' + hits;
+
+        // Flash the target white, then respawn it after 300ms
+        targetMat.color.setHex(0xffffff);
+        setTimeout(respawnTarget, 300);
+
+        // Remove the shell from the scene and free its memory
+        scene.remove(s.mesh);
+        s.mesh.geometry.dispose();
+        shells.splice(i, 1);
+        continue; // skip the life check below
+      }
+
+      // Remove the shell if it has travelled far enough
+      if (s.life <= 0) {
+        scene.remove(s.mesh);
+        s.mesh.geometry.dispose();
+        shells.splice(i, 1);
+      }
+    }
+
+    // Follow camera (same as Step 3)
+    camOffset.set(0, CAM_UP, CAM_BEHIND);
+    camOffset.applyEuler(tank.rotation);
+    camera.position.copy(tank.position).add(camOffset);
+    camera.lookAt(tank.position.x, tank.position.y + 1, tank.position.z);
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+
+  // ── Resize handling ───────────────────────────────────────────────────────
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+</script>
+</body>
+</html>

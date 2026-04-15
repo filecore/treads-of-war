@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 5 — 1v1</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: monospace; }
+
+    /* Health bars — one on each side at the top */
+    #hud {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 20px;
+      pointer-events: none;
+    }
+    .player-hud {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 160px;
+    }
+    .player-hud.right { align-items: flex-end; }
+    .player-label { color: #fff; font-size: 13px; letter-spacing: 0.1em; }
+    .bar-track {
+      width: 160px;
+      height: 14px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .bar-fill {
+      height: 100%;
+      transition: width 0.15s;
+    }
+    #bar1 { background: #4488ff; }
+    #bar2 { background: #ff4444; }
+
+    /* Win banner (hidden until game over) */
+    #banner {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+      color: #fff;
+      text-align: center;
+    }
+    #banner.visible { display: flex; }
+    #banner h1 { font-size: clamp(24px, 5vw, 52px); letter-spacing: 0.1em; margin: 0; }
+    #banner p  { font-size: 16px; opacity: 0.7; margin: 0; }
+
+    /* Controls hint */
+    #hint {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.4);
+      font-size: 11px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+<!-- HUD overlays -->
+<div id="hud">
+  <div class="player-hud left">
+    <span class="player-label">Player 1</span>
+    <div class="bar-track"><div id="bar1" class="bar-fill" style="width:100%"></div></div>
+  </div>
+  <div class="player-hud right">
+    <span class="player-label">Player 2</span>
+    <div class="bar-track"><div id="bar2" class="bar-fill" style="width:100%"></div></div>
+  </div>
+</div>
+
+<div id="banner">
+  <h1 id="banner-text">Player 1 Wins!</h1>
+  <p>Press R to play again</p>
+</div>
+
+<div id="hint">
+  P1: W/S drive &nbsp; A/D turn &nbsp; Q/E aim &nbsp; Space fire
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  P2: Up/Down drive &nbsp; Left/Right turn &nbsp; ,/. aim &nbsp; Enter fire
+</div>
+
+<script type="module">
+
+  /*
+    Step 5 — 1v1
+
+    The big upgrade: two players on the same keyboard.
+
+    New concepts:
+      - createTank() now builds a reusable factory — one function, two tanks
+      - Each tank has its own control keys, health, and bar element
+      - Shells know which tank fired them (so you can't shoot yourself)
+      - The camera watches both players from above
+      - Game state: 'playing' or 'gameover'
+      - R key resets everything
+  */
+
+  import * as THREE from 'three';
+
+  const SKY_COLOUR = 0x87ceeb;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(SKY_COLOUR);
+  scene.fog = new THREE.Fog(SKY_COLOUR, 80, 500);
+
+  const camera = new THREE.PerspectiveCamera(
+    70, window.innerWidth / window.innerHeight, 0.1, 2000
+  );
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Terrain
+  const terrainGeo = new THREE.PlaneGeometry(1000, 1000);
+  terrainGeo.rotateX(-Math.PI / 2);
+  scene.add(new THREE.Mesh(terrainGeo, new THREE.MeshBasicMaterial({ color: 0x3a5f2a })));
+  const grid = new THREE.GridHelper(1000, 100, 0x000000, 0x2a4a1a);
+  grid.position.y = 0.01;
+  scene.add(grid);
+
+
+  // ── TANK FACTORY ──────────────────────────────────────────────────────────
+  // Same as Step 3/4, but now accepts a colour argument.
+  // We call this twice — once for each player.
+  function createTank(bodyColour, turretColour) {
+    const tank = new THREE.Group();
+
+    const hullMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 0.6, 3),
+      new THREE.MeshBasicMaterial({ color: bodyColour })
+    );
+    hullMesh.position.y = 0.5;
+    tank.add(hullMesh);
+
+    const turretGroup = new THREE.Group();
+    turretGroup.position.y = 1.0;
+    tank.add(turretGroup);
+
+    turretGroup.add(new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 0.55, 1.2),
+      new THREE.MeshBasicMaterial({ color: turretColour })
+    ));
+
+    const barrelMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.22, 1.6),
+      new THREE.MeshBasicMaterial({ color: 0x222222 })
+    );
+    barrelMesh.position.z = -1.2;
+    barrelMesh.position.y = 0.05;
+    turretGroup.add(barrelMesh);
+
+    tank.turretGroup = turretGroup;
+    return tank;
+  }
+
+
+  // ── PLAYER DATA ───────────────────────────────────────────────────────────
+  // Each player is an object with:
+  //   tank    — the 3D Group in the scene
+  //   hp      — health points (0 = dead)
+  //   maxHp   — starting health
+  //   barEl   — the DOM element for the health bar fill
+  //   keys    — which keyboard keys control this player
+  //
+  // Storing it this way means we can write ONE update function
+  // and call it for both players, instead of copy-pasting everything.
+  const MAX_HP = 5;
+
+  const p1 = {
+    tank: createTank(0x2255cc, 0x1a3fa0), // blue
+    hp: MAX_HP,
+    maxHp: MAX_HP,
+    barEl: document.getElementById('bar1'),
+    keys: {
+      forward: 'KeyW', backward: 'KeyS',
+      left: 'KeyA',    right: 'KeyD',
+      aimLeft: 'KeyQ', aimRight: 'KeyE',
+      fire: 'Space'
+    }
+  };
+
+  const p2 = {
+    tank: createTank(0xcc2222, 0xa01a1a), // red
+    hp: MAX_HP,
+    maxHp: MAX_HP,
+    barEl: document.getElementById('bar2'),
+    keys: {
+      forward: 'ArrowUp', backward: 'ArrowDown',
+      left: 'ArrowLeft',  right: 'ArrowRight',
+      aimLeft: 'Comma',   aimRight: 'Period',
+      fire: 'Enter'
+    }
+  };
+
+  // Place both tanks at opposite ends of the field, facing each other.
+  p1.tank.position.set(0, 0, -30);
+  p1.tank.rotation.y = 0; // facing toward +Z (toward p2)
+
+  p2.tank.position.set(0, 0, 30);
+  p2.tank.rotation.y = Math.PI; // facing -Z (toward p1)
+
+  scene.add(p1.tank);
+  scene.add(p2.tank);
+
+
+  // ── KEYBOARD INPUT ────────────────────────────────────────────────────────
+  const keys = {};
+  window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+      e.preventDefault(); // prevent page scroll / default browser actions
+    }
+    // Fire events for both players
+    if (!gameOver) {
+      if (e.code === p1.keys.fire) fireShell(p1, p2);
+      if (e.code === p2.keys.fire) fireShell(p2, p1);
+    }
+    // Reset
+    if (e.code === 'KeyR' && gameOver) resetGame();
+  });
+  window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+
+  // ── SHELLS ────────────────────────────────────────────────────────────────
+  const shells = [];
+  const SHELL_SPEED = 60;
+  const SHELL_LIFE  = 180;
+
+  // shooter = the player who fired; target = the other player
+  function fireShell(shooter, target) {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.18, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+    );
+    const spawnPoint = new THREE.Vector3(0, 0.05, -2.0);
+    shooter.tank.turretGroup.localToWorld(spawnPoint);
+    mesh.position.copy(spawnPoint);
+    mesh.rotation.y = shooter.tank.rotation.y + shooter.tank.turretGroup.rotation.y;
+
+    scene.add(mesh);
+    // Each shell remembers who its TARGET is so we only check the right collision.
+    shells.push({ mesh, life: SHELL_LIFE, target });
+  }
+
+
+  // ── CONSTANTS ─────────────────────────────────────────────────────────────
+  const DRIVE_SPEED  = 10;
+  const TURN_SPEED   = 2.0;
+  const TURRET_SPEED = 1.8;
+
+  const clock   = new THREE.Clock();
+  const midPoint = new THREE.Vector3(); // reused for camera
+  const tankBox  = new THREE.Box3();    // reused for collision
+
+
+  // ── GAME STATE ────────────────────────────────────────────────────────────
+  let gameOver = false;
+
+  function takeDamage(player) {
+    player.hp = Math.max(0, player.hp - 1);
+    player.barEl.style.width = (player.hp / player.maxHp * 100) + '%';
+  }
+
+  function showWinner(label) {
+    gameOver = true;
+    document.getElementById('banner-text').textContent = label + ' Wins!';
+    document.getElementById('banner').classList.add('visible');
+  }
+
+  function resetGame() {
+    // Clear all shells
+    for (const s of shells) {
+      scene.remove(s.mesh);
+      s.mesh.geometry.dispose();
+    }
+    shells.length = 0;
+
+    // Reset both players
+    for (const [player, startZ, facing] of [[p1, -30, 0], [p2, 30, Math.PI]]) {
+      player.hp = player.maxHp;
+      player.barEl.style.width = '100%';
+      player.tank.position.set(0, 0, startZ);
+      player.tank.rotation.y = facing;
+      player.tank.turretGroup.rotation.y = 0;
+    }
+
+    gameOver = false;
+    document.getElementById('banner').classList.remove('visible');
+  }
+
+
+  // ── UPDATE A SINGLE PLAYER ────────────────────────────────────────────────
+  // One function handles both players.
+  // We pass in the player object and the dt.
+  function updatePlayer(player, dt) {
+    const t    = player.tank;
+    const k    = player.keys;
+
+    if (keys[k.forward])   t.translateZ(-DRIVE_SPEED * dt);
+    if (keys[k.backward])  t.translateZ( DRIVE_SPEED * dt);
+    if (keys[k.left])      t.rotation.y += TURN_SPEED * dt;
+    if (keys[k.right])     t.rotation.y -= TURN_SPEED * dt;
+    if (keys[k.aimLeft])   t.turretGroup.rotation.y += TURRET_SPEED * dt;
+    if (keys[k.aimRight])  t.turretGroup.rotation.y -= TURRET_SPEED * dt;
+  }
+
+
+  // ── DYNAMIC CAMERA ────────────────────────────────────────────────────────
+  // Instead of following one tank, the camera watches both at once.
+  // It positions itself above the midpoint and pulls back based on
+  // how far apart the tanks are — closer when they're together,
+  // further back when they're far apart.
+  function updateCamera() {
+    midPoint.addVectors(p1.tank.position, p2.tank.position).multiplyScalar(0.5);
+    const separation = p1.tank.position.distanceTo(p2.tank.position);
+    const height = Math.max(22, separation * 0.85);
+    const back   = Math.max(28, separation * 1.1);
+    camera.position.set(midPoint.x, height, midPoint.z + back);
+    camera.lookAt(midPoint.x, 0, midPoint.z);
+  }
+
+
+  // ── ANIMATION LOOP ────────────────────────────────────────────────────────
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+
+    if (!gameOver) {
+      updatePlayer(p1, dt);
+      updatePlayer(p2, dt);
+
+      // Update shells
+      for (let i = shells.length - 1; i >= 0; i--) {
+        const s = shells[i];
+        const travelDist = SHELL_SPEED * dt;
+        s.mesh.translateZ(-travelDist);
+        s.life -= travelDist;
+
+        // Check collision with this shell's target tank
+        tankBox.setFromObject(s.target.tank);
+        if (tankBox.containsPoint(s.mesh.position)) {
+          takeDamage(s.target);
+          scene.remove(s.mesh);
+          s.mesh.geometry.dispose();
+          shells.splice(i, 1);
+
+          // Check win condition
+          if (p1.hp <= 0) showWinner('Player 2');
+          else if (p2.hp <= 0) showWinner('Player 1');
+          continue;
+        }
+
+        if (s.life <= 0) {
+          scene.remove(s.mesh);
+          s.mesh.geometry.dispose();
+          shells.splice(i, 1);
+        }
+      }
+    }
+
+    updateCamera();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+
+  // ── Resize handling ───────────────────────────────────────────────────────
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Treaducation — Code &amp; Learn</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #4a9edd;
+      --gold:    #f0e8b4;
+      --dimtext: rgba(180,210,240,0.65);
+      --bg:      #080e14;
+      --panel:   rgba(255,255,255,0.04);
+      --border:  rgba(74,158,221,0.22);
+    }
+
+    body {
+      background: var(--bg);
+      color: #c8d8ee;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      line-height: 1.65;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: clamp(48px,8vw,96px) clamp(20px,6vw,80px) clamp(40px,5vw,72px);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(8,20,36,0.98) 0%, rgba(8,14,20,1) 100%);
+    }
+
+    .hero-title {
+      font-size: clamp(32px, 7vw, 72px);
+      letter-spacing: 0.14em;
+      color: var(--blue);
+      text-transform: uppercase;
+      text-shadow: 0 0 40px rgba(74,158,221,0.35);
+      margin-bottom: 10px;
+    }
+
+    .hero-sub {
+      font-size: clamp(11px, 1.5vw, 15px);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--dimtext);
+      margin-bottom: clamp(28px, 4vw, 52px);
+    }
+
+    .hero-intro {
+      max-width: 620px;
+      margin: 0 auto clamp(28px, 4vw, 48px);
+      font-size: clamp(13px, 1.5vw, 15px);
+      color: var(--dimtext);
+      line-height: 1.75;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 14px 42px;
+      border: 2px solid var(--blue);
+      color: var(--gold);
+      font-family: inherit;
+      font-size: clamp(13px, 1.6vw, 16px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      background: rgba(74,158,221,0.10);
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .btn:hover {
+      background: rgba(74,158,221,0.26);
+      border-color: var(--gold);
+    }
+    .btn--download {
+      border-color: #2ecc71;
+      background: rgba(46,204,113,0.10);
+    }
+    .btn--download:hover {
+      background: rgba(46,204,113,0.26);
+      border-color: #aaffd4;
+    }
+
+    .hero-credit {
+      font-size: 12px;
+      font-style: italic;
+      color: rgba(180,210,240,0.40);
+      margin-top: 8px;
+    }
+
+    /* ── Steps ────────────────────────────────────────────────────────── */
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: clamp(32px,5vw,64px) clamp(20px,5vw,48px) 80px;
+    }
+
+    .section-title {
+      font-size: clamp(13px, 1.9vw, 17px);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 28px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 16px; }
+
+    .step-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: clamp(16px,2.5vw,24px) clamp(18px,3vw,28px);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .step-card:hover {
+      background: rgba(74,158,221,0.07);
+      border-color: rgba(74,158,221,0.5);
+    }
+
+    .step-num {
+      font-size: clamp(20px, 3.5vw, 36px);
+      color: var(--blue);
+      opacity: 0.5;
+      font-weight: bold;
+      flex-shrink: 0;
+      min-width: 44px;
+      line-height: 1.1;
+    }
+
+    .step-body {}
+
+    .step-title {
+      font-size: clamp(13px, 1.7vw, 16px);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .step-desc {
+      font-size: clamp(12px, 1.4vw, 14px);
+      color: var(--dimtext);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .step-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(74,158,221,0.7);
+      background: rgba(74,158,221,0.08);
+      border: 1px solid rgba(74,158,221,0.22);
+      padding: 2px 7px;
+    }
+
+    /* ── How it works ─────────────────────────────────────────────────── */
+    .how-section { margin-top: clamp(40px, 6vw, 72px); }
+
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(10px,2vw,20px);
+    }
+    @media (max-width: 600px) { .how-grid { grid-template-columns: 1fr; } }
+
+    .how-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 18px 20px;
+    }
+    .how-card h3 {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 8px;
+    }
+    .how-card p {
+      font-size: 12px;
+      color: var(--dimtext);
+      margin: 0;
+    }
+
+    /* ── Footer ───────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 28px 20px;
+      font-size: 11px;
+      color: rgba(180,210,240,0.25);
+    }
+    footer a { color: rgba(74,158,221,0.55); text-decoration: none; }
+    footer a:hover { color: var(--blue); }
+  </style>
+</head>
+<body>
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+  <div class="hero">
+    <div class="hero-title">Treaducation</div>
+    <div class="hero-sub">Code &amp; Learn &mdash; A Treads of War Tutorial</div>
+
+    <p class="hero-intro">
+      Five steps. One working tank game. No prior experience needed.<br>
+      You write every line yourself &mdash; no copy-paste, no shortcuts.
+      Each step introduces a handful of new ideas, and by the end you have
+      a real two-player 3D game running in your browser.
+    </p>
+
+    <div class="btn-group">
+      <a href="treaducation.zip" class="btn btn--download" download>Download all files</a>
+      <a href="https://treads.example.com/treads/" class="btn">Play the full game</a>
+    </div>
+
+    <p class="hero-credit"><em>Thanks to Samuel and his class, my main play-testers</em></p>
+  </div>
+
+  <!-- ── Steps ─────────────────────────────────────────────────────────────── -->
+  <main class="page">
+
+    <h2 class="section-title">The Five Steps</h2>
+    <p style="color:var(--dimtext);font-size:13px;margin-bottom:24px;">
+      Click any step to open the finished reference version in your browser.
+      Right-click &rarr; Save as to download the file.
+    </p>
+
+    <div class="steps">
+
+      <a href="step1-hello-world.html" class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <div class="step-title">Hello World</div>
+          <p class="step-desc">
+            Get Three.js running and see something on screen.
+            You'll build the three things every 3D project needs:
+            a Scene, a Camera, and a Renderer.
+            Then add a rotating green cube just to prove it works.
+          </p>
+          <div class="step-tags">
+            <span class="tag">Scene / Camera / Renderer</span>
+            <span class="tag">BoxGeometry</span>
+            <span class="tag">Animation loop</span>
+            <span class="tag">requestAnimationFrame</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="step2-terrain.html" class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <div class="step-title">Flat Terrain</div>
+          <p class="step-desc">
+            Replace the cube with an open world.
+            A large flat plane becomes the ground.
+            A grid overlay makes scale visible.
+            Fog hides the edge so the terrain looks infinite.
+            OrbitControls let you fly around and explore.
+          </p>
+          <div class="step-tags">
+            <span class="tag">PlaneGeometry</span>
+            <span class="tag">GridHelper</span>
+            <span class="tag">Fog</span>
+            <span class="tag">OrbitControls</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="step3-tank.html" class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <div class="step-title">Tank &amp; Controls</div>
+          <p class="step-desc">
+            Build a tank from boxes grouped together and drive it around.
+            W/S move forward and back, A/D rotate left and right.
+            The camera follows behind. You'll meet delta time &mdash;
+            the key to smooth movement on any hardware.
+          </p>
+          <div class="step-tags">
+            <span class="tag">THREE.Group</span>
+            <span class="tag">Keyboard input</span>
+            <span class="tag">translateZ</span>
+            <span class="tag">Delta time</span>
+            <span class="tag">Follow camera</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="step4-shoot.html" class="step-card">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <div class="step-title">Shooting</div>
+          <p class="step-desc">
+            Aim the turret with Q and E, then press Space to fire.
+            Shells live in an array and move forward each frame.
+            A red target box waits to be hit.
+            When a shell collides, the target flashes and moves somewhere new.
+          </p>
+          <div class="step-tags">
+            <span class="tag">Turret rotation</span>
+            <span class="tag">Projectile array</span>
+            <span class="tag">localToWorld</span>
+            <span class="tag">Box3 collision</span>
+            <span class="tag">scene.add / remove</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="step5-1v1.html" class="step-card">
+        <div class="step-num">05</div>
+        <div class="step-body">
+          <div class="step-title">1v1 — The Full Game</div>
+          <p class="step-desc">
+            Add a second player on the same keyboard.
+            Blue vs red, five hits to win.
+            The camera watches both tanks and zooms out as they separate.
+            Health bars, a win screen, and R to reset &mdash; it's a real game.
+          </p>
+          <div class="step-tags">
+            <span class="tag">Factory function</span>
+            <span class="tag">Player data objects</span>
+            <span class="tag">Dynamic camera</span>
+            <span class="tag">Health / win state</span>
+            <span class="tag">DOM HUD</span>
+          </div>
+        </div>
+      </a>
+
+    </div>
+
+
+    <!-- ── How it works ────────────────────────────────────────────────────── -->
+    <div class="how-section">
+      <h2 class="section-title">How to use this tutorial</h2>
+      <div class="how-grid">
+        <div class="how-card">
+          <h3>No install needed</h3>
+          <p>
+            Each file is a single HTML page.
+            Open it directly in Chrome or Firefox &mdash;
+            no terminal, no npm, no build tools.
+            Three.js loads itself from the internet on first open.
+          </p>
+        </div>
+        <div class="how-card">
+          <h3>Build it yourself</h3>
+          <p>
+            The files here are the finished reference versions.
+            The goal is to create your own copy from scratch, step by step.
+            Use these to check your work or get unstuck &mdash;
+            not as something to copy straight into a blank file.
+          </p>
+        </div>
+        <div class="how-card">
+          <h3>Read the README</h3>
+          <p>
+            The download includes a README.md that walks through
+            each step with hints and explanations.
+            Open it in any text editor or on GitHub
+            if you need a push in the right direction.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    Treaducation is part of
+    <a href="https://treads.example.com/">Treads of War</a> &mdash;
+    a browser tank game by Jason Togneri.
+    Tutorial files are free to use for any educational purpose.
+  </footer>
+
+</body>
+</html>
