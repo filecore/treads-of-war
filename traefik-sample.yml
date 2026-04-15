@@ -1,0 +1,15 @@
+# traefik-sample.yml — Traefik v2/v3 labels for the relay service
+# Add these labels to your relay service in docker-compose.yml.
+# Traefik forwards WebSocket Upgrade headers automatically — no extra middleware needed.
+# Replace treads.example.com with your actual domain.
+
+services:
+  relay:
+    # ... your existing relay config ...
+    labels:
+      - "traefik.enable=true"
+      # PathPrefix /relay covers both the WebSocket endpoint and /relay/discover
+      - "traefik.http.routers.treads-relay.rule=Host(`treads.example.com`) && PathPrefix(`/relay`)"
+      - "traefik.http.routers.treads-relay.entrypoints=websecure"
+      - "traefik.http.routers.treads-relay.tls=true"
+      - "traefik.http.services.treads-relay.loadbalancer.server.port=8765"
