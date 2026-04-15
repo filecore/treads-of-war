@@ -1,3 +1,9 @@
+> **NOTE: This manual changelog is no longer maintained.**
+> Development has moved to Git. For full version history, see `git log`.
+> The content below is a reference document only and will not be updated.
+
+---
+
 # Treads of War - full game description
 
 ## Tech Stack
@@ -41,9 +47,9 @@
 
 ## Tank Roster
 
-16 tanks across 4 factions. 
+16 tanks across 4 factions.
 
-### American (Allies)
+### Allied
 | Tank | Speed | XC | Front | Fire | Reload | Cost |
 |------|-------|----|-------|------|--------|------|
 | M24 Chaffee | 62 km/h | 44 | 20 | 35 | 0.9s | 80 |
@@ -51,7 +57,7 @@
 | Sherman Firefly | 44 | 28 | 47 | 61 | 1.3s | 220 |
 | M26 Pershing | 35 | 22 | 60 | 68 | 1.3s | 400 |
 
-### Russian (Soviets)
+### Soviet
 | Tank | Speed | XC | Front | Fire | Reload | Cost |
 |------|-------|----|-------|------|--------|------|
 | T-34/76 | 61 km/h | 42 | 37 | 35 | 3.0s | 120 |
@@ -59,7 +65,7 @@
 | KV-85 | 44 | 29 | 43 | 48 | 3.0s | 220 |
 | JS-II | 41 | 22 | 93 | 73 | 3.0s | 480 |
 
-### German (Axis)
+### Axis
 | Tank | Speed | XC | Front | Fire | Reload | Cost |
 |------|-------|----|-------|------|--------|------|
 | Panzer III | 44 km/h | 28 | 28 | 30 | 1.6s | 80 |
