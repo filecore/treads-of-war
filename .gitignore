@@ -1,5 +1,6 @@
 # Build artifacts
 *.zip
+!treaducation/treaducation.zip
 
 # Local-only directories (kept locally, not tracked in git)
 analysis/
