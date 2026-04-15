@@ -201,7 +201,7 @@
     .toc {
       display: none;
       position: fixed;
-      top: 120px;
+      top: 0;
       left: calc(50% - 410px - 196px);
       width: 172px;
     }
@@ -702,6 +702,18 @@
     </div>
 
   </main>
+
+  <script>
+    function alignToc() {
+      var toc = document.querySelector('.toc');
+      var overview = document.getElementById('overview');
+      if (toc && overview) {
+        toc.style.top = overview.getBoundingClientRect().top + window.scrollY + 'px';
+      }
+    }
+    window.addEventListener('load', alignToc);
+    window.addEventListener('resize', alignToc);
+  </script>
 
   <footer>
     Treaducation is part of <a href="https://treads.togneri.net/">Treads of War</a> -
