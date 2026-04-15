@@ -546,7 +546,16 @@
       <ul>
         <li>The CDN requires an internet connection - check the network</li>
         <li>The importmap URL must be exactly right - compare character by character with the reference file</li>
-        <li>Some school networks block unpkg.com - check with IT, or download Three.js files locally</li>
+        <li>Some school networks block unpkg.com - check with IT. If the network cannot be unblocked,
+            Three.js can be downloaded and used locally instead: go to
+            <a href="https://unpkg.com/three@0.158.0/build/three.module.js" target="_blank">unpkg.com/three@0.158.0/build/three.module.js</a>,
+            save the file (Ctrl+S or File - Save Page As) as <code>three.module.js</code>,
+            and place it in the same folder as the student HTML files. Then change the importmap line in
+            each HTML file from <code>"three": "https://unpkg.com/three@0.158.0/..."</code>
+            to <code>"three": "./three.module.js"</code>. The addons (OrbitControls, used in Step 2)
+            need the same treatment: save
+            <a href="https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js" target="_blank">OrbitControls.js</a>
+            into a subfolder called <code>controls/</code> and update that import path too.</li>
       </ul>
     </div>
 
