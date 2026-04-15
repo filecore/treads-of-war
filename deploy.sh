@@ -6,6 +6,12 @@ set -e
 
 TREADS_REMOTE="user@your-server:/home/user/docker/treads/www-data/treads/"
 
+# ── 0. Push to GitHub ─────────────────────────────────────────────────────────
+echo ""
+echo "Pushing to GitHub..."
+git push
+echo "GitHub updated."
+
 # ── 1. Push game + zip to treads.example.com/treads/ ─────────────────────────
 echo ""
 echo "Syncing to treads.example.com/treads/..."
