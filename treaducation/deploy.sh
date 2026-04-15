@@ -1,5 +1,5 @@
 #!/bin/bash
-# deploy.sh — build treaducation.zip and push everything to treads.example.com/treaducation/
+# deploy.sh - build treaducation.zip and push everything to treads.example.com/treaducation/
 sed -i 's/\r//' "$0" 2>/dev/null || true
 set -e
 

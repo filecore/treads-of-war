@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step 5 — 1v1</title>
+  <title>Step 5 - 1v1</title>
   <style>
     body { margin: 0; overflow: hidden; font-family: monospace; }
 
-    /* Health bars — one on each side at the top */
+    /* Health bars - one on each side at the top */
     #hud {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -103,12 +103,12 @@
 <script type="module">
 
   /*
-    Step 5 — 1v1
+    Step 5 - 1v1
 
     The big upgrade: two players on the same keyboard.
 
     New concepts:
-      - createTank() now builds a reusable factory — one function, two tanks
+      - createTank() now builds a reusable factory - one function, two tanks
       - Each tank has its own control keys, health, and bar element
       - Shells know which tank fired them (so you can't shoot yourself)
       - The camera watches both players from above
@@ -141,7 +141,7 @@
 
   // ── TANK FACTORY ──────────────────────────────────────────────────────────
   // Same as Step 3/4, but now accepts a colour argument.
-  // We call this twice — once for each player.
+  // We call this twice - once for each player.
   function createTank(bodyColour, turretColour) {
     const tank = new THREE.Group();
 
@@ -176,11 +176,11 @@
 
   // ── PLAYER DATA ───────────────────────────────────────────────────────────
   // Each player is an object with:
-  //   tank    — the 3D Group in the scene
-  //   hp      — health points (0 = dead)
-  //   maxHp   — starting health
-  //   barEl   — the DOM element for the health bar fill
-  //   keys    — which keyboard keys control this player
+  //   tank    - the 3D Group in the scene
+  //   hp      - health points (0 = dead)
+  //   maxHp   - starting health
+  //   barEl   - the DOM element for the health bar fill
+  //   keys    - which keyboard keys control this player
   //
   // Storing it this way means we can write ONE update function
   // and call it for both players, instead of copy-pasting everything.
@@ -328,7 +328,7 @@
   // ── DYNAMIC CAMERA ────────────────────────────────────────────────────────
   // Instead of following one tank, the camera watches both at once.
   // It positions itself above the midpoint and pulls back based on
-  // how far apart the tanks are — closer when they're together,
+  // how far apart the tanks are - closer when they're together,
   // further back when they're far apart.
   function updateCamera() {
     midPoint.addVectors(p1.tank.position, p2.tank.position).multiplyScalar(0.5);

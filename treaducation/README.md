@@ -1,4 +1,4 @@
-# Treaducation — Code & Learn
+# Treaducation - Code & Learn
 
 A five-step tutorial that takes you from a blank HTML file to a working
 two-player 3D tank game, built entirely in the browser using Three.js.
@@ -11,7 +11,7 @@ Just a text editor and Chrome or Firefox.
 ## How it works
 
 Each step is a single HTML file. Open it in your browser and you'll see
-the finished result. Your job is to recreate it yourself from scratch —
+the finished result. Your job is to recreate it yourself from scratch -
 not to copy the file, but to read the code, understand what it does,
 and write your own version.
 
@@ -22,7 +22,7 @@ The README hints below tell you what to build without giving it away.
 
 ## The five steps
 
-### Step 1 — Hello World (`step1-hello-world.html`)
+### Step 1 - Hello World (`step1-hello-world.html`)
 
 **Goal:** Get Three.js running and see something on screen.
 
@@ -39,13 +39,13 @@ The Renderer needs `document.body.appendChild(renderer.domElement)` to appear on
 
 ---
 
-### Step 2 — Flat Terrain (`step2-terrain.html`)
+### Step 2 - Flat Terrain (`step2-terrain.html`)
 
 **Goal:** Replace the cube with an open world you can look around.
 
 Your job:
 - Remove the cube
-- Add a large PlaneGeometry (try 1000 x 1000) — remember to rotate it flat with
+- Add a large PlaneGeometry (try 1000 x 1000) - remember to rotate it flat with
   `terrainGeo.rotateX(-Math.PI / 2)`
 - Add a GridHelper on top of it (raise it slightly with `grid.position.y = 0.01`)
 - Set `scene.background` to a sky blue colour
@@ -58,7 +58,7 @@ will have a visible seam. Use the same hex value for both.
 
 ---
 
-### Step 3 — Tank & Controls (`step3-tank.html`)
+### Step 3 - Tank & Controls (`step3-tank.html`)
 
 **Goal:** Build a tank from boxes and drive it around.
 
@@ -78,7 +78,7 @@ Hint: `translateZ` moves along the object's OWN local axis, so it always goes
 
 ---
 
-### Step 4 — Shooting (`step4-shoot.html`)
+### Step 4 - Shooting (`step4-shoot.html`)
 
 **Goal:** Aim the turret, fire shells, and hit a target.
 
@@ -100,7 +100,7 @@ loop skips the item after the removed one.
 
 ---
 
-### Step 5 — 1v1 (`step5-1v1.html`)
+### Step 5 - 1v1 (`step5-1v1.html`)
 
 **Goal:** Two players. Five hits wins. Real game.
 
@@ -108,7 +108,7 @@ Your job:
 - Call `createTank()` twice with different colours (e.g. blue and red)
 - Define a player object for each: `{ tank, hp, maxHp, barEl, keys: { forward, backward, ... } }`
 - Write a single `updatePlayer(player, dt)` function that reads from `player.keys`
-  and moves `player.tank` — then call it for both players each frame
+  and moves `player.tank` - then call it for both players each frame
 - Each shell needs an `owner` or `target` property so it only checks collision
   against the opposing tank
 - Add two `<div>` health bars to the HTML; update their `style.width` on hit

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step 1 — Hello World</title>
+  <title>Step 1 - Hello World</title>
   <style>
     /* Remove the default white margin around the page */
     body { margin: 0; overflow: hidden; }
@@ -32,11 +32,11 @@
   /*
     Welcome to Step 1!
 
-    Three.js works with three core objects — think of them like a film set:
+    Three.js works with three core objects - think of them like a film set:
 
-      Scene    — the world that contains everything (the film set itself)
-      Camera   — the viewpoint we look through (the camera on set)
-      Renderer — draws the scene onto the screen (the film projector)
+      Scene    - the world that contains everything (the film set itself)
+      Camera   - the viewpoint we look through (the camera on set)
+      Renderer - draws the scene onto the screen (the film projector)
 
     Every Three.js project starts with these three things.
   */
@@ -55,10 +55,10 @@
   // things farther away look smaller (perspective projection).
   //
   // Arguments:
-  //   fieldOfView  — how wide the view is, in degrees (like a camera lens)
-  //   aspectRatio  — width divided by height of the window
-  //   near         — don't draw things closer than this many units
-  //   far          — don't draw things farther than this many units
+  //   fieldOfView  - how wide the view is, in degrees (like a camera lens)
+  //   aspectRatio  - width divided by height of the window
+  //   near         - don't draw things closer than this many units
+  //   far          - don't draw things farther than this many units
   const camera = new THREE.PerspectiveCamera(
     75,                                     // 75 degree field of view
     window.innerWidth / window.innerHeight, // match the window shape
@@ -67,7 +67,7 @@
   );
 
   // Move the camera back 5 units so we can see the cube.
-  // (By default everything sits at position 0,0,0 — including the camera.)
+  // (By default everything sits at position 0,0,0 - including the camera.)
   camera.position.z = 5;
 
 
@@ -83,8 +83,8 @@
   // ── 4. CUBE ───────────────────────────────────────────────────────────────
   // Every visible 3D object needs two things:
   //
-  //   Geometry — the shape (a list of points and triangles in 3D space)
-  //   Material — how the surface looks (colour, texture, shiny vs flat, etc.)
+  //   Geometry - the shape (a list of points and triangles in 3D space)
+  //   Material - how the surface looks (colour, texture, shiny vs flat, etc.)
   //
   // A Mesh combines them into an object we can add to the scene.
   const geometry = new THREE.BoxGeometry(1, 1, 1); // a 1x1x1 cube
