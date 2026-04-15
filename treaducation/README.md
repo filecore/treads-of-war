@@ -41,6 +41,56 @@ a tank or a sky blue - you will want the hex code from a colour picker.
 
 ---
 
+## Before you start - coordinates
+
+Three.js places everything in a 3D world using three axes:
+
+- **X** - left and right. Positive X is to the right.
+- **Y** - up and down. Positive Y is upward.
+- **Z** - forward and back. Negative Z is forward (into the screen), positive Z is toward you.
+
+So `camera.position.z = 5` means "put the camera 5 units toward me", which lets it look at
+the object in front of it. And `translateZ(-speed * dt)` moves a tank forward because it
+moves in the negative Z direction.
+
+Positions are always written as three numbers in order: `(x, y, z)`.
+`position.set(0, 40, 80)` means: centred left-right, 40 units up, 80 units toward the camera.
+
+---
+
+## Before you start - radians
+
+Rotations in Three.js use radians rather than degrees. You don't need to understand the
+maths - just memorise these conversions:
+
+| Degrees | Radians |
+|---------|---------|
+| 360 | Math.PI * 2 |
+| 180 | Math.PI |
+| 90 | Math.PI / 2 |
+| 45 | Math.PI / 4 |
+| -90 | -Math.PI / 2 |
+
+So `terrainGeo.rotateX(-Math.PI / 2)` means "rotate 90 degrees around the X axis" -
+which tips the plane from vertical (its default) to flat on the ground.
+
+---
+
+## Before you start - experiment
+
+The single best way to understand what any value does is to change it and reload the page.
+
+Every number in these files is adjustable. There is no magic to values like `1000` for the
+terrain size, `5` for the camera distance, or `0.05` for the rotation speed - they were just
+chosen because they looked good. Try making the terrain bigger, the camera higher, the tank
+faster, or the fog closer. If something breaks, Ctrl+Z will undo your change, or you can look
+at the reference file to find the original value.
+
+The browser console (F12 - Console tab) shows errors in plain English. If something stops
+working after a change, that is the first place to look.
+
+---
+
 ## The five steps
 
 ### Step 1 - Hello World (`step1-hello-world.html`)
