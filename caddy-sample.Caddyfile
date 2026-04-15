@@ -1,0 +1,14 @@
+# caddy-sample.Caddyfile — reverse proxy config for the relay service
+# Add this to your Caddyfile, or run standalone with: caddy run --config caddy-sample.Caddyfile
+# Caddy handles WebSocket upgrades and TLS (Let's Encrypt) automatically.
+# Replace treads.example.com with your actual domain.
+
+treads.example.com {
+    # Proxy /relay (WebSocket) and /relay/discover to the relay container.
+    # flush_interval -1 disables buffering for low-latency WebSocket — recommended for a game relay.
+    handle /relay* {
+        reverse_proxy relay:8765 {
+            flush_interval -1
+        }
+    }
+}
