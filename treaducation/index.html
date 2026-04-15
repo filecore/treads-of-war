@@ -4,60 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Treaducation - Code &amp; Learn</title>
+  <link rel="stylesheet" href="treaducation.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ── Hero overrides (clamp sizing) ───────────────────────────────────── */
+    .hero { padding: clamp(48px,8vw,96px) clamp(20px,6vw,80px) clamp(40px,5vw,72px); }
+    .hero-title { font-size: clamp(32px, 7vw, 72px); margin-bottom: 10px; }
+    .hero-sub { font-size: clamp(11px, 1.5vw, 15px); margin-bottom: clamp(28px, 4vw, 52px); }
+    .hero-intro { max-width: 620px; margin: 0 auto clamp(28px, 4vw, 48px); font-size: clamp(13px, 1.5vw, 15px); }
 
-    :root {
-      --blue:    #4a9edd;
-      --gold:    #f0e8b4;
-      --dimtext: rgba(180,210,240,0.65);
-      --bg:      #080e14;
-      --panel:   rgba(255,255,255,0.04);
-      --border:  rgba(74,158,221,0.22);
-    }
+    /* ── Page / section overrides ────────────────────────────────────────── */
+    .page { max-width: 960px; padding: clamp(32px,5vw,64px) clamp(20px,5vw,48px) 80px; }
+    .section-title { font-size: clamp(13px, 1.9vw, 17px); margin-bottom: 28px; }
+    footer { padding: 28px 20px; }
 
-    body {
-      background: var(--bg);
-      color: #c8d8ee;
-      font-family: 'Courier New', Courier, monospace;
-      min-height: 100vh;
-      line-height: 1.65;
-    }
-
-    /* ── Hero ─────────────────────────────────────────────────────────── */
-    .hero {
-      text-align: center;
-      padding: clamp(48px,8vw,96px) clamp(20px,6vw,80px) clamp(40px,5vw,72px);
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(8,20,36,0.98) 0%, rgba(8,14,20,1) 100%);
-    }
-
-    .hero-title {
-      font-size: clamp(32px, 7vw, 72px);
-      letter-spacing: 0.14em;
-      color: var(--blue);
-      text-transform: uppercase;
-      text-shadow: 0 0 40px rgba(74,158,221,0.35);
-      margin-bottom: 10px;
-    }
-
-    .hero-sub {
-      font-size: clamp(11px, 1.5vw, 15px);
-      letter-spacing: 0.28em;
-      text-transform: uppercase;
-      color: var(--dimtext);
-      margin-bottom: clamp(28px, 4vw, 52px);
-    }
-
-    .hero-intro {
-      max-width: 620px;
-      margin: 0 auto clamp(28px, 4vw, 48px);
-      font-size: clamp(13px, 1.5vw, 15px);
-      color: var(--dimtext);
-      line-height: 1.75;
-    }
-
-    /* Buttons */
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
     .btn-group {
       display: flex;
       flex-wrap: wrap;
@@ -65,7 +25,6 @@
       gap: 14px;
       margin-bottom: 24px;
     }
-
     .btn {
       display: inline-block;
       padding: 14px 42px;
@@ -76,11 +35,11 @@
       letter-spacing: 0.18em;
       text-transform: uppercase;
       text-decoration: none;
-      background: rgba(74,158,221,0.10);
+      background: rgba(93,184,122,0.10);
       transition: background 0.18s, border-color 0.18s;
     }
     .btn:hover {
-      background: rgba(74,158,221,0.26);
+      background: rgba(93,184,122,0.26);
       border-color: var(--gold);
     }
     .btn--download {
@@ -91,33 +50,15 @@
       background: rgba(46,204,113,0.26);
       border-color: #aaffd4;
     }
-
     .hero-credit {
       font-size: 12px;
       font-style: italic;
-      color: rgba(180,210,240,0.40);
+      color: rgba(170,200,170,0.40);
       margin-top: 8px;
     }
 
-    /* ── Steps ────────────────────────────────────────────────────────── */
-    .page {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: clamp(32px,5vw,64px) clamp(20px,5vw,48px) 80px;
-    }
-
-    .section-title {
-      font-size: clamp(13px, 1.9vw, 17px);
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 28px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-
+    /* ── Steps ───────────────────────────────────────────────────────────── */
     .steps { display: flex; flex-direction: column; gap: 16px; }
-
     .step-card {
       display: flex;
       align-items: flex-start;
@@ -130,10 +71,9 @@
       transition: background 0.18s, border-color 0.18s;
     }
     .step-card:hover {
-      background: rgba(74,158,221,0.07);
-      border-color: rgba(74,158,221,0.5);
+      background: rgba(93,184,122,0.07);
+      border-color: rgba(93,184,122,0.5);
     }
-
     .step-num {
       font-size: clamp(20px, 3.5vw, 36px);
       color: var(--blue);
@@ -143,9 +83,7 @@
       min-width: 44px;
       line-height: 1.1;
     }
-
     .step-body {}
-
     .step-title {
       font-size: clamp(13px, 1.7vw, 16px);
       letter-spacing: 0.14em;
@@ -153,40 +91,22 @@
       color: var(--gold);
       margin-bottom: 6px;
     }
-
     .step-desc {
       font-size: clamp(12px, 1.4vw, 14px);
       color: var(--dimtext);
       line-height: 1.6;
       margin-bottom: 8px;
     }
+    .step-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 
-    .step-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .tag {
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgba(74,158,221,0.7);
-      background: rgba(74,158,221,0.08);
-      border: 1px solid rgba(74,158,221,0.22);
-      padding: 2px 7px;
-    }
-
-    /* ── How it works ─────────────────────────────────────────────────── */
+    /* ── How it works ────────────────────────────────────────────────────── */
     .how-section { margin-top: clamp(40px, 6vw, 72px); }
-
     .how-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: clamp(10px,2vw,20px);
     }
     @media (max-width: 600px) { .how-grid { grid-template-columns: 1fr; } }
-
     .how-card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -199,29 +119,14 @@
       color: var(--blue);
       margin-bottom: 8px;
     }
-    .how-card p {
-      font-size: 12px;
-      color: var(--dimtext);
-      margin: 0;
-    }
-
-    /* ── Footer ───────────────────────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      text-align: center;
-      padding: 28px 20px;
-      font-size: 11px;
-      color: rgba(180,210,240,0.25);
-    }
-    footer a { color: rgba(74,158,221,0.55); text-decoration: none; }
-    footer a:hover { color: var(--blue); }
+    .how-card p { font-size: 12px; color: var(--dimtext); margin: 0; }
   </style>
 </head>
 <body>
 
   <!-- ── Back link ────────────────────────────────────────────────────────── -->
-  <div style="padding:10px 24px;border-bottom:1px solid var(--border);">
-    <a href="https://treads.togneri.net" style="color:var(--dimtext);text-decoration:none;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;transition:color 0.15s;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='var(--dimtext)'">&larr; Back to the main page</a>
+  <div class="back-bar">
+    <a href="https://treads.togneri.net" class="back-link">&larr; Back to the main page</a>
   </div>
 
   <!-- ── Hero ─────────────────────────────────────────────────────────────── -->

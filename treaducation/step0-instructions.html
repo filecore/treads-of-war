@@ -4,47 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Step 0 - Instructions</title>
+  <link rel="stylesheet" href="treaducation.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --blue:    #4a9edd;
-      --gold:    #f0e8b4;
-      --dimtext: rgba(180,210,240,0.65);
-      --bg:      #080e14;
-      --panel:   rgba(255,255,255,0.04);
-      --border:  rgba(74,158,221,0.22);
-    }
-
-    body {
-      background: var(--bg);
-      color: #c8d8ee;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 14px;
-      min-height: 100vh;
-      line-height: 1.6;
-    }
-
-    .back-bar {
-      padding: 10px 24px;
-      border-bottom: 1px solid var(--border);
-    }
-    .back-link {
-      color: var(--dimtext);
-      text-decoration: none;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      transition: color 0.15s;
-    }
-    .back-link:hover { color: var(--blue); }
-
-    .hero {
-      text-align: center;
-      padding: 48px 40px 36px;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(8,20,36,0.98) 0%, rgba(8,14,20,1) 100%);
-    }
     .hero-num {
       font-size: 11px;
       letter-spacing: 0.28em;
@@ -53,68 +14,13 @@
       opacity: 0.6;
       margin-bottom: 6px;
     }
-    .hero-title {
-      font-size: 36px;
-      letter-spacing: 0.14em;
-      color: var(--blue);
-      text-transform: uppercase;
-      text-shadow: 0 0 40px rgba(74,158,221,0.35);
-      margin-bottom: 8px;
-    }
-    .hero-sub {
-      font-size: 12px;
-      letter-spacing: 0.26em;
-      text-transform: uppercase;
-      color: var(--dimtext);
-      margin-bottom: 24px;
-    }
-    .hero-intro {
-      max-width: 580px;
-      margin: 0 auto;
-      font-size: 13px;
-      color: var(--dimtext);
-      line-height: 1.75;
-    }
 
-    .page {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 40px 32px 80px;
-    }
-
-    .section-title {
-      font-size: 12px;
-      letter-spacing: 0.20em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 16px;
-      margin-top: 48px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .section-title:first-of-type { margin-top: 0; }
-
-    p.body {
-      font-size: 13px;
-      color: var(--dimtext);
-      line-height: 1.75;
-      margin-bottom: 10px;
-    }
-
-    ul.body, ol.body {
-      font-size: 13px;
-      color: var(--dimtext);
-      line-height: 1.75;
-      padding-left: 20px;
-      margin-bottom: 10px;
-    }
-    ul.body li, ol.body li { margin-bottom: 4px; }
+    .hero-intro { max-width: 580px; }
 
     code {
-      font-family: 'Courier New', Courier, monospace;
       font-size: 12px;
-      color: rgba(140,210,255,0.9);
-      background: rgba(0,20,50,0.5);
+      color: rgba(130,220,160,0.9);
+      background: rgba(0,30,15,0.5);
       padding: 1px 5px;
       border-radius: 2px;
     }
@@ -122,40 +28,15 @@
     a { color: var(--blue); }
     a:hover { color: var(--gold); }
 
-    /* step hint blocks */
-    .step-block {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--blue);
-      padding: 18px 22px;
-      margin-bottom: 16px;
-    }
-    .step-block-title {
-      font-size: 13px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--gold);
-      margin-bottom: 4px;
-    }
-    .step-block-title span {
-      color: var(--blue);
-      opacity: 0.6;
-      margin-right: 8px;
-    }
+    .step-block-title { margin-bottom: 4px; }
+
     .step-goal {
       font-size: 12px;
       color: var(--blue);
       margin-bottom: 12px;
       letter-spacing: 0.06em;
     }
-    .sub-heading {
-      font-size: 11px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--blue);
-      margin-top: 12px;
-      margin-bottom: 5px;
-    }
+
     .hint {
       border: 1px solid rgba(240,232,180,0.20);
       background: rgba(240,232,180,0.04);
@@ -166,7 +47,6 @@
       line-height: 1.65;
     }
 
-    /* coords/radians table */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -185,10 +65,9 @@
     td {
       color: var(--dimtext);
       padding: 5px 10px 5px 0;
-      border-bottom: 1px solid rgba(74,158,221,0.08);
+      border-bottom: 1px solid rgba(93,184,122,0.08);
     }
 
-    /* axis cards */
     .axis-row {
       display: grid;
       grid-template-columns: repeat(3,1fr);
@@ -212,16 +91,6 @@
       color: var(--dimtext);
       line-height: 1.55;
     }
-
-    footer {
-      border-top: 1px solid var(--border);
-      text-align: center;
-      padding: 24px 20px;
-      font-size: 11px;
-      color: rgba(180,210,240,0.25);
-    }
-    footer a { color: rgba(74,158,221,0.55); text-decoration: none; }
-    footer a:hover { color: var(--blue); }
   </style>
 </head>
 <body>
