@@ -1,6 +1,6 @@
 # Treads of War
 
-A browser-based 3D tank combat game built with Three.js. Inspired by [Conqueror](https://en.wikipedia.org/wiki/Conqueror_(video_game)) by Superior Software (Acorn Archimedes, 1988). Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
+[Treads of War](https://treads.togneri.net) is a browser-based 3D tank combat game built with Three.js. Inspired by [Conqueror](https://en.wikipedia.org/wiki/Conqueror_(video_game)) by Superior Software (Acorn Archimedes, 1988). Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
 
 **Runs entirely in your browser - no download required.**
 
@@ -10,7 +10,7 @@ A browser-based 3D tank combat game built with Three.js. Inspired by [Conqueror]
 
 ## Inspiration
 
-Conqueror (1988) by Superior Software was one of the definitive tank combat games for the Acorn Archimedes - flat-shaded rolling hills, a roster of WWII vehicles with genuine stat differences, and satisfying armour-penetrating physics. Treads of War is a browser reimplementation of that experience, built from scratch with Three.js. 
+Conqueror (1988) by Superior Software was one of the definitive tank combat games for the Acorn Archimedes - flat-shaded rolling hills, a roster of WWII vehicles with genuine stat differences, and satisfying armour-penetrating physics (see a video [here](https://www.youtube.com/watch?v=R2IEfkj117U)). Treads of War is a browser reimplementation of that experience, built from scratch with Three.js.
 
 ---
 
@@ -31,55 +31,6 @@ I'm sure everybody is sick of vibe-coded slop, and I'm sure by now large chunks 
 **Strategy** - Budget purchase screen before each battle. Buy any mix of tanks from your faction within the budget. Win by holding the objective ring for 60 continuous seconds. All abilities available: smoke, artillery barrage, spotter plane. Supply crates spawn on the map.
 
 **Online** - Up to 16 players (8v8) over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz. Client-side prediction with server correction. 4 team colours, room codes, ping display, CTF mode available.
-
----
-
-## Features
-
-- Procedural Fourier terrain - six overlapping sine waves, unique every battle
-- Chunk-streamed world: 11x11 grid of chunks loaded around the player
-- Roads, rivers, ponds, destructible trees, farmhouse buildings
-- Persistent track marks and shell craters per battle
-- Dynamic weather: clear, rain, fog, dust storm - transitions mid-battle
-- AP and HE ammo; ballistic shell arcs with gravity
-- Directional armour (front/side/rear) with ricochet probability by angle
-- Damage states: half speed to quarter speed to immobilised to catastrophic
-- Wreck recovery: low-overkill kills leave recoverable wrecks (Attrition/Strategy)
-- Aim assist, gun-sight mode (V key, 14 degree FOV), mouse aim option
-- Minimap with roads, water, objective, enemy positions (spotter-gated in Strategy)
-- Obliterator IV editor: fully customisable stat and visual editor for the Mercenary faction
-- Works on desktop and modern mobile browsers (mobile: beta)
-
----
-
-## Tank roster
-
-16 tanks across 4 historically-inspired factions (well, 3 historically-inspired and one totally inaccurate).
-
-| Faction | Tanks |
-|---|---|
-| Allied | M24 Chaffee, M36 90mmGMC, Sherman Firefly, M26 Pershing |
-| Axis | Panzer III, Panther, Tiger I, King Tiger |
-| Soviet | T-34/76, KV-1S, KV-85, JS-II |
-| Mercenary (experimental) | Marauder Mk II, Interceptor, Vulture Type I, Obliterator IV |
-
----
-
-## Controls
-
-| Key | Action |
-|---|---|
-| W / S | Accelerate / reverse |
-| A / D | Turn left / right |
-| Q / E | Traverse turret left / right (also: switch tank in squad modes) |
-| Space | Fire |
-| Tab | Switch ammo AP/HE (Arcade) or switch controlled tank (Attrition/Strategy) |
-| V | Gun-sight mode (hold) |
-| G | Smoke screen (Attrition/Strategy) |
-| C | Artillery barrage (Strategy) |
-| X | Spotter plane (Strategy) |
-| P | Pause |
-| R | Next wave / continue |
 
 ---
 
@@ -123,27 +74,15 @@ services:
     restart: unless-stopped
 ```
 
-### Nginx - proxy `/relay` to the relay container
+### Reverse proxy
 
-```nginx
-location = /relay {
-    proxy_pass         http://relay:8765;
-    proxy_http_version 1.1;
-    proxy_set_header   Upgrade    $http_upgrade;
-    proxy_set_header   Connection "upgrade";
-    proxy_set_header   Host       $host;
-    proxy_read_timeout 86400s;
-}
+The relay requires proxy rules for `/relay` (WebSocket) and `/relay/discover` (HTTP). Example configs are included for the three most common setups:
 
-location = /relay/discover {
-    proxy_pass       http://relay:8765/discover;
-    proxy_set_header Host $host;
-}
-```
+- [nginx-sample.conf](nginx-sample.conf) — for Nginx Proxy Manager or self-managed nginx
+- [traefik-sample.yml](traefik-sample.yml) — Docker labels for Traefik v2/v3
+- [caddy-sample.Caddyfile](caddy-sample.Caddyfile) — for Caddy
 
-Verify: `curl http://localhost:<port>/relay/discover` should return `{"name":"Treads of War Relay","rooms":[]}`.
-
-If serving over HTTPS via a reverse proxy (e.g. Traefik, Caddy, NPM), enable **Websockets Support** on the proxy host. The game auto-switches between `ws://` (HTTP) and `wss://` (HTTPS).
+The game auto-switches between `ws://` (HTTP) and `wss://` (HTTPS) depending on how it is served.
 
 ### Deploy script
 
@@ -151,7 +90,16 @@ If serving over HTTPS via a reverse proxy (e.g. Traefik, Caddy, NPM), enable **W
 ./deploy.sh
 ```
 
-Rsyncs `src/` and `relay/` to the remote server, then SSHs in to rebuild and restart the relay container. Edit `TREADS_REMOTE` at the top of the script for your server path.
+On first run, the script will prompt for your server details:
+
+- SSH user and host (e.g. `user@192.0.2.10`)
+- Remote web root path
+- Remote relay directory
+- Remote Docker Compose directory
+- Relay service name
+- Domain name
+
+These are saved to `.deploy.conf` (gitignored) and reused on subsequent runs. The script rsyncs `src/` and `relay/` to the server, then SSHs in to rebuild and restart the relay container.
 
 ---
 
@@ -164,22 +112,6 @@ Rsyncs `src/` and `relay/` to the remote server, then SSHs in to rebuild and res
 
 ---
 
-## Source layout
+## Legal note
 
-```
-src/            Game source (HTML, CSS, JS modules)
-src/js/         Game modules: main.js, config.js, tank.js, ai.js, combat.js,
-                terrain.js, weather.js, particles.js, models.js, audio.js,
-                input.js, game.js, modes.js, net.js, ctf.js
-relay/          WebSocket relay server (Node.js)
-deploy.sh       rsync + relay rebuild in one step
-serve.sh        Local dev server (Python http.server)
-docker-compose.yml
-nginx-sample.conf
-```
-
----
-
-## Legal
-
-Fan project. Unofficial and non-commercial. No original assets from Conqueror (1988) are included. Contact: [email protected]
+Fan project. Unofficial and non-commercial. No original assets from Conqueror (1988) are included.
