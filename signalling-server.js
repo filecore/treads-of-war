@@ -6,7 +6,7 @@
 // Supports multiple concurrent games via room codes. Each hosted game gets a
 // 4-character alphanumeric code. Clients join by supplying the same code.
 //
-// Prerequisites:  npm install ws   (or: npm init -y && npm install ws)
+// Prerequisites:  npm install ws   (or: npm init -y && npm install ws) or whatever is right for your OS, I'm assuming Debian
 
 const http = require('http');
 const { WebSocketServer } = require('ws');
