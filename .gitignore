@@ -2,6 +2,10 @@
 *.zip
 !treaducation/treaducation.zip
 
+# Audio working files
+src/audio/*.bak
+src/audio/preview/
+
 # Local-only directories (kept locally, not tracked in git)
 analysis/
 data/
