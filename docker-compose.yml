@@ -5,4 +5,4 @@ services:
       - "53312:80"
     volumes:
       - ./src:/usr/share/nginx/html:ro
-    restart: unless-stopped
+    restart: unless-stopped # set to 'always' if you want it to auto-recover
