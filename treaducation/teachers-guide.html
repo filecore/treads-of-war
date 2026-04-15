@@ -196,6 +196,40 @@
     }
     footer a { color: rgba(74,158,221,0.55); text-decoration: none; }
     footer a:hover { color: var(--blue); }
+
+    /* ── Sidebar TOC ──────────────────────────────────────────────────────── */
+    .toc {
+      display: none;
+      position: fixed;
+      top: 120px;
+      left: calc(50% - 410px - 196px);
+      width: 172px;
+    }
+    @media (min-width: 1240px) { .toc { display: block; } }
+
+    .toc-title {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .toc a {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--dimtext);
+      text-decoration: none;
+      padding: 4px 0;
+      transition: color 0.15s;
+      line-height: 1.4;
+    }
+    .toc a:hover { color: var(--blue); }
+    .toc a.active { color: var(--blue); }
+
+    html { scroll-behavior: smooth; }
   </style>
 </head>
 <body>
@@ -214,10 +248,21 @@
     </p>
   </div>
 
+  <nav class="toc">
+    <div class="toc-title">Contents</div>
+    <a href="#overview">Overview</a>
+    <a href="#facilitator">Your role</a>
+    <a href="#steps">Step by step</a>
+    <a href="#after">After step 5</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+    <a href="#resources">Resources</a>
+    <a href="#next">Where next?</a>
+  </nav>
+
   <main class="page">
 
     <!-- Overview -->
-    <h2 class="section-title">Overview</h2>
+    <h2 class="section-title" id="overview">Overview</h2>
 
     <div class="card">
       <div class="card-title">What students will build</div>
@@ -256,7 +301,7 @@
 
 
     <!-- Your role -->
-    <h2 class="section-title">Your role as facilitator</h2>
+    <h2 class="section-title" id="facilitator">Your role as facilitator</h2>
 
     <p class="body">
       You don't need to know JavaScript to run these sessions. The step files are the
@@ -290,7 +335,7 @@
 
 
     <!-- Step by step -->
-    <h2 class="section-title">Step by step</h2>
+    <h2 class="section-title" id="steps">Step by step</h2>
 
     <!-- Step 1 -->
     <div class="step-block">
@@ -514,7 +559,7 @@
 
 
     <!-- What's next -->
-    <h2 class="section-title">After step 5 - keeping momentum</h2>
+    <h2 class="section-title" id="after">After step 5 - keeping momentum</h2>
 
     <p class="body">Students who finish early or want to keep going have several natural directions.
     The README.md in the download lists these - here is how to frame them as challenges:</p>
@@ -529,7 +574,7 @@
 
 
     <!-- Troubleshooting -->
-    <h2 class="section-title">Common problems and fixes</h2>
+    <h2 class="section-title" id="troubleshooting">Common problems and fixes</h2>
 
     <div class="card">
       <div class="card-title">Nothing appears on screen</div>
@@ -546,16 +591,19 @@
       <ul>
         <li>The CDN requires an internet connection - check the network</li>
         <li>The importmap URL must be exactly right - compare character by character with the reference file</li>
-        <li>Some school networks block unpkg.com - check with IT. If the network cannot be unblocked,
-            Three.js can be downloaded and used locally instead: go to
-            <a href="https://unpkg.com/three@0.158.0/build/three.module.js" target="_blank">unpkg.com/three@0.158.0/build/three.module.js</a>,
-            save the file (Ctrl+S or File - Save Page As) as <code>three.module.js</code>,
-            and place it in the same folder as the student HTML files. Then change the importmap line in
-            each HTML file from <code>"three": "https://unpkg.com/three@0.158.0/..."</code>
-            to <code>"three": "./three.module.js"</code>. The addons (OrbitControls, used in Step 2)
-            need the same treatment: save
-            <a href="https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js" target="_blank">OrbitControls.js</a>
-            into a subfolder called <code>controls/</code> and update that import path too.</li>
+        <li>Some school networks block unpkg.com. If this happens, the tutorial download already
+            includes local copies of Three.js: <code>three.module.js</code> and
+            <code>jsm/controls/OrbitControls.js</code> are bundled alongside the step files.
+            The step files are already set up to use these automatically if the CDN is
+            unavailable - no code changes are needed. Just make sure the student's HTML file
+            is in the same folder as <code>three.module.js</code>.
+            <br><br>
+            <strong>Important:</strong> these bundled copies are version 0.158.0 and may become
+            outdated over time. For the purposes of this tutorial they will always work correctly.
+            Students continuing beyond the tutorial and wanting the latest version can download
+            a fresh copy from
+            <a href="https://unpkg.com/three@0.158.0/build/three.module.js" target="_blank" style="color:var(--blue)">unpkg.com</a>
+            directly.</li>
       </ul>
     </div>
 
@@ -577,7 +625,7 @@
     </div>
 
     <!-- Resources -->
-    <h2 class="section-title">Reference resources</h2>
+    <h2 class="section-title" id="resources">Reference resources</h2>
 
     <p class="body">These links are useful to have open during a session - either for yourself
     or to share with students who want a clearer explanation of a concept.</p>
@@ -605,7 +653,7 @@
     </div>
 
     <!-- Where to go next -->
-    <h2 class="section-title">Where to go next?</h2>
+    <h2 class="section-title" id="next">Where to go next?</h2>
 
     <p class="body">Once your students have finished Step 5 and want to keep going, here are
     the most useful places to send them.</p>

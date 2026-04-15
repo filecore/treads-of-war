@@ -19,6 +19,8 @@ files = [
     'step4-shoot.html',
     'step5-1v1.html',
     'README.md',
+    'three.module.js',
+    'jsm/controls/OrbitControls.js',
 ]
 with zipfile.ZipFile('treaducation.zip', 'w', zipfile.ZIP_DEFLATED) as z:
     for f in files:
