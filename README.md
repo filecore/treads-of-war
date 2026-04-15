@@ -78,9 +78,9 @@ services:
 
 The relay requires proxy rules for `/relay` (WebSocket) and `/relay/discover` (HTTP). Example configs are included for the three most common setups:
 
-- [nginx-sample.conf](nginx-sample.conf) — for Nginx Proxy Manager or self-managed nginx
-- [traefik-sample.yml](traefik-sample.yml) — Docker labels for Traefik v2/v3
-- [caddy-sample.Caddyfile](caddy-sample.Caddyfile) — for Caddy
+- [nginx-sample.conf](nginx-sample.conf) - for Nginx Proxy Manager or self-managed nginx
+- [traefik-sample.yml](traefik-sample.yml) - Docker labels for Traefik v2/v3
+- [caddy-sample.Caddyfile](caddy-sample.Caddyfile) - for Caddy
 
 The game auto-switches between `ws://` (HTTP) and `wss://` (HTTPS) depending on how it is served.
 
