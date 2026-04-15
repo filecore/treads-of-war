@@ -4767,7 +4767,8 @@ function _updateWrecks(dt) {
 }
 
 // ─── Shell pass-by tracking ───────────────────────────────────────────────────
-const _shellPassbySet = new Set();   // shells that have already triggered a pass-by sound
+const _shellPassbySet  = new Set();  // shells that have already triggered a pass-by sound
+const _enemyFireSet    = new Set();  // enemy shells that have already triggered a fire sound
 
 // ─── Supply crates ─────────────────────────────────────────────────────────────
 const _crateTypes = [
@@ -5273,6 +5274,21 @@ function animate(now) {
       aiControllers[i].update(dt, player, combat, particles, _playerObscured, weather.getDetectionMultiplier() * _playerCoverMult, weather.getFireIntervalMultiplier(), weather.getEngageRangeMultiplier() * _playerCoverMult);
     }
     enemy.update(dt, { skipAccel: true, turretLeft:false, turretRight:false, fire:false, fireOnce:false });
+  }
+
+  // ── Enemy fire audio detection ────────────────────────────────────────────────
+  if (player.alive) {
+    for (const shell of combat.shells) {
+      if (!enemies.includes(shell.firedBy)) continue;
+      if (_enemyFireSet.has(shell)) continue;
+      _enemyFireSet.add(shell);
+      const ddx = shell.px - player.position.x;
+      const ddz = shell.pz - player.position.z;
+      audio.playEnemyFire(Math.sqrt(ddx * ddx + ddz * ddz));
+    }
+    for (const s of _enemyFireSet) {
+      if (!combat.shells.includes(s)) _enemyFireSet.delete(s);
+    }
   }
 
   // ── Tank-tank collision ───────────────────────────────────────────────────────

@@ -5,6 +5,9 @@
 // synthesised (no clean isolated samples available).
 //
 // Sample files: src/audio/engine.ogg, shot.ogg, explosion.ogg
+//   engine.ogg    — looping engine rumble, pitch tracks speed
+//   shot.ogg      — cannon fire; used for player fire (full vol) and enemy fire (attenuated)
+//   explosion.ogg — shell impact; derived from shot, slowed 0.62x, -4 semitones, bass-boosted
 // Loaded via fetch + decodeAudioData on first resume() call.
 
 // ── Shared noise buffer factory (used by synthesised sounds) ──────────────────
@@ -122,6 +125,19 @@ export class AudioManager {
     if (!this._ctx) return;
     if (this._shotBuf) {
       this._playOnce(this._shotBuf, 1.0);
+    } else {
+      this._synthFire();
+    }
+  }
+
+  // ── Enemy cannon fire (distance-attenuated) ────────────────────────────────
+  // distWu: world-unit distance from player to the enemy tank
+  playEnemyFire(distWu) {
+    if (!this._ctx) return;
+    const vol = Math.max(0, 1 - distWu / 160) * 0.65;
+    if (vol < 0.01) return;
+    if (this._shotBuf) {
+      this._playOnce(this._shotBuf, vol);
     } else {
       this._synthFire();
     }
