@@ -172,7 +172,6 @@ src/js/         Game modules: main.js, config.js, tank.js, ai.js, combat.js,
                 terrain.js, weather.js, particles.js, models.js, audio.js,
                 input.js, game.js, modes.js, net.js, ctf.js
 relay/          WebSocket relay server (Node.js)
-analysis/       Binary analysis notes and tools
 deploy.sh       rsync + relay rebuild in one step
 serve.sh        Local dev server (Python http.server)
 docker-compose.yml
