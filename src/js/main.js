@@ -5072,7 +5072,7 @@ function animate(now) {
       player.updateCamera(camera, dt);
       if (_sightMode) {
         // Mouse look: rotate turret and elevate gun from accumulated mouse movement
-        player.turretYaw   += _sightMouseDX * SIGHT_YAW_SENS;
+        player.turretYaw   -= _sightMouseDX * SIGHT_YAW_SENS;
         player.gunElevation = Math.max(ELEV_MIN, Math.min(ELEV_MAX,
           (player.gunElevation ?? 0.06) - _sightMouseDY * SIGHT_ELEV_SENS));
         _sightMouseDX = 0;
