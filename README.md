@@ -34,6 +34,12 @@ I'm sure everybody is sick of vibe-coded slop, and I'm sure by now large chunks 
 
 ---
 
+## Treaducation - code and learn
+
+Want to learn how to build a game? Look no further! [Treaducation](https://treads.togneri.net/treaducation/) is a resource to help inquisitive teens take their first steps in Three.js and hopefully into the joy of creation. This is an ultra-minimalist walkthrough of how to build an interactive 3D tank battle, aimed at beginners and the curious. Want to know more? Give it a try for yourself!
+
+---
+
 ## Running locally
 
 Any static file server works:
