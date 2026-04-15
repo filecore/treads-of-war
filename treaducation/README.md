@@ -20,6 +20,27 @@ The README hints below tell you what to build without giving it away.
 
 ---
 
+## Before you start - colours
+
+Throughout these steps you will see colours written as values like `0x00aa44` or `0x87ceeb`.
+These are called hex colour codes, and they work exactly like the colour codes used in web
+design - the only difference is that web design writes them with a `#` at the front
+(`#00aa44`) while JavaScript writes them with `0x` (`0x00aa44`). They mean the same thing.
+
+You do not need to memorise these or work them out manually. The easiest approach is to use
+a colour picker tool: search for "hex color picker" in your browser, or go to
+[g.co/color/picker](https://g.co/color/picker) (Google's built-in colour picker). Pick any
+colour you like and copy the hex code shown - just replace the `#` with `0x` when you use
+it in your code.
+
+Three.js also accepts plain colour names for common colours. Instead of `0x00aa44` you can
+write `'green'`, and instead of `0xcc2222` you can write `'red'`. This works for basic
+colours: `'red'`, `'green'`, `'blue'`, `'yellow'`, `'white'`, `'black'`, `'orange'`,
+`'purple'`, and so on. For anything more specific - like a particular shade of green for
+a tank or a sky blue - you will want the hex code from a colour picker.
+
+---
+
 ## The five steps
 
 ### Step 1 - Hello World (`step1-hello-world.html`)
