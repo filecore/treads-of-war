@@ -150,8 +150,8 @@
     </p>
 
     <div class="btn-group">
-      <a href="treaducation.zip" class="btn btn--download" download>Download all files</a>
-      <a href="teachers-guide.html" class="btn btn--guide">Teacher's guide</a>
+      <a href="treaducation.zip" class="btn btn--download" download onclick="umami&&umami.track('zip-download')">Download all files</a>
+      <a href="teachers-guide.html" class="btn btn--guide" onclick="umami&&umami.track('teachers-guide-open')">Teacher's guide</a>
     </div>
 
     <p class="hero-credit"><em>Thanks to Samuel and his class, my main play-testers</em></p>
@@ -335,6 +335,9 @@
     a browser tank game by Jason Togneri.
     Tutorial files are free to use for any educational purpose.
   </footer>
+
+  <!-- Analytics -->
+  <script defer src="https://analytics.togneri.net/script.js" data-website-id="REPLACE_WITH_UMAMI_TREADUCATION_ID"></script>
 
 </body>
 </html>
