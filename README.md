@@ -118,6 +118,12 @@ These are saved to `.deploy.conf` (gitignored) and reused on subsequent runs. Th
 
 ---
 
+## Analytics
+
+This site collects anonymous usage statistics: page views, device type, coarse location (country/region derived from IP), and in-game events such as mode selection and session duration. No cookies are used. All data is processed and stored on togneri.net's own servers and is never shared with or sent to any third party. The analytics platform is self-hosted [Umami](https://umami.is).
+
+---
+
 ## Legal note
 
 Fan project. Unofficial and non-commercial. No original assets from Conqueror (1988) are included.
