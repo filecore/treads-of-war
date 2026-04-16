@@ -92,9 +92,9 @@
       <ul>
         <li>A laptop or desktop with Chrome or Firefox</li>
         <li>A text editor - Notepad or TextEdit work fine; VS Code is better if available</li>
-        <li>An internet connection (Three.js loads from a CDN on first open)</li>
+        <li>An internet connection - Three.js loads from a CDN. If the school network blocks unpkg.com, the bundled copies included in the download work offline automatically (see Troubleshooting)</li>
         <li>The reference files open in a second browser tab to check work against</li>
-        <li><code>starter.html</code> from the download - each student starts from this blank template, not a copy of the reference</li>
+        <li><code>starter.html</code> from the download - each student saves their own copy and renames it before starting each step</li>
       </ul>
     </div>
 
@@ -106,6 +106,18 @@
         <li>Steps 1 and 2 work well together as a first session - short and satisfying</li>
         <li>Five sessions of one hour each is a realistic schedule for most groups</li>
         <li>Fast finishers: point them at the "What's next?" ideas in the README, or ask them to explain their code to a classmate</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Before the session - preparation checklist</div>
+      <ul>
+        <li>Download the zip from the Treaducation page and extract it to a folder</li>
+        <li>Put the extracted folder somewhere students can access it - a shared drive, USB stick, or send it via your school's file sharing tool</li>
+        <li>Each student needs their own copy of the folder. They will be saving files into it as they work.</li>
+        <li>Tell each student: open <code>starter.html</code>, then use File &gt; Save As to save it with a new name (e.g. <code>step1.html</code>) before writing any code. This is their working copy for each step.</li>
+        <li>Open one of the reference files in a browser yourself before the session so you know what a working version looks like</li>
+        <li>Test the internet connection on the classroom machines - open <code>step1-hello-world.html</code> in a browser. If you see a rotating cube, the CDN is reachable. If nothing appears, the bundled Three.js files in the download will be used instead automatically - no action needed.</li>
       </ul>
     </div>
 
@@ -136,6 +148,8 @@
       A quick check: ask a student to explain why they chose a particular value. If they
       can't, ask them to change it and see what happens.
     </p>
+
+    <p class="body">At the start of each step, remind students: open <code>starter.html</code>, save a copy with a new name, then open it in the browser side by side with their text editor. They should be making changes and refreshing the browser constantly - not writing the whole step before checking anything.</p>
 
     <p class="body">Useful things to say when a student is stuck:</p>
     <ul class="body">
@@ -345,6 +359,13 @@
         <li><strong>Game state flags</strong> - a simple variable like gameOver = true that changes what the update loop does</li>
         <li><strong>Reset function</strong> - a function that puts everything back to its starting state</li>
         <li><strong>Dynamic camera</strong> - finds the midpoint between both players and pulls back as they separate</li>
+      </ul>
+
+      <div class="sub-heading">Controls for both players</div>
+      <p class="body">Tell both players the controls before they start - it is easy to miss that P2 uses the arrow keys and Enter, not WASD and Space.</p>
+      <ul class="body">
+        <li><strong>Player 1:</strong> W/S drive, A/D turn, Q/E aim turret, Space fire</li>
+        <li><strong>Player 2:</strong> Up/Down drive, Left/Right turn, Comma/Period aim turret, Enter fire</li>
       </ul>
 
       <div class="sub-heading">Common mistakes</div>
