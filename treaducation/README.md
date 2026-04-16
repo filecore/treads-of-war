@@ -108,6 +108,10 @@ Your job:
 Hint: the Camera needs `camera.position.z = 5` so it's not inside the cube.
 The Renderer needs `document.body.appendChild(renderer.domElement)` to appear on screen.
 
+Make it yours: your cube should look different from the reference. Change the colour,
+the size (the numbers in BoxGeometry), the rotation speed, or the rotation axis.
+Try rotating on Y instead of X, or on both at once.
+
 ---
 
 ### Step 2 - Flat Terrain (`step2-terrain.html`)
@@ -126,6 +130,10 @@ Your job:
 
 Hint: if the fog colour and the background colour don't match, the horizon
 will have a visible seam. Use the same hex value for both.
+
+Make it yours: change the sky colour, the terrain size, the fog distance,
+or the grid colour. A closer fog makes the world feel smaller and more enclosed;
+a further fog makes it feel vast.
 
 ---
 
@@ -146,6 +154,9 @@ Your job:
 
 Hint: `translateZ` moves along the object's OWN local axis, so it always goes
 "forward" relative to where the tank is pointing. That's what makes it useful here.
+
+Make it yours: change the tank colours, the hull and turret proportions,
+the movement speed, the turn speed, and the camera distance behind the tank.
 
 ---
 
@@ -168,6 +179,9 @@ Your job:
 Hint: iterate the shells array BACKWARDS when removing items, like
 `for (let i = shells.length - 1; i >= 0; i--)`. Removing from a forwards
 loop skips the item after the removed one.
+
+Make it yours: change the turret rotation speed, the shell speed, the shell size,
+and the target colour and size. Try making the target move after each hit.
 
 ---
 
@@ -193,6 +207,10 @@ Your job:
 Hint: the camera midpoint is
 `new THREE.Vector3().addVectors(p1.tank.position, p2.tank.position).multiplyScalar(0.5)`
 
+Make it yours: change the player colours, the starting positions, the number of hits
+needed to win, and the health bar colours. No two students' finished games should look
+identical - that's how you know it worked.
+
 ---
 
 ## What's next?
@@ -205,8 +223,9 @@ Once you've finished Step 5, here are ideas to keep going:
 - Add a reload timer so you can't fire continuously
 - Add a boundary so tanks can't drive off the edge
 
-The full Treads of War source code is available at `treads.example.com/treads/`
-if you want to see where all these ideas eventually lead.
+The full Treads of War source code is available on GitHub at
+https://github.com/filecore/treads-of-war if you want to see where all these
+ideas eventually lead.
 
 ---
 
@@ -214,6 +233,7 @@ if you want to see where all these ideas eventually lead.
 
 | File | Description |
 |------|-------------|
+| `starter.html` | Blank starting template - open this and begin writing |
 | `step1-hello-world.html` | Finished reference: rotating cube |
 | `step2-terrain.html` | Finished reference: flat terrain with OrbitControls |
 | `step3-tank.html` | Finished reference: driveable tank |

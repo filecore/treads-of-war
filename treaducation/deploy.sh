@@ -13,6 +13,7 @@ echo "Building treaducation.zip..."
 python3 -c "
 import zipfile, os
 files = [
+    'starter.html',
     'step1-hello-world.html',
     'step2-terrain.html',
     'step3-tank.html',
