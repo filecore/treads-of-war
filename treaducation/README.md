@@ -98,8 +98,8 @@ working after a change, that is the first place to look.
 **Goal:** Get Three.js running and see something on screen.
 
 Your job:
-- Create an HTML file with a `<script type="importmap">` block that points
-  at Three.js on unpkg.com (version 0.158.0)
+- Open `starter.html` and save it with a new name (e.g. `step1.html`) - the HTML
+  structure and importmap are already in place; your job is to write the Three.js code
 - Write a `<script type="module">` that creates a Scene, a Camera, and a Renderer
 - Add a BoxGeometry cube to the scene with a green MeshBasicMaterial
 - Write an `animate()` function that rotates the cube and calls `renderer.render()`
