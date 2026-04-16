@@ -166,10 +166,12 @@ wss.on('connection', ws => {
         }
         room.hostWs    = ws;
         room.maxPlayers = Math.max(2, Math.min(16, parseInt(msg.maxPlayers) || 2));
+        room.peakPlayers = 1;
         ws._room = code;
         ws._id   = 'h';
         console.log(`[relay] Host joined   room=${code}  max=${room.maxPlayers}`);
         sendTo(ws, { type: 'joined', id: 'h', role: 'host' });
+        relayEvent('relay-room-created', { room: code, max_players: room.maxPlayers });
 
       } else if (msg.role === 'client') {
         if (!room.hostWs || !isAlive(room.hostWs)) {
@@ -187,7 +189,10 @@ wss.on('connection', ws => {
         room.clients.set(id, ws);
         ws._room = code;
         ws._id   = id;
-        console.log(`[relay] Client joined room=${code}  id=${id}  total=${room.clients.size + 1}`);
+        const total = room.clients.size + 1; // host + clients
+        if (total > room.peakPlayers) room.peakPlayers = total;
+        console.log(`[relay] Client joined room=${code}  id=${id}  total=${total}`);
+        relayEvent('relay-player-joined', { room: code, player_count: total });
 
         // Tell the new joiner their ID + list of existing peers
         const existingPeers = ['h', ...room.clients.keys()].filter(k => k !== id);
