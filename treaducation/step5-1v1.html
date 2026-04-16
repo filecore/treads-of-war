@@ -233,7 +233,8 @@
   const keys = {};
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
-    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' ||
+        e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       e.preventDefault(); // prevent page scroll / default browser actions
     }
     // Fire events for both players
@@ -299,16 +300,20 @@
       scene.remove(s.mesh);
       s.mesh.geometry.dispose();
     }
-    shells.length = 0;
+    shells.length = 0; // fastest way to empty an array without creating a new one
 
     // Reset both players
-    for (const [player, startZ, facing] of [[p1, -30, 0], [p2, 30, Math.PI]]) {
-      player.hp = player.maxHp;
-      player.barEl.style.width = '100%';
-      player.tank.position.set(0, 0, startZ);
-      player.tank.rotation.y = facing;
-      player.tank.turretGroup.rotation.y = 0;
-    }
+    p1.hp = p1.maxHp;
+    p1.barEl.style.width = '100%';
+    p1.tank.position.set(0, 0, -30);
+    p1.tank.rotation.y = 0;
+    p1.tank.turretGroup.rotation.y = 0;
+
+    p2.hp = p2.maxHp;
+    p2.barEl.style.width = '100%';
+    p2.tank.position.set(0, 0, 30);
+    p2.tank.rotation.y = Math.PI;
+    p2.tank.turretGroup.rotation.y = 0;
 
     gameOver = false;
     document.getElementById('banner').classList.remove('visible');
@@ -373,7 +378,7 @@
           // Check win condition
           if (p1.hp <= 0) showWinner('Player 2');
           else if (p2.hp <= 0) showWinner('Player 1');
-          continue;
+          continue; // shell has been removed - skip the life check below
         }
 
         if (s.life <= 0) {
