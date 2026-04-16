@@ -1772,6 +1772,7 @@ function startArcade() {
   _applyStrategyConsumablesHud();
   _demoActive = _demoEnabled;
   _demoAI     = _demoActive ? new AIController(player, player.position.x, player.position.z) : null;
+  _anlStart('arcade');
 }
 
 function startAttrition() {
@@ -1795,6 +1796,7 @@ function startAttrition() {
   _applyStrategyConsumablesHud();
   _demoActive = _demoEnabled;
   _demoAI     = _demoActive ? new AIController(player, player.position.x, player.position.z) : null;
+  _anlStart('attrition');
 }
 
 function startStrategyPurchase() {
@@ -1824,6 +1826,7 @@ function startStrategyBattle() {
   _applyStrategyConsumablesHud();
   _demoActive = _demoEnabled;
   _demoAI     = _demoActive ? new AIController(player, player.position.x, player.position.z) : null;
+  _anlStart('strategy');
 }
 
 // ─── LAN duel functions ────────────────────────────────────────────────────────
@@ -2101,6 +2104,7 @@ function _initLanGame(rosterMap) {
   weather.init('online', 300);
 
   game.start();
+  _anlStart('online');
   if (hudMode)  hudMode.textContent  = 'LAN';
   if (hudPhase) hudPhase.textContent = 'LAN';
   _updateControlsHint();
@@ -2831,6 +2835,28 @@ if (diffSlider) {
   diffSlider.addEventListener('input', () => { setDifficulty(DIFF_LEVELS[diffSlider.value]); _saveSettings(); });
 }
 setDifficulty('normal');   // default: Normal
+
+// ── Analytics helpers ─────────────────────────────────────────────────────────
+let _anlMode  = 'arcade';
+let _anlT0    = 0;
+let _anlEnded = false;
+
+function _anlStart(mode) {
+  _anlMode  = mode;
+  _anlT0    = performance.now();
+  _anlEnded = false;
+  if (typeof umami !== 'undefined') {
+    const diff = diffSlider ? DIFF_LEVELS[parseInt(diffSlider.value)] : 'normal';
+    umami.track('game-start', { mode, difficulty: diff });
+  }
+}
+
+function _anlEnd(outcome) {
+  if (_anlEnded) return;
+  _anlEnded = true;
+  const dur = Math.round((performance.now() - _anlT0) / 1000);
+  if (typeof umami !== 'undefined') umami.track('game-end', { mode: _anlMode, outcome, duration_s: dur });
+}
 
 // ─── Settings panel wiring ────────────────────────────────────────────────────
 const cbSimple    = document.getElementById('cb-simple-controls');
