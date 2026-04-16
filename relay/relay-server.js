@@ -127,6 +127,7 @@ setInterval(() => {
   wss.clients.forEach(ws => {
     if (ws._alive === false) {
       console.log('[relay] Terminating unresponsive connection');
+      relayEvent('relay-disconnect-timeout', { room: ws._room || 'unknown', id: ws._id || 'unknown' });
       ws.terminate();
       return;
     }
