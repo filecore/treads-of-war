@@ -4956,11 +4956,30 @@ function _updateSightCamera() {
 // ─── Animation loop ───────────────────────────────────────────────────────────
 let lastTime = performance.now();
 
+// FPS sampler state (reports avg+min every 60s while playing)
+let _fpsSamples = [];
+let _fpsTimer   = 0;
+
 function animate(now) {
   requestAnimationFrame(animate);
 
   const dt = Math.min((now - lastTime) / 1000, 0.05);
   lastTime = now;
+
+  // ── FPS sampling (analytics — 60 s interval, only while actively playing) ──
+  if (game.state === STATES.PLAYING && dt > 0) {
+    _fpsSamples.push(Math.round(1 / dt));
+    _fpsTimer += dt;
+    if (_fpsTimer >= 60) {
+      _fpsTimer = 0;
+      if (typeof umami !== 'undefined' && _fpsSamples.length > 0) {
+        const avg = Math.round(_fpsSamples.reduce((a, b) => a + b, 0) / _fpsSamples.length);
+        const min = Math.min(..._fpsSamples);
+        umami.track('fps-report', { mode: _anlMode, avg, min });
+      }
+      _fpsSamples = [];
+    }
+  }
 
   // ── Pause toggle (P key — edge-detect) ───────────────────────────────────────
   {
