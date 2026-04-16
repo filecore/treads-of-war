@@ -3778,6 +3778,7 @@ function updateOverlay() {
     overlayHint.textContent  = 'Press R to continue';
 
   } else if (s === STATES.GAME_OVER) {
+    _anlEnd('lose');
     if (_lanMode) {
       overlayTitle.textContent = 'DEFEATED';
       overlaySub.textContent   = 'Your tank was destroyed';
@@ -3801,6 +3802,7 @@ function updateOverlay() {
     }
 
   } else if (s === STATES.VICTORY) {
+    _anlEnd('win');
     if (_lanMode) {
       overlayTitle.textContent = 'VICTORY';
       overlaySub.textContent   = '';
