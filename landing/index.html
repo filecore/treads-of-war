@@ -266,10 +266,10 @@
     </div>
 
     <div class="hero-cta-group">
-      <a href="treads/" class="hero-cta">Play in browser</a>
-      <a href="treads-mobile/" class="hero-cta hero-cta--mobile">Play on mobile<span class="cta-sub">browser &mdash; BETA</span></a>
+      <a href="treads/" class="hero-cta" onclick="umami&&umami.track('cta-play-desktop')">Play in browser</a>
+      <a href="treads-mobile/" class="hero-cta hero-cta--mobile" onclick="umami&&umami.track('cta-play-mobile')">Play on mobile<span class="cta-sub">browser &mdash; BETA</span></a>
       <span class="hero-flex-break"></span>
-      <a href="treaducation/" class="hero-cta hero-cta--learn">Treaducation: code &amp; learn</a>
+      <a href="treaducation/" class="hero-cta hero-cta--learn" onclick="umami&&umami.track('cta-treaducation')">Treaducation: code &amp; learn</a>
     </div>
   </div>
 
@@ -450,10 +450,10 @@
     <!-- Play CTA -->
     <section style="text-align:center; padding-bottom: 0;">
       <div class="hero-cta-group" style="margin-top:0;">
-        <a href="treads/" class="hero-cta">Play in browser</a>
-        <a href="treads-mobile/" class="hero-cta hero-cta--mobile">Play on mobile<span class="cta-sub">browser &mdash; BETA</span></a>
+        <a href="treads/" class="hero-cta" onclick="umami&&umami.track('cta-play-desktop')">Play in browser</a>
+        <a href="treads-mobile/" class="hero-cta hero-cta--mobile" onclick="umami&&umami.track('cta-play-mobile')">Play on mobile<span class="cta-sub">browser &mdash; BETA</span></a>
         <span class="hero-flex-break"></span>
-        <a href="treaducation/" class="hero-cta hero-cta--learn">Treaducation: code &amp; learn</a>
+        <a href="treaducation/" class="hero-cta hero-cta--learn" onclick="umami&&umami.track('cta-treaducation')">Treaducation: code &amp; learn</a>
       </div>
       <p style="margin-top:18px; font-size:11px; color:rgba(120,160,80,0.35);">
         Runs entirely in your browser &nbsp;&bull;&nbsp; No download required
@@ -725,6 +725,20 @@
         const ph = img.nextElementSibling;
         if (ph && ph.classList.contains('shot-placeholder')) ph.style.display = 'none';
       }
+    });
+  </script>
+
+  <!-- Analytics -->
+  <script defer src="https://analytics.togneri.net/script.js" data-website-id="REPLACE_WITH_UMAMI_LANDING_ID"></script>
+  <script>
+    window.addEventListener('load', function() {
+      if (typeof umami === 'undefined') return;
+      var t = performance.timing;
+      if (!t) return;
+      umami.track('page-performance', {
+        ttfb_ms: t.responseStart - t.navigationStart,
+        load_ms: t.loadEventEnd - t.navigationStart
+      });
     });
   </script>
 
