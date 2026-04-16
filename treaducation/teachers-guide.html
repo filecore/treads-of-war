@@ -92,7 +92,7 @@
       <ul>
         <li>A laptop or desktop with Chrome or Firefox</li>
         <li>A text editor - Notepad or TextEdit work fine; VS Code is better if available</li>
-        <li>An internet connection - Three.js loads from a CDN. If the school network blocks unpkg.com, the bundled copies included in the download work offline automatically (see Troubleshooting)</li>
+        <li>The tutorial files work fully offline - Three.js is bundled in the download alongside the step files. No internet connection is needed to run the games.</li>
         <li>The reference files open in a second browser tab to check work against</li>
         <li><code>starter.html</code> from the download - each student saves their own copy and renames it before starting each step</li>
       </ul>
@@ -117,7 +117,7 @@
         <li>Each student needs their own copy of the folder. They will be saving files into it as they work.</li>
         <li>Tell each student: open <code>starter.html</code>, then use File &gt; Save As to save it with a new name (e.g. <code>step1.html</code>) before writing any code. This is their working copy for each step.</li>
         <li>Open one of the reference files in a browser yourself before the session so you know what a working version looks like</li>
-        <li>Test the internet connection on the classroom machines - open <code>step1-hello-world.html</code> in a browser. If you see a rotating cube, the CDN is reachable. If nothing appears, the bundled Three.js files in the download will be used instead automatically - no action needed.</li>
+        <li>Test that the files work on a classroom machine - open <code>step1-hello-world.html</code> in a browser. You should see a rotating green cube. Three.js loads from the local files in the folder, so no internet connection is required for this.</li>
       </ul>
     </div>
 
@@ -427,23 +427,11 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Three.js won't load ("Failed to fetch" or blank screen)</div>
+      <div class="card-title">Three.js won't load (blank screen or console error)</div>
       <ul>
-        <li>The CDN requires an internet connection - check the network</li>
-        <li>The importmap URL must be exactly right - compare character by character with the reference file</li>
-        <li>Some school networks block unpkg.com. If this happens, the tutorial download already
-            includes local copies of Three.js: <code>three.module.js</code> and
-            <code>jsm/controls/OrbitControls.js</code> are bundled alongside the step files.
-            The step files are already set up to use these automatically if the CDN is
-            unavailable - no code changes are needed. Just make sure the student's HTML file
-            is in the same folder as <code>three.module.js</code>.
-            <br><br>
-            <strong>Important:</strong> these bundled copies are version 0.158.0 and may become
-            outdated over time. For the purposes of this tutorial they will always work correctly.
-            Students continuing beyond the tutorial and wanting the latest version can download
-            a fresh copy from
-            <a href="https://unpkg.com/three@0.158.0/build/three.module.js" target="_blank" style="color:var(--blue)">unpkg.com</a>
-            directly.</li>
+        <li>Three.js loads from the local files bundled in the download - no internet connection is needed. If it fails, the most likely cause is that the student's HTML file is not in the same folder as <code>three.module.js</code>.</li>
+        <li>Check the importmap block at the top of the file is present and unmodified - if a student accidentally deleted or edited it, Three.js will not load.</li>
+        <li>Make sure the student opened their file from inside the extracted folder, not from a different location. The file must sit next to <code>three.module.js</code> and the <code>jsm/</code> folder for the imports to resolve.</li>
       </ul>
     </div>
 
