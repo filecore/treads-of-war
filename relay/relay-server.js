@@ -15,7 +15,7 @@ const port = parseInt(process.argv[2] || '8765', 10);
 
 // ── Umami server-side analytics ───────────────────────────────────────────────
 const UMAMI_URL        = 'https://analytics.togneri.net/api/send';
-const UMAMI_WEBSITE_ID = 'REPLACE_WITH_UMAMI_RELAY_ID';
+const UMAMI_WEBSITE_ID = '99d7ae5b-97f8-4965-8cad-558313b02b5b';
 
 function relayEvent(name, data) {
   const body = JSON.stringify({
