@@ -47,13 +47,17 @@ function relayEvent(name, data) {
 const rooms = {};
 
 function getRoom(code) {
-  if (!rooms[code]) rooms[code] = { hostWs: null, clients: new Map(), maxPlayers: 2, nextId: 1 };
+  if (!rooms[code]) rooms[code] = { hostWs: null, clients: new Map(), maxPlayers: 2, nextId: 1, createdAt: Date.now(), peakPlayers: 0 };
   return rooms[code];
 }
 
 function pruneRoom(code) {
   const r = rooms[code];
-  if (r && !r.hostWs && r.clients.size === 0) delete rooms[code];
+  if (r && !r.hostWs && r.clients.size === 0) {
+    const dur = Math.round((Date.now() - r.createdAt) / 1000);
+    relayEvent('relay-room-ended', { room: code, duration_s: dur, peak_players: r.peakPlayers });
+    delete rooms[code];
+  }
 }
 
 function isAlive(ws) {
