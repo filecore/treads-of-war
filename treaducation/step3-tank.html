@@ -34,7 +34,7 @@
   </script>
 </head>
 <body>
-<div id="hint">W / S &mdash; drive &nbsp;&nbsp;&nbsp; A / D &mdash; turn</div>
+<div id="hint">W / S - drive &nbsp;&nbsp;&nbsp; A / D - turn</div>
 <script type="module">
 
   /*
@@ -135,6 +135,9 @@
   // This is much smoother than responding directly inside keydown,
   // because keydown only fires once per press (with a repeat delay).
   const keys = {};
+  // e.code gives the physical key name, not the character it produces.
+  // So the W key is always 'KeyW', even if the keyboard language changes.
+  // This is safer than e.key, which gives 'w' or 'W' depending on Shift.
   window.addEventListener('keydown', e => { keys[e.code] = true; });
   window.addEventListener('keyup',   e => { keys[e.code] = false; });
 
