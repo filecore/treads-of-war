@@ -39,7 +39,13 @@ echo "Pushing to GitHub..."
 git push
 echo "GitHub updated."
 
-# ── 1. Sync game files to server ──────────────────────────────────────────
+# ── 1. Sync landing page to server root ───────────────────────────────────
+echo ""
+echo "Syncing landing page..."
+REMOTE_ROOT="${REMOTE_WEB_ROOT%treads/}"
+rsync -av --checksum landing/index.html "${SSH_HOST}:${REMOTE_ROOT}index.html"
+
+# ── 2. Sync game files to server ──────────────────────────────────────────
 echo ""
 echo "Syncing to ${DOMAIN}..."
 # --checksum avoids WSL2 mtime issues when files are edited on a Windows-mounted drive
