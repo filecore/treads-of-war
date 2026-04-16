@@ -52,6 +52,10 @@
 
   // ── 1. SCENE ──────────────────────────────────────────────────────────────
   // Think of this as an empty stage. We add objects to it.
+  //
+  // 'const' creates a variable that won't be reassigned.
+  // 'let' (used later) creates a variable that can change.
+  // Use const by default; switch to let only when you need to change the value.
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111111); // dark grey background
 
@@ -125,6 +129,14 @@
   // ── 6. RESIZE HANDLING ────────────────────────────────────────────────────
   // If the user resizes their browser window, the camera and renderer
   // need to know about the new size.
+  //
+  // 'window' is the browser window itself. 'document' is the HTML page inside it.
+  // window.addEventListener listens for events that affect the whole window.
+  // document.body.appendChild (used above) adds elements to the HTML page body.
+  //
+  // '() => { ... }' is an arrow function - a short way to write a function that
+  // runs when the event fires. It's the same as writing:
+  //   function() { camera.aspect = ...; ... }
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
