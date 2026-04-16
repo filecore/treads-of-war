@@ -7,10 +7,41 @@
 //
 // Dependency: npm install ws
 
-const http = require('http');
+const http  = require('http');
+const https = require('https');
 const { WebSocketServer } = require('ws');
 
 const port = parseInt(process.argv[2] || '8765', 10);
+
+// ── Umami server-side analytics ───────────────────────────────────────────────
+const UMAMI_URL        = 'https://analytics.togneri.net/api/send';
+const UMAMI_WEBSITE_ID = 'REPLACE_WITH_UMAMI_RELAY_ID';
+
+function relayEvent(name, data) {
+  const body = JSON.stringify({
+    type: 'event',
+    payload: {
+      website:  UMAMI_WEBSITE_ID,
+      url:      '/relay',
+      hostname: 'treads.togneri.net',
+      language: 'en-US',
+      referrer: '',
+      title:    'Relay',
+      name,
+      data,
+    },
+  });
+  const opts = {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  };
+  try {
+    const req = https.request(UMAMI_URL, opts);
+    req.on('error', () => { /* analytics errors are non-fatal */ });
+    req.write(body);
+    req.end();
+  } catch { /* non-fatal */ }
+}
 
 // Map<code, { hostWs: ws|null, clients: Map<id, ws>, maxPlayers: number, nextId: number }>
 const rooms = {};
