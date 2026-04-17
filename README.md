@@ -2,7 +2,7 @@
 
 [Treads of War](https://treads.togneri.net) is a browser-based 3D tank combat game built with Three.js. Inspired by [Conqueror](https://en.wikipedia.org/wiki/Conqueror_(video_game)) by Superior Software (Acorn Archimedes, 1988). Flat-shaded polygon aesthetic, WWII European theatre, procedurally generated terrain. Four game modes, 16 tanks across 4 factions, online play for up to 16 players.
 
-**Runs entirely in your browser - no download required.**
+**Runs entirely in your browser - no download required.** Play it right now for free at [https://treads.togneri.net/](https://treads.togneri.net/).
 
 ![Main menu](treads_menu.jpg)
 
