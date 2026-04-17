@@ -3064,7 +3064,13 @@ if (cbMercs) {
   cbMercs.checked = false;
   cbMercs.addEventListener('change', () => {
     _mercsEnabled = cbMercs.checked;
-    if (!_mercsEnabled && _faction === 'mercenary') _setFaction('american');
+    if (!_mercsEnabled) {
+      if (_faction === 'mercenary') _setFaction('american');
+      if (cbMercEditor && cbMercEditor.checked) {
+        cbMercEditor.checked = false;
+        _mercEditorEnabled = false;
+      }
+    }
     updateOverlay();
     _saveSettings();
   });
@@ -3352,8 +3358,9 @@ function _loadSettings() {
   if (cbAdvancedInfo) { cbAdvancedInfo.checked = s.advancedInfo; _applyAdvancedHud(s.advancedInfo); }
   if (cbMercs)        { cbMercs.checked = s.mercs;               _mercsEnabled = s.mercs; }
   if (cbMercEditor)   {
-    cbMercEditor.checked = s.mercEditor; _mercEditorEnabled = s.mercEditor;
-    if (s.mercEditor && cbMercs && !cbMercs.checked) { cbMercs.checked = true; _mercsEnabled = true; }
+    const editorOn = s.mercEditor && (s.mercs || false);
+    cbMercEditor.checked = editorOn; _mercEditorEnabled = editorOn;
+    if (editorOn && cbMercs && !cbMercs.checked) { cbMercs.checked = true; _mercsEnabled = true; }
   }
   if (cbFriendlyFire) { cbFriendlyFire.checked = s.friendlyFire; combat.friendlyFire = s.friendlyFire; }
   if (cbDemo)         { cbDemo.checked = s.demo;                 _demoEnabled = s.demo; }
