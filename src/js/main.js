@@ -4939,9 +4939,28 @@ let _sightMode    = false;
 let _sightMouseDX = 0;
 let _sightMouseDY = 0;
 
+// Zoom levels: 1× wide-angle, 2× default, 5× precision
+const SIGHT_ZOOM_LEVELS = [1, 2, 5];
+let   _sightZoom        = 2;
+const hudSightZoom      = document.getElementById('hud-sight-zoom');
+function _sightFOV() { return CONFIG.SIGHT_FOV * 2 / _sightZoom; }
+function _updateSightZoomHUD() { if (hudSightZoom) hudSightZoom.textContent = `${_sightZoom}x`; }
+
 document.addEventListener('mousemove', e => {
   if (_sightMode) { _sightMouseDX += e.movementX; _sightMouseDY += e.movementY; }
 });
+
+document.addEventListener('wheel', e => {
+  if (!_sightMode || !game?.isPlaying) return;
+  e.preventDefault();
+  const idx = SIGHT_ZOOM_LEVELS.indexOf(_sightZoom);
+  _sightZoom = e.deltaY < 0
+    ? SIGHT_ZOOM_LEVELS[Math.min(idx + 1, SIGHT_ZOOM_LEVELS.length - 1)]
+    : SIGHT_ZOOM_LEVELS[Math.max(idx - 1, 0)];
+  camera.fov = _sightFOV();
+  camera.updateProjectionMatrix();
+  _updateSightZoomHUD();
+}, { passive: false });
 // If pointer lock is released externally (Esc pressed by browser), exit sight mode cleanly
 document.addEventListener('pointerlockchange', () => {
   if (!document.pointerLockElement && _sightMode) _exitSightMode();
@@ -4949,8 +4968,10 @@ document.addEventListener('pointerlockchange', () => {
 
 function _enterSightMode() {
   _sightMode = true;
-  camera.fov = CONFIG.SIGHT_FOV;
+  _sightZoom = 2;
+  camera.fov = _sightFOV();
   camera.updateProjectionMatrix();
+  _updateSightZoomHUD();
   renderer.domElement.requestPointerLock();
 }
 
