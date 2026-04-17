@@ -4542,9 +4542,6 @@ function _callArtillery() {
     });
   }
 
-  // Audio: descending whistle to signal incoming
-  audio.playIncoming();
-
   // HUD callout (reuses hit-indicator slot)
   if (hudHitIndicator) {
     hudHitIndicator.textContent = '◉  ARTILLERY — INCOMING';
@@ -5598,7 +5595,6 @@ function animate(now) {
       const dz = shell.pz - player.position.z;
       if (dx * dx + dz * dz < PASSBY_R * PASSBY_R) {
         _shellPassbySet.add(shell);
-        audio.playPassby();
       }
     }
     // Purge dead shells from set to avoid unbounded growth
@@ -5631,9 +5627,9 @@ function animate(now) {
           addShake(Math.max(0, 2.8 * (1 - dist / 28)));  // concussion from nearby kill
         }
       } else {
-        // Deflection: gold spark, distinct ricochet ping
+        // Deflection: gold spark
         particles.ricochet(imp.x, imp.y, imp.z);
-        audio.playRicochet();
+        audio.playExplosion(dist * 1.5);
       }
     } else {
       // ── Shell hit ground / timed out ─────────────────────────────────────────
