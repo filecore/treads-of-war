@@ -3254,7 +3254,7 @@ function _updateDebugPanel() {
   // Only rebuild content when playing with an alive player
   if (game.state !== STATES.PLAYING || !player?.alive) return;
   const aiLabel = _debugAiDisabled ? 'AI: OFF' : 'AI: ON';
-  const aiActiveStyle = _debugAiDisabled ? 'background:rgba(160,20,20,0.90);border-color:rgba(255,80,80,0.50);' : 'background:rgba(160,20,20,0.70);border-color:rgba(255,80,80,0.40);';
+  const aiActiveStyle = _debugAiDisabled ? 'background:rgba(160,20,20,0.90);border-color:rgba(255,80,80,0.50);' : 'background:rgba(20,140,20,0.90);border-color:rgba(80,255,80,0.50);';
   _debugPanel.innerHTML = `<div class="dbg-title">DEBUG — ${player.def.name}</div>` +
     `<div class="dbg-row" style="padding:4px 8px 2px">` +
       `<button class="dbg-adj" id="dbg-ai-toggle" style="width:100%;height:auto;padding:3px 0;font-size:13px;letter-spacing:0.10em;color:rgba(255,160,140,0.95);${aiActiveStyle}">${aiLabel}</button>` +
