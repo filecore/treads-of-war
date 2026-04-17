@@ -2974,12 +2974,12 @@ cbSimple.addEventListener('change', () => {
 });
 
 // Aim assist (auto-rotate turret) — applies in simple mode only
-let _aimAssist = true;
+let _aimAssist = false;
 let _manualTurretPauseTimer = 0;  // seconds remaining before auto-turret resumes after Q/E
 let _turretIdleTimer = 0;         // seconds since last manual turret input or aim-assist acquisition
 const cbAimAssist = document.getElementById('cb-aim-assist');
 if (cbAimAssist) {
-  cbAimAssist.checked = true;
+  cbAimAssist.checked = false;
   cbAimAssist.addEventListener('change', () => { _aimAssist = cbAimAssist.checked; _saveSettings(); });
 }
 
@@ -3318,7 +3318,7 @@ if (cbMouseAim) {
 
 // ─── Persisted settings (localStorage) ────────────────────────────────────────
 const _SETTINGS_KEY = 'treads_settings';
-const _FACTORY_DEFAULTS = { simple:true, aimAssist:true, advancedInfo:false, mercs:false, mercEditor:false, friendlyFire:true, demo:false, lan:true, debug:false, water:true, mouseAim:false, difficulty:2, weatherEnabled:true, weather:'auto' };
+const _FACTORY_DEFAULTS = { simple:true, aimAssist:false, advancedInfo:false, mercs:false, mercEditor:false, friendlyFire:true, demo:false, lan:true, debug:false, water:true, mouseAim:false, difficulty:2, weatherEnabled:true, weather:'auto' };
 
 function _saveSettings() {
   const s = {
