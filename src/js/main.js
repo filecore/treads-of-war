@@ -3078,6 +3078,10 @@ if (cbMercEditor) {
   cbMercEditor.checked = false;
   cbMercEditor.addEventListener('change', () => {
     _mercEditorEnabled = cbMercEditor.checked;
+    if (_mercEditorEnabled && cbMercs && !cbMercs.checked) {
+      cbMercs.checked = true;
+      _mercsEnabled = true;
+    }
     updateOverlay();
     _saveSettings();
   });
@@ -3347,7 +3351,10 @@ function _loadSettings() {
   if (cbAimAssist)    { cbAimAssist.checked = s.aimAssist;       _aimAssist = s.aimAssist; }
   if (cbAdvancedInfo) { cbAdvancedInfo.checked = s.advancedInfo; _applyAdvancedHud(s.advancedInfo); }
   if (cbMercs)        { cbMercs.checked = s.mercs;               _mercsEnabled = s.mercs; }
-  if (cbMercEditor)   { cbMercEditor.checked = s.mercEditor;     _mercEditorEnabled = s.mercEditor; }
+  if (cbMercEditor)   {
+    cbMercEditor.checked = s.mercEditor; _mercEditorEnabled = s.mercEditor;
+    if (s.mercEditor && cbMercs && !cbMercs.checked) { cbMercs.checked = true; _mercsEnabled = true; }
+  }
   if (cbFriendlyFire) { cbFriendlyFire.checked = s.friendlyFire; combat.friendlyFire = s.friendlyFire; }
   if (cbDemo)         { cbDemo.checked = s.demo;                 _demoEnabled = s.demo; }
   if (cbLan)          { cbLan.checked = s.lan;                   _lanEnabled = s.lan; }
