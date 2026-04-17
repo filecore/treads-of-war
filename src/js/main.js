@@ -4964,9 +4964,10 @@ function _exitSightMode() {
   if (document.pointerLockElement) document.exitPointerLock();
 }
 
-// Place camera behind the barrel root looking along the gun direction.
-// Camera is offset backward along the horizontal gun heading (no elevation component
-// in the pullback, so the viewpoint never dips into the terrain on steep slopes).
+// Place camera above and behind the barrel, looking along the gun axis.
+// Camera is raised above hull height so the player sees clear terrain.
+// LookAt uses the original (un-raised) barrel eye level so the sight line
+// stays accurate regardless of the vertical camera offset.
 function _updateSightCamera() {
   const gunH  = player.heading + player.turretYaw;
   const el    = player.gunElevation ?? 0.06;
@@ -4975,22 +4976,23 @@ function _updateSightCamera() {
   const cosEl = Math.cos(el);
   const sinEl = Math.sin(el);
 
-  // Pull back behind the turret along the reverse horizontal gun heading
-  const PULL_BACK = 3.5;  // world units — clears the hull body
+  const PULL_BACK   = 5.5;  // world units behind the turret
+  const SIGHT_RAISE = 1.5;  // world units above barrel — clears hull on all slopes
+
   const camX = player.position.x + sinH * PULL_BACK;
   const camZ = player.position.z + cosH * PULL_BACK;
 
-  // Sit at barrel height, clamped above terrain at the pulled-back position
   const barrelY  = player.position.y + player.muzzleHeight;
   const terrainY = getAltitude(camX, camZ);
-  const camY     = Math.max(terrainY + 0.8, barrelY);
+  const baseY    = Math.max(terrainY + 0.8, barrelY);
+  const camY     = baseY + SIGHT_RAISE;
 
   camera.position.set(camX, camY, camZ);
 
   const FAR = 800;
   camera.lookAt(
     camX - sinH * cosEl * FAR,
-    camY + sinEl        * FAR,
+    baseY + sinEl        * FAR,   // aim from barrel height, not raised camera
     camZ - cosH * cosEl * FAR,
   );
 }
