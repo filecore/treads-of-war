@@ -130,11 +130,11 @@ export class AudioManager {
     }
   }
 
-  // ── Enemy cannon fire (distance-attenuated) ────────────────────────────────
+  // ── Enemy cannon fire (distance-attenuated, same sample as player fire) ──────
   // distWu: world-unit distance from player to the enemy tank
   playEnemyFire(distWu) {
     if (!this._ctx) return;
-    const vol = Math.max(0, 1 - distWu / 160) * 0.65;
+    const vol = Math.max(0, 1 - distWu / 160);
     if (vol < 0.01) return;
     if (this._shotBuf) {
       this._playOnce(this._shotBuf, vol);
@@ -169,34 +169,9 @@ export class AudioManager {
     src.start(t);
   }
 
-  // ── Hull hit (shell striking player's tank) — synthesised ─────────────────
+  // ── Hull hit (shell striking player's tank) — same sound as a ground explosion
   playHit() {
-    if (!this._ctx) return;
-    const ctx = this._ctx;
-    const t   = ctx.currentTime;
-
-    const ns  = ctx.createBufferSource();
-    ns.buffer = _noiseBuffer(ctx, 0.55);
-    const nf  = ctx.createBiquadFilter();
-    nf.type            = 'bandpass';
-    nf.frequency.value = 1100;
-    nf.Q.value         = 1.0;
-    const ng = ctx.createGain();
-    ng.gain.setValueAtTime(0.55, t);
-    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.50);
-
-    const osc = ctx.createOscillator();
-    osc.type  = 'sine';
-    osc.frequency.setValueAtTime(160, t);
-    osc.frequency.exponentialRampToValueAtTime(38, t + 0.28);
-    const og = ctx.createGain();
-    og.gain.setValueAtTime(0.45, t);
-    og.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
-
-    ns.connect(nf); nf.connect(ng); ng.connect(this._master);
-    osc.connect(og); og.connect(this._master);
-    ns.start(t); ns.stop(t + 0.55);
-    osc.start(t); osc.stop(t + 0.32);
+    this.playExplosion(0);
   }
 
   // ── Shell pass-by crack/whoosh — synthesised ──────────────────────────────
