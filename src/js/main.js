@@ -594,6 +594,19 @@ function createHouse(small = false) {
 // Reddish-brown nave with a steeple tower at the rear end.
 const _churchWallMat = new THREE.MeshBasicMaterial({ color: 0x9B3A28, side: THREE.DoubleSide });
 const _churchRoofMat = new THREE.MeshLambertMaterial({ color: 0x6B2218, flatShading: true, side: THREE.DoubleSide });
+const _churchWinMat  = new THREE.MeshBasicMaterial({ color: 0x88AACC, side: THREE.DoubleSide });
+const _churchDoorMat = new THREE.MeshBasicMaterial({ color: 0x661111, side: THREE.DoubleSide });
+
+function makeArchGeo(aw, rectH) {
+  const r = aw / 2;
+  const shape = new THREE.Shape();
+  shape.moveTo(-r, 0);
+  shape.lineTo(-r, rectH);
+  shape.absarc(0, rectH, r, Math.PI, 0, true);
+  shape.lineTo(r, 0);
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+}
 
 // Group pivot is at ground level, centre of the nave footprint.
 // Returns { group, w, d, h } where d includes the steeple tower depth.
@@ -648,6 +661,38 @@ function createChurch() {
   capGeo.setAttribute('position', new THREE.BufferAttribute(capVerts, 3));
   capGeo.computeVertexNormals();
   group.add(new THREE.Mesh(capGeo, _churchRoofMat));
+
+  // Arch door — centred on the long wall (−X face), bottom flush with ground
+  const churchDoor = new THREE.Mesh(makeArchGeo(0.7, 0.85), _churchDoorMat);
+  churchDoor.position.set(-w / 2 - 0.05, 0, 0);
+  churchDoor.rotation.y = -Math.PI / 2;
+  group.add(churchDoor);
+
+  // Arch windows on long sides (2 per side at z = ±d/4)
+  const winGeo  = makeArchGeo(0.5, 0.5);
+  const winYBot = h * 0.38;
+  for (const zOff of [-d / 4, d / 4]) {
+    const wp = new THREE.Mesh(winGeo, _churchWinMat);
+    wp.position.set(w / 2 + 0.05, winYBot, zOff);
+    wp.rotation.y = Math.PI / 2;
+    group.add(wp);
+
+    const wn = new THREE.Mesh(winGeo, _churchWinMat);
+    wn.position.set(-w / 2 - 0.05, winYBot, zOff);
+    wn.rotation.y = -Math.PI / 2;
+    group.add(wn);
+  }
+
+  // Arch windows on short sides (1 per side)
+  const wFront = new THREE.Mesh(winGeo, _churchWinMat);
+  wFront.position.set(0, winYBot, -d / 2 - 0.05);
+  wFront.rotation.y = Math.PI;
+  group.add(wFront);
+
+  const wBack = new THREE.Mesh(winGeo, _churchWinMat);
+  wBack.position.set(0, winYBot, d / 2 + 0.05);
+  wBack.rotation.y = 0;
+  group.add(wBack);
 
   return { group, w, d: d + tD, h };
 }
