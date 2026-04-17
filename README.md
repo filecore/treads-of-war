@@ -24,13 +24,10 @@ I'm sure everybody is sick of vibe-coded slop, and I'm sure by now large chunks 
 
 ## Game modes
 
-**Arcade**: Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light to medium to medium-heavy to heavy). Three lives. Waves grow larger at the heavy class tier.
-
-**Attrition**: Fixed squad of 5 allied tanks, permanent losses. Enemy squads escalate each battle through 4 tiers. Switch between surviving tanks with Q/E. Smoke grenades and HE ammo available.
-
-**Strategy**: Budget purchase screen before each battle. Buy any mix of tanks from your faction within the budget. Win by holding the objective ring for 60 continuous seconds. All abilities available: smoke, artillery barrage, spotter plane. Supply crates spawn on the map.
-
-**Online**: Up to 16 players (8v8) over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz. Client-side prediction with server correction. 4 team colours, room codes, ping display, CTF mode available.
+* **Arcade**: Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light to medium to medium-heavy to heavy). Three lives. Waves grow larger at the heavy class tier.
+* **Attrition**: Fixed squad of 5 allied tanks, permanent losses. Enemy squads escalate each battle through 4 tiers. Freely switch between surviving tanks. Smoke grenades and HE ammo available.
+* **Strategy**: Budget purchase screen before each battle. Buy any mix of tanks from your faction within the budget. Win by holding the objective ring for 60 continuous seconds. Use whatever edge you have: smoke, artillery barrage, spotter plane. Supply crates spawn on the map.
+* **Online**: Up to 16 players (8v8) over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz. Client-side prediction with server correction. 4 team colours, room codes, ping display, Vs or CTF gameplay mode.
 
 ---
 
@@ -42,12 +39,17 @@ I'm sure everybody is sick of vibe-coded slop, and I'm sure by now large chunks 
 * Sounds need an overhaul
 * Known bugs with graphical clipping, especially with roads and eg. impact craters
 * Weapon crates in Attrition mode need reviewed
+* Abilities in Attrition mode need reviewed
 
 ---
 
 ## Treaducation - code and learn
 
 Want to learn how to build a game? Look no further! [Treaducation](https://treads.togneri.net/treaducation/) is a resource to help inquisitive teens take their first steps in Three.js and hopefully into the joy of creation. This is an ultra-minimalist walkthrough of how to build an interactive 3D tank battle, aimed at beginners and the curious. Want to know more? Give it a try for yourself!
+
+* Self-documenting starter files for students (available online, or as a zip download) - local Three.js bundled, no internet needed, no other dependencies
+* README.md for fast start
+* Teacher's guide
 
 ---
 
