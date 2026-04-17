@@ -47,9 +47,10 @@ I'm sure everybody is sick of vibe-coded slop, and I'm sure by now large chunks 
 
 Want to learn how to build a game? Look no further! [Treaducation](https://treads.togneri.net/treaducation/) is a resource to help inquisitive teens take their first steps in Three.js and hopefully into the joy of creation. This is an ultra-minimalist walkthrough of how to build an interactive 3D tank battle, aimed at beginners and the curious. Want to know more? Give it a try for yourself!
 
-* Self-documenting starter files for students (available online, or as a zip download) - local Three.js bundled, no internet needed, no other dependencies
-* README.md for fast start
-* Teacher's guide
+* Self-documenting starter files for students (available as a zip download)
+* Everything offline: local Three.js bundled, no internet needed, no other dependencies
+* README.md for student quick start
+* Full teacher's guide which assumes no coding knowledge
 
 ---
 
