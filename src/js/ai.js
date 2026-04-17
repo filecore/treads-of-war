@@ -253,7 +253,8 @@ export class AIController {
     tank.turretYaw += Math.sign(yawDiff) * Math.min(Math.abs(yawDiff), step);
 
     const horizDist = Math.sqrt(dx * dx + dz * dz);
-    tank.gunElevation = ballisticElevation(horizDist, playerTank.position.y - tank.position.y);
+    tank.gunElevation = ballisticElevation(horizDist,
+      (playerTank.position.y + playerTank.hitRadius * 0.5) - (tank.position.y + tank.muzzleHeight));
 
     this._fireLag -= dt;
     if (!obscured && Math.abs(yawDiff) < DIFFICULTY.aimTolerance && this._fireLag <= 0) {
@@ -341,7 +342,8 @@ export class WingmanController {
     yawDiff = ((yawDiff % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
     const step = tank.def.turretSpeed * 0.012 * AI_TURRET_MULT * dt;
     tank.turretYaw += Math.sign(yawDiff) * Math.min(Math.abs(yawDiff), step);
-    tank.gunElevation = ballisticElevation(dist, target.position.y - tank.position.y);
+    tank.gunElevation = ballisticElevation(dist,
+      (target.position.y + target.hitRadius * 0.5) - (tank.position.y + tank.muzzleHeight));
 
     // Fire when aimed (with same accuracy spread as enemy AI)
     this._fireLag -= dt;

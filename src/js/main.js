@@ -3303,7 +3303,7 @@ const _aimPlane     = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 document.addEventListener('mousemove', e => { _mouseX = e.clientX; _mouseY = e.clientY; });
 document.addEventListener('mousedown', e => {
-  if (e.button === 0 && _mouseAimEnabled && game?.isPlaying) _mouseFireOnce = true;
+  if (e.button === 0 && (_mouseAimEnabled || _sightMode) && game?.isPlaying) _mouseFireOnce = true;
 });
 
 const cbMouseAim = document.getElementById('cb-mouse-aim');
@@ -4957,7 +4957,9 @@ document.addEventListener('mousemove', e => {
   if (_sightMode) { _sightMouseDX += e.movementX; _sightMouseDY += e.movementY; }
 });
 
-document.addEventListener('wheel', e => {
+// Wheel zoom: register on the canvas (pointer-locked element) so it reliably
+// fires during pointer lock, which may not bubble to document in all browsers.
+renderer.domElement.addEventListener('wheel', e => {
   if (!_sightMode || !game?.isPlaying) return;
   e.preventDefault();
   const idx = SIGHT_ZOOM_LEVELS.indexOf(_sightZoom);
@@ -5244,7 +5246,8 @@ function animate(now) {
       player.turretYaw += yawDiff * Math.min(DIFFICULTY.aimAssistStrength * _immobBoost * dt, 1);
       // Ballistic elevation to compensate for height difference
       const horiz = Math.sqrt(dx * dx + dz * dz);
-      player.gunElevation = ballisticElevation(horiz, assistTarget.position.y - player.position.y);
+      player.gunElevation = ballisticElevation(horiz,
+        (assistTarget.position.y + assistTarget.hitRadius * 0.5) - (player.position.y + player.muzzleHeight));
     } else if (!_sightMode) {
       player.gunElevation = 0.06;
     }
