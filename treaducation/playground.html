@@ -88,7 +88,7 @@
       min-width: 280px;
       display: flex;
       flex-direction: column;
-      border-right: 1px solid var(--border);
+      border-left: 1px solid var(--border);
     }
 
     .editor-toolbar {
@@ -213,6 +213,11 @@
 <!-- ── Main split ─────────────────────────────────────────────────────────── -->
 <div class="main">
 
+  <div class="preview-panel">
+    <div class="preview-placeholder" id="placeholder">Select a step above</div>
+    <iframe id="preview" title="Live preview"></iframe>
+  </div>
+
   <div class="editor-panel">
     <div class="editor-toolbar">
       <button class="btn-run" id="btn-run">Run</button>
@@ -222,11 +227,6 @@
     <textarea id="editor" spellcheck="false" autocomplete="off"
               autocorrect="off" autocapitalize="off">Select a step above to begin.</textarea>
     <div class="error-bar" id="error-bar"></div>
-  </div>
-
-  <div class="preview-panel">
-    <div class="preview-placeholder" id="placeholder">Select a step above</div>
-    <iframe id="preview" title="Live preview"></iframe>
   </div>
 
 </div>
