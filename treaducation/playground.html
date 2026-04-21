@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Treaducation Playground</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:   #5db87a;
+      --gold:    #f0e8b4;
+      --dimtext: rgba(170,200,170,0.65);
+      --bg:      #080e14;
+      --panel:   rgba(255,255,255,0.04);
+      --border:  rgba(93,184,122,0.22);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: var(--bg);
+      color: #ccddcc;
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ────────────────────────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 16px;
+      height: 46px;
+      background: #060b10;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .logo {
+      color: var(--green);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .logo:hover { color: #7dd89a; }
+
+    .divider { width: 1px; height: 20px; background: var(--border); }
+
+    .step-tabs {
+      display: flex;
+      gap: 3px;
+      overflow-x: auto;
+    }
+    .step-tab {
+      padding: 4px 13px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--dimtext);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .step-tab:hover { background: rgba(93,184,122,0.06); color: #ccddcc; border-color: var(--border); }
+    .step-tab.active { background: rgba(93,184,122,0.14); color: var(--green); border-color: var(--green); }
+
+    /* ── Main split ─────────────────────────────────────────────────────────── */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Editor panel ───────────────────────────────────────────────────────── */
+    .editor-panel {
+      width: 46%;
+      min-width: 280px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+
+    .editor-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: #060b10;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .btn-run {
+      padding: 5px 20px;
+      background: rgba(46,204,113,0.15);
+      border: 1px solid rgba(46,204,113,0.5);
+      color: #aaffcc;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-run:hover { background: rgba(46,204,113,0.28); border-color: #2ecc71; }
+
+    .btn-reset {
+      padding: 5px 13px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--dimtext);
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-reset:hover { background: rgba(255,255,255,0.05); color: #ccddcc; }
+
+    .editor-hint {
+      margin-left: auto;
+      color: rgba(93,184,122,0.28);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+    }
+
+    #editor {
+      flex: 1;
+      background: #040810;
+      color: #c9e0c9;
+      border: none;
+      outline: none;
+      padding: 14px 18px;
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+      font-size: 12.5px;
+      line-height: 1.65;
+      resize: none;
+      tab-size: 2;
+      -webkit-tab-size: 2;
+      overflow-y: auto;
+      caret-color: var(--green);
+    }
+    #editor::selection { background: rgba(93,184,122,0.25); }
+
+    .error-bar {
+      display: none;
+      background: rgba(180,30,30,0.18);
+      color: #ff7070;
+      border-top: 1px solid rgba(180,30,30,0.35);
+      padding: 6px 14px;
+      font-size: 11px;
+      flex-shrink: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* ── Preview panel ──────────────────────────────────────────────────────── */
+    .preview-panel {
+      flex: 1;
+      position: relative;
+      background: #000;
+    }
+
+    .preview-panel iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .preview-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(93,184,122,0.2);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <a href="index.html" class="logo">Treaducation</a>
+  <div class="divider"></div>
+  <div class="step-tabs" id="step-tabs">
+    <button class="step-tab" data-step="1">01 Hello World</button>
+    <button class="step-tab" data-step="2">02 Terrain</button>
+    <button class="step-tab" data-step="3">03 Tank</button>
+    <button class="step-tab" data-step="4">04 Shoot</button>
+    <button class="step-tab" data-step="5">05 1v1</button>
+  </div>
+</div>
+
+<!-- ── Main split ─────────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <div class="editor-panel">
+    <div class="editor-toolbar">
+      <button class="btn-run" id="btn-run">Run</button>
+      <button class="btn-reset" id="btn-reset">Reset</button>
+      <span class="editor-hint">Ctrl+Enter to run &nbsp;|&nbsp; Tab = 2 spaces</span>
+    </div>
+    <textarea id="editor" spellcheck="false" autocomplete="off"
+              autocorrect="off" autocapitalize="off">Select a step above to begin.</textarea>
+    <div class="error-bar" id="error-bar"></div>
+  </div>
+
+  <div class="preview-panel">
+    <div class="preview-placeholder" id="placeholder">Select a step above</div>
+    <iframe id="preview" title="Live preview"></iframe>
+  </div>
+
+</div>
+
+<script>
+  // Base URL for resolving Three.js assets (three.module.js, jsm/)
+  const BASE = new URL('./', window.location.href).href;
+
+  const STEPS = {
+    1: 'step1-hello-world.html',
+    2: 'step2-terrain.html',
+    3: 'step3-tank.html',
+    4: 'step4-shoot.html',
+    5: 'step5-1v1.html',
+  };
+
+  // Injected into every iframe to forward runtime errors to the parent
+  const ERROR_SCRIPT =
+    '<scr' + 'ipt>' +
+    'window.onerror=function(m,_,l){' +
+      'parent.postMessage({type:"treaducation-error",msg:m+(l?" (line "+l+")":" ")},"*");' +
+    '};' +
+    'window.addEventListener("unhandledrejection",function(e){' +
+      'parent.postMessage({type:"treaducation-error",msg:String(e.reason)},"*");' +
+    '});' +
+    '</scr' + 'ipt>';
+
+  let baseHtml = '';      // full step HTML with absolute importmap paths + error script
+  let originalCode = '';  // unmodified module script body (for Reset)
+
+  // ── Load a step ─────────────────────────────────────────────────────────────
+  async function loadStep(num) {
+    const editor = document.getElementById('editor');
+    editor.value = 'Loading...';
+    editor.disabled = true;
+
+    try {
+      const resp = await fetch(STEPS[num]);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const html = await resp.text();
+
+      // Rewrite importmap to absolute paths so srcdoc iframes can load modules
+      baseHtml = html
+        .replace('"./three.module.js"', '"' + BASE + 'three.module.js"')
+        .replace('"./jsm/"', '"' + BASE + 'jsm/"')
+        // Strip analytics from iframe content (avoid duplicate events)
+        .replace(/<script\b[^>]*analytics\.togneri\.net[^>]*><\/script>/g, '')
+        // Inject error forwarder before </body>
+        .replace('</body>', ERROR_SCRIPT + '\n</body>');
+
+      // Extract just the module script body for the editor
+      const m = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+      originalCode = m ? m[1].replace(/^\n/, '').replace(/\n$/, '') : '';
+
+      editor.value = originalCode;
+      editor.disabled = false;
+      editor.focus();
+
+      hideError();
+      runCode(originalCode);
+
+      document.querySelectorAll('.step-tab').forEach(t =>
+        t.classList.toggle('active', parseInt(t.dataset.step) === num)
+      );
+
+      // Reflect step in URL without navigation
+      const u = new URL(window.location.href);
+      u.searchParams.set('step', num);
+      history.replaceState(null, '', u);
+
+    } catch (err) {
+      editor.disabled = false;
+      editor.value = '';
+      showError('Could not load step: ' + err.message);
+    }
+  }
+
+  // ── Build and run ────────────────────────────────────────────────────────────
+  function runCode(code) {
+    if (!baseHtml) return;
+
+    // Replace the module script body with the editor content.
+    // Use a function replacement to avoid interpreting $ sequences in user code.
+    const runHtml = baseHtml.replace(
+      /(<script type="module">)([\s\S]*?)(<\/script>)/,
+      function(_, open, _old, close) {
+        return open + '\n' + code + '\n' + close;
+      }
+    );
+
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('preview').srcdoc = runHtml;
+    hideError();
+  }
+
+  // ── Error display ─────────────────────────────────────────────────────────────
+  function showError(msg) {
+    const bar = document.getElementById('error-bar');
+    bar.textContent = 'Error: ' + msg;
+    bar.style.display = 'block';
+  }
+  function hideError() {
+    document.getElementById('error-bar').style.display = 'none';
+  }
+
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'treaducation-error') showError(e.data.msg);
+  });
+
+  // ── Button handlers ──────────────────────────────────────────────────────────
+  document.getElementById('btn-run').addEventListener('click', function() {
+    runCode(document.getElementById('editor').value);
+  });
+
+  document.getElementById('btn-reset').addEventListener('click', function() {
+    document.getElementById('editor').value = originalCode;
+    runCode(originalCode);
+    hideError();
+  });
+
+  document.querySelectorAll('.step-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      loadStep(parseInt(tab.dataset.step));
+    });
+  });
+
+  // ── Editor keyboard handling ──────────────────────────────────────────────────
+  document.getElementById('editor').addEventListener('keydown', function(e) {
+    // Ctrl/Cmd+Enter => Run
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runCode(e.target.value);
+      return;
+    }
+
+    // Tab => indent (2 spaces), never move focus
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      var ta = e.target;
+      var s = ta.selectionStart;
+      var end = ta.selectionEnd;
+      if (s === end) {
+        // No selection: insert 2 spaces at cursor
+        ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(end);
+        ta.selectionStart = ta.selectionEnd = s + 2;
+      } else {
+        // Selection: indent every touched line by 2 spaces
+        var before = ta.value.slice(0, s);
+        var selected = ta.value.slice(s, end);
+        var after = ta.value.slice(end);
+        var indented = selected.replace(/^/gm, '  ');
+        ta.value = before + indented + after;
+        ta.selectionStart = s;
+        ta.selectionEnd = s + indented.length;
+      }
+    }
+  });
+
+  // ── Init: honour ?step= query param ──────────────────────────────────────────
+  var initStep = parseInt(new URLSearchParams(window.location.search).get('step'));
+  loadStep((initStep >= 1 && initStep <= 5) ? initStep : 1);
+</script>
+
+<!-- Analytics -->
+<script defer src="https://analytics.togneri.net/script.js" data-website-id="d0548c92-8771-4c06-aa7b-0220a6c7557d"></script>
+
+</body>
+</html>
