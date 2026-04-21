@@ -137,23 +137,60 @@
       letter-spacing: 0.06em;
     }
 
-    #editor {
+    /* ── Syntax highlight overlay ───────────────────────────────────────────── */
+    .editor-wrap {
       flex: 1;
+      position: relative;
+      overflow: hidden;
       background: #040810;
+    }
+
+    /* The highlighted <pre> sits behind the textarea */
+    #hl-layer {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      padding: 14px 18px;
+      font-family: 'Fira Code', 'Courier New', Courier, monospace;
+      font-size: 12.5px;
+      line-height: 1.65;
+      white-space: pre;
+      tab-size: 2;
+      -webkit-tab-size: 2;
+      overflow: auto;
+      scrollbar-width: none;
+      pointer-events: none;
       color: #c9e0c9;
+    }
+    #hl-layer::-webkit-scrollbar { display: none; }
+
+    /* Textarea sits on top - text transparent so only the caret shows */
+    #editor {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      color: transparent;
+      caret-color: var(--green);
       border: none;
       outline: none;
       padding: 14px 18px;
       font-family: 'Fira Code', 'Courier New', Courier, monospace;
       font-size: 12.5px;
       line-height: 1.65;
-      resize: none;
+      white-space: pre;
       tab-size: 2;
       -webkit-tab-size: 2;
-      overflow-y: auto;
-      caret-color: var(--green);
+      resize: none;
+      overflow: auto;
+      z-index: 1;
     }
-    #editor::selection { background: rgba(93,184,122,0.25); }
+    #editor::selection { background: rgba(93,184,122,0.22); }
+
+    /* Syntax colours - VS Code Dark+ palette */
+    .ck { color: #569cd6; }
+    .cs { color: #ce9178; }
+    .cc { color: #6a9955; font-style: italic; }
+    .cn { color: #b5cea8; }
 
     .error-bar {
       display: none;
@@ -224,8 +261,11 @@
       <button class="btn-reset" id="btn-reset">Reset</button>
       <span class="editor-hint">Ctrl+Enter to run &nbsp;|&nbsp; Tab = 2 spaces</span>
     </div>
-    <textarea id="editor" spellcheck="false" autocomplete="off"
-              autocorrect="off" autocapitalize="off">Select a step above to begin.</textarea>
+    <div class="editor-wrap">
+      <pre id="hl-layer" aria-hidden="true"></pre>
+      <textarea id="editor" spellcheck="false" autocomplete="off"
+                autocorrect="off" autocapitalize="off" wrap="off">Select a step above to begin.</textarea>
+    </div>
     <div class="error-bar" id="error-bar"></div>
   </div>
 
@@ -257,6 +297,107 @@
   let baseHtml = '';      // full step HTML with absolute importmap paths + error script
   let originalCode = '';  // unmodified module script body (for Reset)
 
+  // ── Syntax highlighter ────────────────────────────────────────────────────────
+  const KW = new Set([
+    'abstract','arguments','async','await','break','byte','case','catch','char',
+    'class','const','continue','debugger','default','delete','do','double','else',
+    'enum','eval','export','extends','false','final','finally','float','for','from',
+    'function','get','goto','if','implements','import','in','instanceof','int',
+    'interface','let','long','native','new','null','of','package','private',
+    'protected','public','return','set','short','static','super','switch','this',
+    'throw','throws','true','try','typeof','undefined','var','void','while','with',
+    'yield'
+  ]);
+
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function highlight(raw) {
+    var out = '';
+    var i = 0;
+    var len = raw.length;
+    while (i < len) {
+      var c = raw[i];
+      var c2 = raw[i + 1];
+
+      // Block comment /* ... */
+      if (c === '/' && c2 === '*') {
+        var end = raw.indexOf('*/', i + 2);
+        var chunk = end === -1 ? raw.slice(i) : raw.slice(i, end + 2);
+        out += '<span class="cc">' + escHtml(chunk) + '</span>';
+        i += chunk.length;
+        continue;
+      }
+
+      // Line comment // ...
+      if (c === '/' && c2 === '/') {
+        var nl = raw.indexOf('\n', i);
+        var chunk = nl === -1 ? raw.slice(i) : raw.slice(i, nl);
+        out += '<span class="cc">' + escHtml(chunk) + '</span>';
+        i += chunk.length;
+        continue;
+      }
+
+      // Template literal `...`
+      if (c === '`') {
+        var j = i + 1;
+        while (j < len && raw[j] !== '`') { if (raw[j] === '\\') j++; j++; }
+        out += '<span class="cs">' + escHtml(raw.slice(i, j + 1)) + '</span>';
+        i = j + 1;
+        continue;
+      }
+
+      // String literal "..." or '...'
+      if (c === '"' || c === "'") {
+        var j = i + 1;
+        while (j < len && raw[j] !== c && raw[j] !== '\n') { if (raw[j] === '\\') j++; j++; }
+        out += '<span class="cs">' + escHtml(raw.slice(i, j + 1)) + '</span>';
+        i = j + 1;
+        continue;
+      }
+
+      // Identifier or keyword
+      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_' || c === '$') {
+        var j = i;
+        while (j < len) {
+          var ch = raw[j];
+          if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                (ch >= '0' && ch <= '9') || ch === '_' || ch === '$')) break;
+          j++;
+        }
+        var word = raw.slice(i, j);
+        out += KW.has(word) ? '<span class="ck">' + word + '</span>' : escHtml(word);
+        i = j;
+        continue;
+      }
+
+      // Number (integer, float, or hex 0x...)
+      if (c >= '0' && c <= '9') {
+        var j = i;
+        while (j < len) {
+          var ch = raw[j];
+          if (!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') ||
+                (ch >= 'A' && ch <= 'F') || ch === 'x' || ch === 'X' ||
+                ch === '.' || ch === '_')) break;
+          j++;
+        }
+        out += '<span class="cn">' + escHtml(raw.slice(i, j)) + '</span>';
+        i = j;
+        continue;
+      }
+
+      // Everything else (operators, punctuation, whitespace, newlines)
+      out += escHtml(c);
+      i++;
+    }
+    return out;
+  }
+
+  function updateHighlight(code) {
+    document.getElementById('hl-layer').innerHTML = highlight(code) + '\n';
+  }
+
   // ── Load a step ─────────────────────────────────────────────────────────────
   async function loadStep(num) {
     const editor = document.getElementById('editor');
@@ -282,6 +423,7 @@
       originalCode = m ? m[1].replace(/^\n/, '').replace(/\n$/, '') : '';
 
       editor.value = originalCode;
+      updateHighlight(originalCode);
       editor.disabled = false;
       editor.focus();
 
@@ -343,6 +485,7 @@
 
   document.getElementById('btn-reset').addEventListener('click', function() {
     document.getElementById('editor').value = originalCode;
+    updateHighlight(originalCode);
     runCode(originalCode);
     hideError();
   });
@@ -383,6 +526,16 @@
         ta.selectionEnd = s + indented.length;
       }
     }
+  });
+
+  // Keep highlight layer scrolled in sync with the textarea
+  document.getElementById('editor').addEventListener('input', function() {
+    updateHighlight(this.value);
+  });
+  document.getElementById('editor').addEventListener('scroll', function() {
+    var hl = document.getElementById('hl-layer');
+    hl.scrollTop = this.scrollTop;
+    hl.scrollLeft = this.scrollLeft;
   });
 
   // ── Init: honour ?step= query param ──────────────────────────────────────────
