@@ -6,7 +6,7 @@
 //   Events (pickup, capture, etc.) are piggybacked into the existing lanEvents array.
 
 import * as THREE from 'three';
-import { getAltitude } from './terrain.js?v=55';
+import { getAltitude } from './terrain.js?v=56';
 
 export const CTF_WIN_SCORE    = 3;
 export const CTF_DROP_SECS    = 30;   // auto-return timer for dropped flags

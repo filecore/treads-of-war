@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js?v=55';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=55';
-import { Input }          from './input.js?v=55';
-import { Tank }           from './tank.js?v=55';
-import { buildAuthenticModel } from './models.js?v=55';
-import { CombatManager, ballisticElevation }  from './combat.js?v=55';
-import { ParticleSystem } from './particles.js?v=55';
-import { AIController, WingmanController } from './ai.js?v=55';
-import { LanBotController } from './lan-ai.js?v=55';
-import { GameManager, STATES } from './game.js?v=55';
+import { CONFIG }         from './config.js?v=56';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=56';
+import { Input }          from './input.js?v=56';
+import { Tank }           from './tank.js?v=56';
+import { buildAuthenticModel } from './models.js?v=56';
+import { CombatManager, ballisticElevation }  from './combat.js?v=56';
+import { ParticleSystem } from './particles.js?v=56';
+import { AIController, WingmanController } from './ai.js?v=56';
+import { LanBotController } from './lan-ai.js?v=56';
+import { GameManager, STATES } from './game.js?v=56';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js?v=55';
-import { AudioManager }        from './audio.js?v=55';
-import { DIFFICULTY }          from './config.js?v=55';
-import { WeatherManager } from './weather.js?v=55';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=55';
-import { Net, LAN_SNAP_HZ }   from './net.js?v=55';
+} from './modes.js?v=56';
+import { AudioManager }        from './audio.js?v=56';
+import { DIFFICULTY }          from './config.js?v=56';
+import { WeatherManager } from './weather.js?v=56';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=56';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=56';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js?v=55';
+} from './ui.js?v=56';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -2308,6 +2308,7 @@ function _initLanGame(rosterMap) {
   _lanEndStats    = null;
   _lanStats.clear();
   for (const id of rosterMap.keys()) _lanStats.set(id, { kills: 0, killedBy: null });
+  _specActive     = false;
   _demoActive     = false;
   _demoAI         = null;
 
@@ -2591,10 +2592,75 @@ function _updateCtfHud() {
 }
 
 // LAN game loop — called from animate() when _lanMode && _lanGameActive
+// ── Online spectator camera ────────────────────────────────────────────────────
+// While your own tank is dead in an Online match, free-fly instead of freezing:
+// WASD to move (relative to look direction), arrows to look around, Space/C
+// up/down, Shift to move faster. Keyboard-only (no pointer lock) so it always
+// works regardless of browser gesture requirements.
+let _specActive       = false;
+const _specPos        = new THREE.Vector3();
+let   _specYaw        = 0;
+let   _specPitch      = -0.25;
+const SPEC_SPEED      = 60;   // world units / second
+const SPEC_TURN_RATE  = 1.8;  // radians / second
+
+function _enterSpectatorCam() {
+  if (_sightMode) _exitSightMode();
+  _specActive = true;
+  _specPos.copy(player.position);
+  _specPos.y += 10;
+  _specYaw   = player.heading;
+  _specPitch = -0.25;
+  if (hudEncounter) {
+    hudEncounter.textContent = 'SPECTATING — WASD move · arrows look · Space/C up/down';
+    hudEncounter.style.opacity = '1';
+    _encounterTimer = 5.0;
+  }
+}
+
+function _exitSpectatorCam() {
+  _specActive = false;
+  // Force the tank chase-camera to re-snap instead of gliding in from the
+  // spectator position it never actually tracked.
+  player._camPos.set(0, 0, 0);
+  player._camInit = false;
+}
+
+function _updateSpectatorCam(dt) {
+  const k = input.keys;
+  if (k['ArrowLeft'])  _specYaw   += SPEC_TURN_RATE * dt;
+  if (k['ArrowRight']) _specYaw   -= SPEC_TURN_RATE * dt;
+  if (k['ArrowUp'])    _specPitch = Math.min(1.4, _specPitch + SPEC_TURN_RATE * dt);
+  if (k['ArrowDown'])  _specPitch = Math.max(-1.4, _specPitch - SPEC_TURN_RATE * dt);
+
+  const speed = SPEC_SPEED * ((k['ShiftLeft'] || k['ShiftRight']) ? 2.5 : 1);
+  const cosP  = Math.cos(_specPitch);
+  const fx = -Math.sin(_specYaw) * cosP, fy = Math.sin(_specPitch), fz = -Math.cos(_specYaw) * cosP;
+  const rx =  Math.cos(_specYaw),        rz = -Math.sin(_specYaw);
+  if (k['KeyW']) { _specPos.x += fx * speed * dt; _specPos.y += fy * speed * dt; _specPos.z += fz * speed * dt; }
+  if (k['KeyS']) { _specPos.x -= fx * speed * dt; _specPos.y -= fy * speed * dt; _specPos.z -= fz * speed * dt; }
+  if (k['KeyD']) { _specPos.x += rx * speed * dt; _specPos.z += rz * speed * dt; }
+  if (k['KeyA']) { _specPos.x -= rx * speed * dt; _specPos.z -= rz * speed * dt; }
+  if (k['Space']) _specPos.y += speed * dt;
+  if (k['KeyC'])  _specPos.y -= speed * dt;
+  _specPos.y = Math.max(getAltitude(_specPos.x, _specPos.z) + 2, _specPos.y);
+
+  camera.position.copy(_specPos);
+  camera.quaternion.setFromEuler(new THREE.Euler(_specPitch, _specYaw, 0, 'YXZ'));
+}
+
 function _runLanFrame(dt, now) {
+  // Fade the spectator hint (and any other encounter/weather message) the same
+  // way singleplayer does — this loop bypasses that code path entirely.
+  if (hudEncounter && _encounterTimer > 0) {
+    _encounterTimer -= dt;
+    hudEncounter.style.opacity = Math.max(0, Math.min(1, _encounterTimer / 0.8)).toFixed(2);
+  }
+
   if (_lanNet.isHost()) {
     // ── Host: drive own tank; apply each client's input to their tank ──────────
     if (player.alive) {
+      if (_specActive) _exitSpectatorCam();
       player.update(dt, input);
       player.updateCamera(camera, dt);
       if (input.fire || input.fireOnce) {
@@ -2605,6 +2671,9 @@ function _runLanFrame(dt, now) {
           _lanEvents.push({ t: 'fl', x: tip.x, y: tip.y, z: tip.z });
         }
       }
+    } else {
+      if (!_specActive) _enterSpectatorCam();
+      _updateSpectatorCam(dt);
     }
 
     const _botEnemyList = _lanBots.size > 0 ? _buildCtfPlayerList() : null;
@@ -2826,7 +2895,13 @@ function _runLanFrame(dt, now) {
       gs.mesh.quaternion.setFromUnitVectors(_ghostShellFwd, _ghostShellVel);
     }
 
-    if (player.alive) player.updateCamera(camera, dt);
+    if (player.alive) {
+      if (_specActive) _exitSpectatorCam();
+      player.updateCamera(camera, dt);
+    } else {
+      if (!_specActive) _enterSpectatorCam();
+      _updateSpectatorCam(dt);
+    }
   }
 
   particles.update(dt);

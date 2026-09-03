@@ -8,9 +8,9 @@
 // Only ever instantiated and updated by the host — clients render bot tanks
 // purely from received snapshots, same as any other peer.
 
-import { ballisticElevation } from './combat.js?v=55';
-import { steerToward } from './ai.js?v=55';
-import { CONFIG } from './config.js?v=55';
+import { ballisticElevation } from './combat.js?v=56';
+import { steerToward } from './ai.js?v=56';
+import { CONFIG } from './config.js?v=56';
 
 const MAP_SAFE       = CONFIG.MAP_HALF - 20;
 const PATROL_RADIUS  = 220;
