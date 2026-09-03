@@ -2,8 +2,8 @@
 // All exported functions are stateless: they take a state snapshot (st)
 // and return an HTML string.  No DOM manipulation here.
 
-import { CONFIG, DIFFICULTY } from './config.js?v=56';
-import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=56';
+import { CONFIG, DIFFICULTY } from './config.js?v=57';
+import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=57';
 
 // ── Faction display label ─────────────────────────────────────────────────────
 export function factionLabel(f, plural = false) {
@@ -242,6 +242,17 @@ export function lanLobbyHtml(st) {
   if (inRoom) {
     rosterHtml = '<div class="lan-waiting-room">';
     rosterHtml += `<div class="lan-waiting-title">Room <b>${st.lanRoomCode}</b>  ·  ${st.lanRoster.size} / ${st.lanMaxPlayers} players</div>`;
+    if (isHost) {
+      const roomFull = st.lanRoster.size >= st.lanMaxPlayers;
+      rosterHtml += '<div class="lan-ai-row">';
+      rosterHtml += '<span class="lan-name-label">Add AI</span>';
+      st.lanTeamNames.forEach((name, i) => {
+        const tHex = '#' + st.lanTeamColors[i].toString(16).padStart(6, '0');
+        rosterHtml += `<button class="lan-btn lan-btn-sm lan-add-ai-btn" data-team="${i}" ` +
+          `style="border-color:${tHex};color:${tHex}" ${roomFull ? 'disabled' : ''}>${name}</button>`;
+      });
+      rosterHtml += '</div>';
+    }
     rosterHtml += '<div class="lan-waiting-list">';
     const botIds = st.lanBotIds || new Set();
     for (const [id, p] of st.lanRoster) {
@@ -259,15 +270,6 @@ export function lanLobbyHtml(st) {
     }
     rosterHtml += '</div>';
     if (isHost) {
-      const roomFull = st.lanRoster.size >= st.lanMaxPlayers;
-      rosterHtml += '<div class="lan-ai-row">';
-      rosterHtml += '<span class="lan-name-label">Add AI</span>';
-      st.lanTeamNames.forEach((name, i) => {
-        const tHex = '#' + st.lanTeamColors[i].toString(16).padStart(6, '0');
-        rosterHtml += `<button class="lan-btn lan-btn-sm lan-add-ai-btn" data-team="${i}" ` +
-          `style="border-color:${tHex};color:${tHex}" ${roomFull ? 'disabled' : ''}>${name}</button>`;
-      });
-      rosterHtml += '</div>';
       const canStart = st.lanRoster.size >= 2;
       rosterHtml += `<button id="lan-start-btn" class="lan-btn${canStart ? '' : ' lan-btn-disabled'}" ${canStart ? '' : 'disabled'}>Start Game</button>`;
     } else {
