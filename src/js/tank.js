@@ -1,9 +1,9 @@
 // tank.js — Tank model, dual-track physics, terrain orientation, third-person camera
 
 import * as THREE from 'three';
-import { CONFIG }              from './config.js';
-import { getAltitude }         from './terrain.js';
-import { buildAuthenticModel } from './models.js';
+import { CONFIG }              from './config.js?v=55';
+import { getAltitude }         from './terrain.js?v=55';
+import { buildAuthenticModel } from './models.js?v=55';
 
 // ── Physics scaling ────────────────────────────────────────────────────────────
 // Tank stat values (0–100 range) are scaled to world units per second.

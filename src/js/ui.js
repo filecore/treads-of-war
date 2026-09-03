@@ -2,8 +2,8 @@
 // All exported functions are stateless: they take a state snapshot (st)
 // and return an HTML string.  No DOM manipulation here.
 
-import { CONFIG, DIFFICULTY } from './config.js';
-import { TANK_COSTS, FACTION_ROSTERS } from './modes.js';
+import { CONFIG, DIFFICULTY } from './config.js?v=55';
+import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=55';
 
 // ── Faction display label ─────────────────────────────────────────────────────
 export function factionLabel(f, plural = false) {
@@ -356,13 +356,58 @@ export function purchaseHtml(st) {
 }
 
 // ── LAN end screen (win or defeat) ────────────────────────────────────────────
-export function lanEndScreenHtml(won) {
-  return `
-    <div class="lan-lobby">
-      ${won ? '' : `<div class="lan-status" style="font-size:13px;color:rgba(255,100,80,0.85)">\u25CF Your tank was destroyed</div>`}
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <button id="lan-menu-btn" class="lan-btn">Main Menu</button>
-        <button id="lan-lobby-btn" class="lan-btn">Online Lobby</button>
-      </div>
-    </div>`;
+export function lanEndScreenHtml(st) {
+  const result   = st.lanGameResult;
+  const won      = result === st.lanOwnTeamAtEnd;
+  const teamName = result >= 0 ? st.lanTeamNames[result] : null;
+  const teamHex  = result >= 0 ? '#' + st.lanTeamColors[result].toString(16).padStart(6, '0') : 'rgba(220,220,220,0.9)';
+  const stats    = st.lanEndStats || {};
+  const entries  = Object.entries(stats);
+
+  let html = '<div class="lan-lobby lan-end-screen">';
+
+  html += `<div class="lan-end-banner" style="color:${teamHex};border-color:${teamHex}">` +
+    (teamName ? `${won ? 'VICTORY' : 'DEFEAT'} \u2014 ${teamName.toUpperCase()} TEAM ${won ? 'WINS' : 'WON'}` : 'NO SURVIVORS') +
+    `</div>`;
+
+  if (entries.length) {
+    html += '<div class="lan-end-section-title">Kills</div>';
+    html += '<div class="lan-waiting-list">';
+    for (const [, p] of entries.sort((a, b) => b[1].kills - a[1].kills)) {
+      const tc = st.lanTeamColors[p.team ?? 0] ?? st.lanTeamColors[0];
+      const tHex = '#' + tc.toString(16).padStart(6, '0');
+      html += `<div class="lan-waiting-player">` +
+        `<span class="lan-waiting-dot" style="background:${tHex}"></span>` +
+        `<span class="lan-waiting-name">${p.name}</span>` +
+        `<span class="lan-waiting-team" style="color:${tHex}">${st.lanTeamNames[p.team ?? 0]}</span>` +
+        `<span class="lan-end-kills">${p.kills} kill${p.kills === 1 ? '' : 's'}</span>` +
+        `</div>`;
+    }
+    html += '</div>';
+
+    const defeated = entries.filter(([, p]) => p.killedBy !== null);
+    if (defeated.length) {
+      html += '<div class="lan-end-section-title">Defeated</div>';
+      html += '<div class="lan-waiting-list">';
+      for (const [, p] of defeated) {
+        const killerName = stats[p.killedBy]?.name ?? p.killedBy;
+        html += `<div class="lan-waiting-player">` +
+          `<span class="lan-waiting-name">${p.name}</span>` +
+          `<span class="lan-end-defeated-by">defeated by ${killerName}</span>` +
+          `</div>`;
+      }
+      html += '</div>';
+    }
+  }
+
+  html += '<div style="display:flex;gap:10px;margin-top:12px;">';
+  html += `<button id="lan-menu-btn" class="lan-btn">Main Menu</button>`;
+  html += `<button id="lan-lobby-btn" class="lan-btn">Online Lobby</button>`;
+  if (st.lanNet && st.lanNet.isHost()) {
+    html += `<button id="lan-rematch-btn" class="lan-btn">Play Again</button>`;
+  }
+  html += '</div>';
+
+  html += '</div>';
+  return html;
 }

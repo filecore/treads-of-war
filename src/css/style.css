@@ -899,6 +899,30 @@ html, body {
   text-align: center;
 }
 
+/* ── Menu START button ── */
+.menu-start-btn {
+  display: block;
+  width: 100%;
+  margin-top: 18px;
+  padding: 12px 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: rgba(200, 240, 200, 0.95);
+  background: rgba(30, 80, 30, 0.55);
+  border: 2px solid rgba(120, 220, 120, 0.60);
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.menu-start-btn:hover {
+  background: rgba(40, 120, 40, 0.75);
+  border-color: rgba(160, 255, 160, 0.90);
+  color: rgba(220, 255, 220, 1.0);
+}
 
 /* ── Combined menu: 2-column tank + mode layout ── */
 .menu-combined {
@@ -1426,6 +1450,36 @@ html, body {
   align-items: center;
   gap: 6px;
   margin-top: 2px;
+}
+/* End-of-match summary */
+.lan-end-screen { max-width: 460px; }
+.lan-end-banner {
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 0.10em;
+  padding: 10px 14px;
+  border: 2px solid;
+  border-radius: 4px;
+  background: rgba(10, 15, 30, 0.60);
+}
+.lan-end-section-title {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: rgba(180, 210, 255, 0.65);
+  text-transform: uppercase;
+  margin-top: 10px;
+}
+.lan-end-kills {
+  font-size: 11px;
+  color: rgba(220, 230, 255, 0.75);
+  white-space: nowrap;
+}
+.lan-end-defeated-by {
+  flex: 1;
+  text-align: right;
+  font-size: 11px;
+  color: rgba(255, 160, 150, 0.75);
 }
 
 /* ── Squad HUD (top-centre) ── */

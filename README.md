@@ -27,7 +27,7 @@ I'm sure everybody is sick of vibe-coded slop, and I'm sure by now large chunks 
 * **Arcade**: Solo survival. Survive endless waves of enemy armour. Every 4 kills upgrades your tank class (light to medium to medium-heavy to heavy). Three lives. Waves grow larger at the heavy class tier.
 * **Attrition**: Fixed squad of 5 allied tanks, permanent losses. Enemy squads escalate each battle through 4 tiers. Freely switch between surviving tanks. Smoke grenades and HE ammo available.
 * **Strategy**: Budget purchase screen before each battle. Buy any mix of tanks from your faction within the budget. Win by holding the objective ring for 60 continuous seconds. Use whatever edge you have: smoke, artillery barrage, spotter plane. Supply crates spawn on the map.
-* **Online**: Up to 16 players (8v8) over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz. Client-side prediction with server correction. 4 team colours, room codes, ping display, Vs or CTF gameplay mode.
+* **Online**: Up to 16 players over LAN or the internet via WebSocket relay. Host runs authoritative simulation at 60 fps, broadcasts at 20 Hz, and handles any AI allies or opponents. Client-side prediction with server correction. 4 team colours, room codes, ping display, Vs or CTF gameplay mode.
 
 ---
 

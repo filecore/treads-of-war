@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js';
-import { Input }          from './input.js';
-import { Tank }           from './tank.js';
-import { buildAuthenticModel } from './models.js';
-import { CombatManager, ballisticElevation }  from './combat.js';
-import { ParticleSystem } from './particles.js';
-import { AIController, WingmanController } from './ai.js';
-import { LanBotController } from './lan-ai.js';
-import { GameManager, STATES } from './game.js';
+import { CONFIG }         from './config.js?v=55';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=55';
+import { Input }          from './input.js?v=55';
+import { Tank }           from './tank.js?v=55';
+import { buildAuthenticModel } from './models.js?v=55';
+import { CombatManager, ballisticElevation }  from './combat.js?v=55';
+import { ParticleSystem } from './particles.js?v=55';
+import { AIController, WingmanController } from './ai.js?v=55';
+import { LanBotController } from './lan-ai.js?v=55';
+import { GameManager, STATES } from './game.js?v=55';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js';
-import { AudioManager }        from './audio.js';
-import { DIFFICULTY }          from './config.js';
-import { WeatherManager } from './weather.js';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js';
-import { Net, LAN_SNAP_HZ }   from './net.js';
+} from './modes.js?v=55';
+import { AudioManager }        from './audio.js?v=55';
+import { DIFFICULTY }          from './config.js?v=55';
+import { WeatherManager } from './weather.js?v=55';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=55';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=55';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js';
+} from './ui.js?v=55';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -924,6 +924,78 @@ function destroyBuilding(b) {
   const ruin = createDestroyedHouse(b);
   scene.add(ruin);
   b.meshes.push(ruin);
+}
+
+// Tank-vs-building push-back + collision damage. Shared by singleplayer and the
+// LAN host loop (LAN clients never call this — they only render host snapshots).
+function _updateBuildingCollisions(dt, tanks) {
+  for (const [t, cd] of _buildingDmgCooldown) {
+    const newCd = cd - dt;
+    if (newCd <= 0) _buildingDmgCooldown.delete(t);
+    else _buildingDmgCooldown.set(t, newCd);
+  }
+  for (const t of tanks) {
+    if (!t.alive) continue;
+    for (const b of _buildings) {
+      if (!b.alive) continue;
+      const dx   = t.position.x - b.x;
+      const dz   = t.position.z - b.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      const minD = t.hitRadius + b.radius;
+      if (dist < minD && dist > 0.001) {
+        const push = (minD - dist) / dist;
+        t.position.x += dx * push;
+        t.position.z += dz * push;
+        t.leftSpeed  *= 0.1;
+        t.rightSpeed *= 0.1;
+        t.mesh.position.x = t.position.x;
+        t.mesh.position.z = t.position.z;
+        // Apply building-impact damage (5-10% scaled by speed), max once per 0.5 s
+        if (!_buildingDmgCooldown.has(t)) {
+          const _bSpd = Math.abs(t.leftSpeed + t.rightSpeed) * 0.5;
+          const _bDmg = Math.max(1, Math.round(5 + 5 * Math.min(1, _bSpd / (t.def.maxSpeed * 0.20))));
+          t.hp = Math.max(0, t.hp - _bDmg);
+          _buildingDmgCooldown.set(t, 0.5);
+          if (t.hp <= 0 && t.alive) {
+            t.alive = false;
+            _processTankDeath(t, null);
+            if (_lanMode) {
+              const vid = _lanIdForTank(t);
+              if (vid && _lanStats.has(vid)) _lanStats.get(vid).killedBy = null;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Shell-vs-building destruction. Shared by singleplayer and the LAN host loop.
+// onDestroy(buildingIndex), if given, is called after each building is destroyed
+// (the LAN host uses it to broadcast a 'bld' event so clients replay the same destruction).
+function _updateShellVsBuildings(onDestroy) {
+  for (let si = combat.shells.length - 1; si >= 0; si--) {
+    const shell = combat.shells[si];
+    for (let bi = 0; bi < _buildings.length; bi++) {
+      const b = _buildings[bi];
+      if (!b.alive) continue;
+      // Vertical check: shell must be below the roofline
+      if (shell.py > b.y + b.h + 1) continue;
+      const dx = shell.px - b.x, dz = shell.pz - b.z;
+      if (dx * dx + dz * dz < b.radius * b.radius) {
+        const ddx = shell.px - player.position.x;
+        const ddz = shell.pz - player.position.z;
+        particles.explosion(shell.px, shell.py, shell.pz);
+        audio.playExplosion(Math.sqrt(ddx * ddx + ddz * ddz));
+        addShake(Math.max(0, 1.4 * (1 - Math.sqrt(ddx * ddx + ddz * ddz) / 28)));
+        destroyBuilding(b);
+        shell.dispose();
+        combat.shells.splice(si, 1);
+        if (onDestroy) onDestroy(bi);
+        break;
+      }
+    }
+  }
 }
 
 // ─── Water system (rivers + ponds) ────────────────────────────────────────────
@@ -2098,6 +2170,57 @@ async function startLanClient(roomCode) {
   }
 }
 
+// This viewer's own team — used to decide Victory vs Defeat framing of a shared result.
+function _lanOwnTeam() {
+  return _lanRoster.get(_lanNet?.id)?.team ?? _lanMyTeam ?? 0;
+}
+
+// Roster id for a given Tank reference, or null if it's not part of this match.
+function _lanIdForTank(tank) {
+  if (tank === player) return _lanNet.id;
+  for (const [id, peer] of _lanPeers) if (peer.tank === tank) return id;
+  return null;
+}
+
+// Team spawn quadrants (unit direction from map centre): Gold=North, Blue=South,
+// Red=East, Green=West.
+const LAN_TEAM_DIR = [{ x: 0, z: 1 }, { x: 0, z: -1 }, { x: 1, z: 0 }, { x: -1, z: 0 }];
+
+// Deterministic spawn point for a roster id — teams cluster in their own quadrant,
+// halfway between map centre and edge, fanned out side-by-side and facing the centre.
+// Same rosterMap on host and client (they receive it in the same order), so every
+// viewer computes the identical spawn for a given id independently.
+function _lanSpawnFor(id, rosterMap) {
+  const entry = rosterMap.get(id);
+  const team  = entry?.team ?? 0;
+  const dir   = LAN_TEAM_DIR[team] ?? LAN_TEAM_DIR[0];
+  const teammates = [...rosterMap.entries()]
+    .filter(([, e]) => (e.team ?? 0) === team)
+    .map(([tid]) => tid);
+  const idx = teammates.indexOf(id);
+  const n   = teammates.length;
+
+  const clusterDist = CONFIG.MAP_HALF * 0.5;   // halfway from centre to edge
+  const tangent = { x: -dir.z, z: dir.x };      // perpendicular to the radial direction
+  const SPREAD  = 20;
+  const offset  = (idx - (n - 1) / 2) * SPREAD;
+
+  const x = dir.x * clusterDist + tangent.x * offset;
+  const z = dir.z * clusterDist + tangent.z * offset;
+  const heading = Math.atan2(x, z);   // face the map centre
+  return { x, z, heading };
+}
+
+// Host-only: bake current kills/killedBy + name/team into a plain object for broadcast.
+function _snapshotLanStats() {
+  const out = {};
+  for (const [id, s] of _lanStats) {
+    const entry = _lanRoster.get(id);
+    out[id] = { name: entry?.name ?? id, team: entry?.team ?? 0, kills: s.kills, killedBy: s.killedBy };
+  }
+  return out;
+}
+
 function _initLanGame(rosterMap) {
   // Rebuild the map with a fixed seed so all players get the same terrain,
   // roads, buildings, and water regardless of what single-player maps were loaded.
@@ -2123,15 +2246,10 @@ function _initLanGame(rosterMap) {
   // Place player (local tank) — apply own team colour so model matches nametag
   const _myColor = LAN_TEAM_COLORS[myEntry?.team ?? _lanMyTeam ?? 0] ?? null;
   reinitPlayer(myEntry?.tankKey ?? _lanTankKey, _myColor);
-  // Spawn positions: spread along X axis, facing center
-  const playerIds = [...rosterMap.keys()];
-  const myIdx     = playerIds.indexOf(myId);
-  const total     = playerIds.length;
-  const SPREAD    = 20;
-  const spawnX    = (myIdx - (total - 1) / 2) * SPREAD;
-  const spawnZ    = _lanNet.isHost() ? -40 : 40;
-  player.position.set(spawnX, getAltitude(spawnX, spawnZ) + 0.1, spawnZ);
-  player.heading = _lanNet.isHost() ? 0 : Math.PI;
+  // Spawn position: own team's quadrant, halfway to the map edge, facing centre
+  const mySpawn = _lanSpawnFor(myId, rosterMap);
+  player.position.set(mySpawn.x, getAltitude(mySpawn.x, mySpawn.z) + 0.1, mySpawn.z);
+  player.heading = mySpawn.heading;
 
   // Create own nametag
   if (_lanSelfNametagEl && _lanSelfNametagEl.parentNode) _lanSelfNametagEl.parentNode.removeChild(_lanSelfNametagEl);
@@ -2143,14 +2261,12 @@ function _initLanGame(rosterMap) {
   // Place peer tanks
   for (const [id, entry] of rosterMap) {
     if (id === myId) continue;
-    const idx   = playerIds.indexOf(id);
-    const px    = (idx - (total - 1) / 2) * SPREAD;
-    const pz    = _lanNet.isHost() ? 40 : -40;
+    const spawn = _lanSpawnFor(id, rosterMap);
     const isEnemy = true;
     const color = LAN_TEAM_COLORS[entry.team ?? 0] ?? null;
     const tank  = new Tank(scene, entry.tankKey ?? 'sherman', isEnemy, color);
-    tank.position.set(px, getAltitude(px, pz) + 0.1, pz);
-    tank.heading = _lanNet.isHost() ? Math.PI : 0;
+    tank.position.set(spawn.x, getAltitude(spawn.x, spawn.z) + 0.1, spawn.z);
+    tank.heading = spawn.heading;
 
     // Create nametag element
     const el = document.createElement('div');
@@ -2189,6 +2305,9 @@ function _initLanGame(rosterMap) {
   _lanEndTimer    = -1;
   _lanRtt         = 0;
   _lanLastSnapTs  = 0;
+  _lanEndStats    = null;
+  _lanStats.clear();
+  for (const id of rosterMap.keys()) _lanStats.set(id, { kills: 0, killedBy: null });
   _demoActive     = false;
   _demoAI         = null;
 
@@ -2202,16 +2321,19 @@ function _initLanGame(rosterMap) {
   updateOverlay();
 }
 
-function _endLanGame(won) {
+// winningTeam: the team index (0–3) that survived, or -1 for a draw (simultaneous wipeout).
+function _endLanGame(winningTeam) {
   if (_lanGameResult !== null) return;  // guard against double-trigger
-  _lanGameResult = won ? 'local' : 'peer';
+  _lanGameResult = winningTeam;
+  _lanStarted    = false;  // allow a rematch 'start' message to be accepted later
   if (_lanNet && _lanNet.isHost()) {
-    // Host: keep broadcasting res for 500 ms so clients receive it
+    _lanEndStats = _snapshotLanStats();
+    // Host: keep broadcasting res + stats for 500 ms so clients receive them
     _lanEndTimer = 0.5;
   } else {
     // Client: result came from host snapshot — end immediately
     _lanGameActive = false;
-    game.state = won ? STATES.VICTORY : STATES.GAME_OVER;
+    game.state = winningTeam === _lanOwnTeam() ? STATES.VICTORY : STATES.GAME_OVER;
     updateOverlay();
   }
 }
@@ -2509,18 +2631,38 @@ function _runLanFrame(dt, now) {
       }
     }
 
+    // Tank-vs-building collisions (push-back + collision damage) — same as singleplayer
+    _updateBuildingCollisions(dt, allTanks);
+
     // Combat: shells vs all tanks; collect events for broadcast
     const impacts = combat.update(dt, allTanks);
     for (const imp of impacts) {
-      if (imp.penetrated) {
-        particles.explosion(imp.x, imp.y, imp.z);
-        _lanEvents.push({ t: 'ex', x: imp.x, y: imp.y, z: imp.z });
+      if (imp.tank) {
+        if (imp.penetrated) {
+          particles.explosion(imp.x, imp.y, imp.z);
+          _lanEvents.push({ t: 'ex', x: imp.x, y: imp.y, z: imp.z });
+        } else {
+          particles.ricochet(imp.x, imp.y, imp.z);
+          _lanEvents.push({ t: 'rc', x: imp.x, y: imp.y, z: imp.z });
+        }
       } else {
-        particles.ricochet(imp.x, imp.y, imp.z);
-        _lanEvents.push({ t: 'rc', x: imp.x, y: imp.y, z: imp.z });
+        // Ground impact — explosion + crater, synced to clients as one event
+        particles.explosion(imp.x, imp.y, imp.z);
+        const craterMult = imp.shellType === 'HE' ? 2.2 : 1.0;
+        addCrater(imp.x, imp.z, craterMult);
+        _lanEvents.push({ t: 'gex', x: imp.x, y: imp.y, z: imp.z, m: craterMult });
       }
       if (imp.tank && !imp.tank.alive) {
         imp.tank.setDestroyed();
+
+        // Kill/death attribution
+        const victimId = _lanIdForTank(imp.tank);
+        const killerId = imp.firedBy ? _lanIdForTank(imp.firedBy) : null;
+        if (victimId && _lanStats.has(victimId)) _lanStats.get(victimId).killedBy = killerId;
+        if (killerId && killerId !== victimId && _lanStats.has(killerId)) {
+          _lanStats.get(killerId).kills++;
+        }
+
         // CTF: queue respawn for the dead player
         if (_ctfMode) {
           let deadId = null, deadTeam = 0, deadKey = 'sherman';
@@ -2538,6 +2680,9 @@ function _runLanFrame(dt, now) {
       }
     }
 
+    // Shell-vs-building: destroy any building a surviving shell hits this frame
+    _updateShellVsBuildings(bi => _lanEvents.push({ t: 'bld', idx: bi }));
+
     // CTF host update
     if (_ctfMode) {
       _ctf.update(dt, _buildCtfPlayerList());
@@ -2553,8 +2698,7 @@ function _runLanFrame(dt, now) {
 
       // CTF win condition
       if (_lanGameResult === null && _ctf.getWinner() !== null) {
-        const myTeam = _lanRoster.get(_lanNet.id)?.team ?? 0;
-        _endLanGame(_ctf.getWinner() === myTeam);
+        _endLanGame(_ctf.getWinner());
       }
     }
 
@@ -2574,16 +2718,23 @@ function _runLanFrame(dt, now) {
         shells:  _buildShellSnapshot(),
         ev:  _lanEvents.splice(0),
         res: _lanGameResult,
+        stats: _lanGameResult !== null ? _lanEndStats : null,
         rtt: _lanRtt,
         ts:  Date.now(),
         ctf: _ctfMode ? _ctf.getState() : null,
       });
     }
 
-    // End condition — deathmatch (not CTF): last alive team/player wins
+    // End condition — deathmatch (not CTF): only one team has living tanks left
     if (_lanGameResult === null && !_ctfMode) {
-      const allPeersDead = [..._lanPeers.values()].every(p => !p.tank || !p.tank.alive);
-      if (!player.alive || allPeersDead) _endLanGame(player.alive && allPeersDead);
+      const aliveTeams = new Set();
+      if (player.alive) aliveTeams.add(_lanOwnTeam());
+      for (const [, peer] of _lanPeers) {
+        if (peer.tank && peer.tank.alive) aliveTeams.add(peer.team ?? 0);
+      }
+      if (aliveTeams.size <= 1) {
+        _endLanGame(aliveTeams.size === 1 ? [...aliveTeams][0] : -1);
+      }
     }
 
     // Wind-down: keep broadcasting until timer expires, then transition
@@ -2595,12 +2746,12 @@ function _runLanFrame(dt, now) {
         _lanNet.sendSnapshot({
           players: _buildLanSnapshot(),
           shells:  _buildShellSnapshot(),
-          ev: [], ts: Date.now(), rtt: _lanRtt, res: _lanGameResult,
+          ev: [], ts: Date.now(), rtt: _lanRtt, res: _lanGameResult, stats: _lanEndStats,
         });
       }
       if (_lanEndTimer <= 0) {
         _lanGameActive = false;
-        game.state = _lanGameResult === 'local' ? STATES.VICTORY : STATES.GAME_OVER;
+        game.state = _lanGameResult === _lanOwnTeam() ? STATES.VICTORY : STATES.GAME_OVER;
         updateOverlay();
         return;
       }
@@ -2623,6 +2774,8 @@ function _runLanFrame(dt, now) {
           else if (ev.t === 'ex')  particles.explosion(ev.x, ev.y, ev.z);
           else if (ev.t === 'rc')  particles.ricochet(ev.x, ev.y, ev.z);
           else if (ev.t === 'ctf') _processCtfEvent(ev.ev);
+          else if (ev.t === 'gex') { particles.explosion(ev.x, ev.y, ev.z); addCrater(ev.x, ev.z, ev.m); }
+          else if (ev.t === 'bld') { const b = _buildings[ev.idx]; if (b && b.alive) destroyBuilding(b); }
         }
       }
 
@@ -2655,9 +2808,11 @@ function _runLanFrame(dt, now) {
       // Apply ghost shell positions from snapshot
       _applyGhostShells(snap.shells ?? []);
 
-      // End condition: host authoritative via res field
-      // 'local' = host won; from client's perspective that means they lost
-      if (snap.res) _endLanGame(snap.res !== 'local');
+      // End condition: host authoritative via res field (winning team index, or -1 for a draw)
+      if (snap.res !== null && snap.res !== undefined) {
+        if (snap.stats) _lanEndStats = snap.stats;
+        _endLanGame(snap.res);
+      }
     }
 
     // Integrate ghost shell positions between snapshots using last known velocity
@@ -3169,8 +3324,13 @@ let _lanGameActive  = false;  // true once all tanks are spawned and game is run
 let _lanTankKey     = null;   // this player's selected tank key for LAN
 let _lanStatus      = '';     // display string for lobby screen
 let _lanEvents      = [];     // muzzle/explosion events pending next broadcast (host)
-let _lanGameResult  = null;   // null | winner id string
+let _lanGameResult  = null;   // null while in progress, else winning team index (0–3), or -1 for a draw
 let _lanEndTimer    = -1;     // host: seconds remaining in wind-down broadcast (-1 = inactive)
+// Host-only, live during a match: Map<id, { kills: number, killedBy: id|null }>
+let _lanStats       = new Map();
+// Frozen snapshot of the above (+ name/team baked in) once the match ends — sent to
+// clients once via the wind-down broadcast, and what the end screen renders from.
+let _lanEndStats    = null;
 let _lanRtt         = 0;      // round-trip time in ms (from host measurement)
 let _lanLastSnapTs  = 0;      // client: ts of last received snapshot (echoed to host)
 let _lanPlayerName  = '';     // this player's chosen name
@@ -3226,6 +3386,9 @@ function _uiState() {
     lanPlayerName:     _lanPlayerName,
     lanStatus:         _lanStatus,
     ctfMode:           _ctfMode,
+    lanGameResult:     _lanGameResult,
+    lanEndStats:       _lanEndStats,
+    lanOwnTeamAtEnd:   _lanOwnTeam(),
   };
 }
 
@@ -3898,8 +4061,9 @@ function updateOverlay() {
   } else if (s === STATES.GAME_OVER) {
     _anlEnd('lose');
     if (_lanMode) {
-      overlayTitle.textContent = 'DEFEATED';
-      overlaySub.textContent   = 'Your tank was destroyed';
+      const teamName = _lanGameResult >= 0 ? LAN_TEAM_NAMES[_lanGameResult] : null;
+      overlayTitle.textContent = 'DEFEAT';
+      overlaySub.textContent   = teamName ? `${teamName} Team wins` : 'No survivors';
       overlayScore.textContent = '';
       overlayHint.textContent  = '';
     } else if (_gameMode === MODES.ARCADE) {
@@ -3915,7 +4079,7 @@ function updateOverlay() {
     }
     overlayHint.textContent = _lanMode ? '' : 'Press R to return to menu';
     if (_lanMode && overlayControls) {
-      overlayControls.innerHTML = lanEndScreenHtml(false);
+      overlayControls.innerHTML = lanEndScreenHtml(_uiState());
       _wireLanEndButtons();
     }
 
@@ -3923,11 +4087,11 @@ function updateOverlay() {
     _anlEnd('win');
     if (_lanMode) {
       overlayTitle.textContent = 'VICTORY';
-      overlaySub.textContent   = '';
+      overlaySub.textContent   = `${LAN_TEAM_NAMES[_lanGameResult]} Team wins`;
       overlayScore.textContent = '';
       overlayHint.textContent  = '';
       if (overlayControls) {
-        overlayControls.innerHTML = lanEndScreenHtml(true);
+        overlayControls.innerHTML = lanEndScreenHtml(_uiState());
         _wireLanEndButtons();
       }
     } else {
@@ -3953,6 +4117,17 @@ function _wireLanEndButtons() {
     game.state = STATES.LAN_LOBBY;
     updateOverlay();
   });
+  const rematch = overlayControls.querySelector('#lan-rematch-btn');
+  if (rematch) rematch.addEventListener('click', () => { _rematchLan(); });
+}
+
+// Host-only: replay the same match with the unchanged roster (same humans, bots,
+// teams and tank picks) — the room/connections stay open through the end screen,
+// so this just re-runs the game-init routine and tells clients to jump straight in.
+function _rematchLan() {
+  if (!_lanNet || !_lanNet.isHost() || _lanRoster.size < 2) return;
+  _lanNet.sendStart(_lanRoster, _ctfMode ? 'ctf' : '');
+  _initLanGame(_lanRoster);
 }
 
 // ─── Keyboard handlers for overlay actions ────────────────────────────────────
@@ -4426,9 +4601,9 @@ function _processTankDeath(tank, killer, overkill = 0) {
       : 0;
 
     if (_lanMode) {
-      // Online mode: no lives — immediately show defeat
+      // Online mode: no respawn, but the match keeps going for your team (teammates/bots
+      // may still win it) — the shared end screen appears once the match itself resolves.
       if (_damageSmoke) { _damageSmoke.active = false; _damageSmoke = null; }
-      _endLanGame(false);
     } else if (_gameMode === MODES.ATTRITION || _gameMode === MODES.STRATEGY) {
       // Squad mode: auto-switch to next alive squad tank, no lives/respawn
       _deathCamTimer = 1.5;  // brief death cam then auto-switch
@@ -5512,39 +5687,7 @@ function animate(now) {
   }
 
   // ── Tank-building collision ───────────────────────────────────────────────────
-  // Tick down cooldowns
-  for (const [t, cd] of _buildingDmgCooldown) {
-    const newCd = cd - dt;
-    if (newCd <= 0) _buildingDmgCooldown.delete(t);
-    else _buildingDmgCooldown.set(t, newCd);
-  }
-  for (const t of allTanks) {
-    if (!t.alive) continue;
-    for (const b of _buildings) {
-      if (!b.alive) continue;
-      const dx   = t.position.x - b.x;
-      const dz   = t.position.z - b.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      const minD = t.hitRadius + b.radius;
-      if (dist < minD && dist > 0.001) {
-        const push = (minD - dist) / dist;
-        t.position.x += dx * push;
-        t.position.z += dz * push;
-        t.leftSpeed  *= 0.1;
-        t.rightSpeed *= 0.1;
-        t.mesh.position.x = t.position.x;
-        t.mesh.position.z = t.position.z;
-        // Apply building-impact damage (5-10% scaled by speed), max once per 0.5 s
-        if (!_buildingDmgCooldown.has(t)) {
-          const _bSpd = Math.abs(t.leftSpeed + t.rightSpeed) * 0.5;
-          const _bDmg = Math.max(1, Math.round(5 + 5 * Math.min(1, _bSpd / (t.def.maxSpeed * 0.20))));
-          t.hp = Math.max(0, t.hp - _bDmg);
-          _buildingDmgCooldown.set(t, 0.5);
-          if (t.hp <= 0 && t.alive) { t.alive = false; _processTankDeath(t, null); }
-        }
-      }
-    }
-  }
+  _updateBuildingCollisions(dt, allTanks);
 
   // ── Wreck collision — pushes tanks out of wreck hulls (no damage) ────────────
   for (const t of allTanks) {
@@ -5822,28 +5965,7 @@ function animate(now) {
   }
 
   // ── Shell-vs-building hit detection ──────────────────────────────────────────
-  // Shells that survived tank/terrain checks this frame are still in combat.shells.
-  // Test each against live buildings; destroy building and consume shell on impact.
-  for (let si = combat.shells.length - 1; si >= 0; si--) {
-    const shell = combat.shells[si];
-    for (const b of _buildings) {
-      if (!b.alive) continue;
-      // Vertical check: shell must be below the roofline
-      if (shell.py > b.y + b.h + 1) continue;
-      const dx = shell.px - b.x, dz = shell.pz - b.z;
-      if (dx * dx + dz * dz < b.radius * b.radius) {
-        const ddx = shell.px - player.position.x;
-        const ddz = shell.pz - player.position.z;
-        particles.explosion(shell.px, shell.py, shell.pz);
-        audio.playExplosion(Math.sqrt(ddx * ddx + ddz * ddz));
-        addShake(Math.max(0, 1.4 * (1 - Math.sqrt(ddx * ddx + ddz * ddz) / 28)));
-        destroyBuilding(b);
-        shell.dispose();
-        combat.shells.splice(si, 1);
-        break;
-      }
-    }
-  }
+  _updateShellVsBuildings();
 
   // ── Kill tracking ─────────────────────────────────────────────────────────────
   for (let i = 0; i < enemies.length; i++) {
