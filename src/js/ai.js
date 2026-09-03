@@ -25,8 +25,9 @@ const _toPlayer = new THREE.Vector3();
 
 // ── Shared steering primitive ─────────────────────────────────────────────────
 // Sets tank.leftSpeed / tank.rightSpeed to steer toward world position (tx, tz)
-// at the given throttle fraction (0–1). Used by both AIController and WingmanController.
-function steerToward(tank, tx, tz, throttle) {
+// at the given throttle fraction (0–1). Used by both AIController and WingmanController,
+// and by LanBotController (lan-ai.js) for online-mode bot tanks.
+export function steerToward(tank, tx, tz, throttle) {
   const dx = tx - tank.position.x;
   const dz = tz - tank.position.z;
   const targetHeading = Math.atan2(-dx, -dz);

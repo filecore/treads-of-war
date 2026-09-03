@@ -9,6 +9,7 @@ import { buildAuthenticModel } from './models.js';
 import { CombatManager, ballisticElevation }  from './combat.js';
 import { ParticleSystem } from './particles.js';
 import { AIController, WingmanController } from './ai.js';
+import { LanBotController } from './lan-ai.js';
 import { GameManager, STATES } from './game.js';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
@@ -1886,6 +1887,8 @@ function _cleanupLan() {
   }
   _lanPeers.clear();
   _lanRoster.clear();
+  _lanBots.clear();
+  _lanBotIds.clear();
   _ctf.dispose();
   _ctfMode = false;
   if (_lanNet)  { _lanNet.disconnect(); _lanNet = null; }
@@ -1923,6 +1926,8 @@ async function startLanHost() {
   _lanMode       = true;
   _lanStarted    = false;
   _lanRoster.clear();
+  _lanBotIds.clear();
+  _lanBotSeq = 0;
   _lanRoster.set('h', { name: _lanPlayerName, team: _lanMyTeam, tankKey: _lanTankKey });
   _lanStatus     = `Room ${_lanRoomCode} · Waiting for players…`;
   updateOverlay();
@@ -1978,6 +1983,28 @@ function startLanGameAsHost() {
   // Send start message with full roster to all clients, then init locally
   _lanNet.sendStart(_lanRoster, _ctfMode ? 'ctf' : '');
   _initLanGame(_lanRoster);
+}
+
+// Host-only: add an AI-controlled bot to the room on the given team.
+function _addLanAI(team) {
+  if (!_lanNet || !_lanNet.isHost() || _lanStarted || _lanRoster.size >= _lanMaxPlayers) return;
+  _lanBotSeq++;
+  const id = `ai${_lanBotSeq}`;
+  const tankPoolMax = _mercsEnabled ? ALL_TANKS.length : 12;
+  const tankKey = ALL_TANKS[Math.floor(Math.random() * tankPoolMax)];
+  _lanRoster.set(id, { name: `AI ${_lanBotSeq}`, team, tankKey });
+  _lanBotIds.add(id);
+  _lanNet.sendRoster(_lanRoster);
+  updateOverlay();
+}
+
+// Host-only: remove a previously added AI bot from the room.
+function _removeLanAI(id) {
+  if (!_lanNet || !_lanNet.isHost() || _lanStarted || !_lanBotIds.has(id)) return;
+  _lanRoster.delete(id);
+  _lanBotIds.delete(id);
+  _lanNet.sendRoster(_lanRoster);
+  updateOverlay();
 }
 
 async function startLanClient(roomCode) {
@@ -2078,6 +2105,7 @@ function _initLanGame(rosterMap) {
     if (peer.nametagEl && peer.nametagEl.parentNode) peer.nametagEl.parentNode.removeChild(peer.nametagEl);
   }
   _lanPeers.clear();
+  _lanBots.clear();
 
   const myId    = _lanNet.id;
   const myEntry = rosterMap.get(myId);
@@ -2121,6 +2149,14 @@ function _initLanGame(rosterMap) {
     document.getElementById('canvas-wrap').appendChild(el);
 
     _lanPeers.set(id, { tank, name: entry.name ?? id, team: entry.team ?? 0, tankKey: entry.tankKey ?? 'sherman', nametagEl: el });
+  }
+
+  // Host-only: spin up an AI controller for each bot roster entry
+  if (_lanNet.isHost()) {
+    for (const id of _lanBotIds) {
+      const peer = _lanPeers.get(id);
+      if (peer && peer.tank) _lanBots.set(id, new LanBotController(peer.tank, peer.team));
+    }
   }
 
   allTanks = [player, ...[..._lanPeers.values()].map(p => p.tank)];
@@ -2439,7 +2475,17 @@ function _runLanFrame(dt, now) {
       }
     }
 
+    const _botEnemyList = _lanBots.size > 0 ? _buildCtfPlayerList() : null;
     for (const [id, peer] of _lanPeers) {
+      const bot = _lanBots.get(id);
+      if (bot) {
+        if (peer.tank && peer.tank.alive) {
+          const tip = bot.update(dt, _botEnemyList, combat, particles);
+          peer.tank.update(dt, { skipAccel: true });
+          if (tip) _lanEvents.push({ t: 'fl', x: tip.x, y: tip.y, z: tip.z });
+        }
+        continue;
+      }
       const ci = _lanNet.clientInputs.get(id);
       if (peer.tank && peer.tank.alive && ci) {
         peer.tank.update(dt, ci);
@@ -3127,6 +3173,11 @@ let _lanPeers       = new Map();
 let _lanSelfNametagEl = null;  // nametag shown above the local player's own tank
 // Lobby roster (pre-game): Map<id, { name, team, tankKey }>
 let _lanRoster      = new Map();
+// Roster ids the host added as AI bots (subset of _lanRoster's keys)
+let _lanBotIds      = new Set();
+let _lanBotSeq      = 0;      // counter for generating unique bot ids ('ai1', 'ai2', ...)
+// Map<id, LanBotController> — host-only, built at game start from _lanBotIds
+let _lanBots        = new Map();
 const _lanNametagPos = new THREE.Vector3();  // reused for screen projection
 
 // CTF state
@@ -3159,6 +3210,7 @@ function _uiState() {
     lanMode:           _lanMode,
     lanNet:            _lanNet,
     lanRoster:         _lanRoster,
+    lanBotIds:         _lanBotIds,
     lanMaxPlayers:     _lanMaxPlayers,
     lanMyTeam:         _lanMyTeam,
     lanPlayerName:     _lanPlayerName,
@@ -3658,6 +3710,10 @@ if (overlayControls) {
     if (e.target.closest('#lan-back-btn')) {
       _cleanupLan(); game.state = STATES.MENU; updateOverlay(); return;
     }
+    const addAiBtn = e.target.closest('.lan-add-ai-btn');
+    if (addAiBtn) { _addLanAI(parseInt(addAiBtn.dataset.team) || 0); return; }
+    const removeAiBtn = e.target.closest('.lan-waiting-remove');
+    if (removeAiBtn) { _removeLanAI(removeAiBtn.dataset.id); return; }
     if (e.target.closest('#lan-scan-btn')) {
       (async () => {
         const btn         = overlayControls.querySelector('#lan-scan-btn');

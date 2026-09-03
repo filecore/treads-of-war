@@ -247,18 +247,31 @@ export function lanLobbyHtml(st) {
     rosterHtml = '<div class="lan-waiting-room">';
     rosterHtml += `<div class="lan-waiting-title">Room <b>${st.lanRoomCode}</b>  ·  ${st.lanRoster.size} / ${st.lanMaxPlayers} players</div>`;
     rosterHtml += '<div class="lan-waiting-list">';
+    const botIds = st.lanBotIds || new Set();
     for (const [id, p] of st.lanRoster) {
       const tc   = st.lanTeamColors[p.team ?? 0] ?? st.lanTeamColors[0];
       const tHex = '#' + tc.toString(16).padStart(6, '0');
       const you  = id === (st.lanNet && st.lanNet.id) ? ' (you)' : '';
+      const removeBtn = (isHost && botIds.has(id))
+        ? `<button class="lan-waiting-remove" data-id="${id}" title="Remove AI">\u00d7</button>` : '';
       rosterHtml += `<div class="lan-waiting-player">` +
         `<span class="lan-waiting-dot" style="background:${tHex}"></span>` +
         `<span class="lan-waiting-name">${p.name || id}${you}</span>` +
         `<span class="lan-waiting-team" style="color:${tHex}">${st.lanTeamNames[p.team ?? 0]}</span>` +
+        removeBtn +
         `</div>`;
     }
     rosterHtml += '</div>';
     if (isHost) {
+      const roomFull = st.lanRoster.size >= st.lanMaxPlayers;
+      rosterHtml += '<div class="lan-ai-row">';
+      rosterHtml += '<span class="lan-name-label">Add AI</span>';
+      st.lanTeamNames.forEach((name, i) => {
+        const tHex = '#' + st.lanTeamColors[i].toString(16).padStart(6, '0');
+        rosterHtml += `<button class="lan-btn lan-btn-sm lan-add-ai-btn" data-team="${i}" ` +
+          `style="border-color:${tHex};color:${tHex}" ${roomFull ? 'disabled' : ''}>${name}</button>`;
+      });
+      rosterHtml += '</div>';
       const canStart = st.lanRoster.size >= 2;
       rosterHtml += `<button id="lan-start-btn" class="lan-btn${canStart ? '' : ' lan-btn-disabled'}" ${canStart ? '' : 'disabled'}>Start Game</button>`;
     } else {

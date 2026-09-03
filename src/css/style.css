@@ -1434,6 +1434,23 @@ html, body {
 }
 .lan-waiting-name { flex: 1; }
 .lan-waiting-team { font-size: 10px; letter-spacing: 0.06em; }
+.lan-waiting-remove {
+  background: none;
+  border: none;
+  color: rgba(255, 140, 130, 0.65);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0 0 6px;
+}
+.lan-waiting-remove:hover { color: rgba(255, 170, 160, 0.95); }
+.lan-ai-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
 
 /* ── Squad HUD (top-centre) ── */
 #hud-squad {
