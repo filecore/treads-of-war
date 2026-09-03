@@ -22,7 +22,7 @@ export class Net {
     this.role      = null;   // 'host' | 'client'
     this.connected = false;  // true once relay registration confirmed
     this.roomCode  = null;
-    this.maxPlayers = 2;
+    this.maxPlayers = 16;
 
     // Set of peer IDs currently in the room (excludes self)
     this.peerIds = new Set();
@@ -48,7 +48,7 @@ export class Net {
   // ── Public API ───────────────────────────────────────────────────────────────
 
   /** Host: open game and wait for players. maxPlayers: 2–16. */
-  async host(serverUrl, roomCode, maxPlayers = 2) {
+  async host(serverUrl, roomCode, maxPlayers = 16) {
     this.role       = 'host';
     this.id         = 'h';
     this.roomCode   = roomCode;

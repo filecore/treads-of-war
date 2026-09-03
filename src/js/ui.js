@@ -212,9 +212,6 @@ function onlinePreRoomHtml(st) {
     `</div>`;
   html += `<div class="lan-host-row" style="margin-top:12px">` +
     `<button id="lan-host-btn" class="lan-btn">Host Game</button>` +
-    `<select id="lan-max-players" class="lan-team-sel">` +
-    `${[2,3,4,5,6,8,10,12,16].map(n => `<option value="${n}"${n === st.lanMaxPlayers ? ' selected' : ''}>${n} players</option>`).join('')}` +
-    `</select>` +
     `<select id="lan-game-type" class="lan-team-sel" style="margin-left:6px">` +
     `<option value="deathmatch"${!st.ctfMode ? ' selected' : ''}>Deathmatch</option>` +
     `<option value="ctf"${st.ctfMode ? ' selected' : ''}>Capture the Flag</option>` +

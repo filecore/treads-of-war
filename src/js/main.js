@@ -1920,7 +1920,6 @@ async function startLanHost() {
   _lanTankKey    = ALL_TANKS[_selIdx];
   _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
   _lanMyTeam     = parseInt(overlayControls.querySelector('#lan-team-sel')?.value ?? '0') || 0;
-  _lanMaxPlayers = parseInt(overlayControls.querySelector('#lan-max-players')?.value ?? '2') || 2;
   _ctfMode       = overlayControls.querySelector('#lan-game-type')?.value === 'ctf';
   _lanRoomCode   = _genRoomCode();
   _lanMode       = true;
@@ -3165,7 +3164,7 @@ let _lanRtt         = 0;      // round-trip time in ms (from host measurement)
 let _lanLastSnapTs  = 0;      // client: ts of last received snapshot (echoed to host)
 let _lanPlayerName  = '';     // this player's chosen name
 let _lanMyTeam      = 0;      // this player's team (0–3)
-let _lanMaxPlayers  = 2;      // max players in the room (host sets, 2–16)
+const _lanMaxPlayers = 16;    // room capacity — fixed; actual headcount managed via lobby add/remove
 let _lanRoomCode    = '';     // 4-char room code for this session
 let _lanStarted     = false;  // lobby→game transition guard
 // Map<id, { tank: Tank, name: string, team: number, tankKey: string, nametagEl: HTMLElement }>
