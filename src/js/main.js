@@ -1858,6 +1858,17 @@ function startStrategyPurchase() {
   updateOverlay();
 }
 
+// Enter the currently-highlighted battle mode (called on click or Enter/Space —
+// selecting a mode goes straight in, no separate Start button).
+function _startSelectedMode() {
+  _gameMode = MODE_LIST[_modeSelIdx];
+  if (_gameMode === MODES.ARCADE)         startArcade();
+  else if (_gameMode === MODES.ATTRITION) startAttrition();
+  else if (_gameMode === MODES.STRATEGY)  startStrategyPurchase();
+  else { _cleanupLan(); _lanMode = true; game.state = STATES.LAN_LOBBY; }
+  updateOverlay();
+}
+
 function startStrategyBattle() {
   clearCraters(); _resetSmoke(); _resetArtillery(); _resetSpotter();
   _lives = 0;
@@ -1932,7 +1943,7 @@ async function startLanHost() {
   updateOverlay();
 
   _lanNet = new Net();
-  _lanNet.onJoined     = () => { /* host doesn't need a hello — roster already seeded above */ };
+  _lanNet.onJoined     = () => { updateOverlay(); /* host doesn't need a hello — roster already seeded above, but the overlay's first render (before _lanNet existed) showed isHost=false, so it needs a refresh now */ };
   _lanNet.onPeerJoined = id => {
     // Add placeholder to roster; full info arrives via hello
     if (!_lanRoster.has(id)) _lanRoster.set(id, { name: id, team: 0, tankKey: 'sherman' });
@@ -3616,15 +3627,8 @@ if (overlayControls) {
     const modeOpt = e.target.closest('.mode-opt');
     if (modeOpt) {
       _modeSelIdx = parseInt(modeOpt.dataset.modeIdx, 10);
-      updateOverlay(); return;
-    }
-    if (e.target.closest('#menu-start-btn')) {
-      _gameMode = MODE_LIST[_modeSelIdx];
-      if (_gameMode === MODES.ARCADE)         startArcade();
-      else if (_gameMode === MODES.ATTRITION) startAttrition();
-      else if (_gameMode === MODES.STRATEGY)  startStrategyPurchase();
-      else { _cleanupLan(); _lanMode = true; game.state = STATES.LAN_LOBBY; }
-      updateOverlay(); return;
+      _startSelectedMode();
+      return;
     }
 
     // ── Tank selector (MENU + LAN_LOBBY) ────────────────────────────────────
@@ -4012,15 +4016,7 @@ window.addEventListener('keydown', e => {
       _modeSelIdx = Math.min((_lanEnabled ? MODE_LIST.length : MODE_LIST.length - 1) - 1, _modeSelIdx + 1);
       updateOverlay();
     } else if (e.code === 'Enter' || e.code === 'Space') {
-      _gameMode = MODE_LIST[_modeSelIdx];
-      if (_gameMode === MODES.ARCADE)         startArcade();
-      else if (_gameMode === MODES.ATTRITION) startAttrition();
-      else if (_gameMode === MODES.STRATEGY)  startStrategyPurchase();
-      else {
-        // LAN Duel — go to lobby
-        game.state = STATES.LAN_LOBBY;
-      }
-      updateOverlay();
+      _startSelectedMode();
     }
     return;
   }

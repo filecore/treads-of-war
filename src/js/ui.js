@@ -196,7 +196,6 @@ export function menuScreenHtml(st) {
   html += '</div>';
 
   html += '</div>';
-  html += `<button class="menu-start-btn" id="menu-start-btn">START</button>`;
   return html;
 }
 
