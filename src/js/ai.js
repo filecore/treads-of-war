@@ -2,8 +2,8 @@
 // Phase 27: flanking approach + fire-and-move (advance / halt cycle)
 
 import * as THREE from 'three';
-import { ballisticElevation } from './combat.js?v=58';
-import { DIFFICULTY, CONFIG } from './config.js?v=58';
+import { ballisticElevation } from './combat.js?v=59';
+import { DIFFICULTY, CONFIG } from './config.js?v=59';
 
 // Safe navigation margin — AI targets are kept this far inside the map boundary
 // so tanks never get pinned against the wall chasing an unreachable out-of-bounds goal.

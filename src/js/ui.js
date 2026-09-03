@@ -2,8 +2,8 @@
 // All exported functions are stateless: they take a state snapshot (st)
 // and return an HTML string.  No DOM manipulation here.
 
-import { CONFIG, DIFFICULTY } from './config.js?v=58';
-import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=58';
+import { CONFIG, DIFFICULTY } from './config.js?v=59';
+import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=59';
 
 // ── Faction display label ─────────────────────────────────────────────────────
 export function factionLabel(f, plural = false) {
