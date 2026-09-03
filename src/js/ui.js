@@ -2,8 +2,8 @@
 // All exported functions are stateless: they take a state snapshot (st)
 // and return an HTML string.  No DOM manipulation here.
 
-import { CONFIG, DIFFICULTY } from './config.js?v=57';
-import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=57';
+import { CONFIG, DIFFICULTY } from './config.js?v=58';
+import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=58';
 
 // ── Faction display label ─────────────────────────────────────────────────────
 export function factionLabel(f, plural = false) {
@@ -206,7 +206,8 @@ function onlinePreRoomHtml(st) {
 
   html += '<div class="menu-col lan-online-col">';
   html += `<div class="lan-name-row">` +
-    `<input id="lan-name-input" class="lan-input lan-name-input" type="text" maxlength="16" placeholder="Player" value="${st.lanPlayerName}" />` +
+    `<label class="lan-name-label" for="lan-name-input">Your name</label>` +
+    `<input id="lan-name-input" class="lan-input lan-name-input" type="text" maxlength="16" autocomplete="off" placeholder="Player" value="${st.lanPlayerName}" />` +
     `${lanTeamSelHtml('lan-team-sel', st.lanMyTeam, st.lanTeamNames)}` +
     `</div>`;
   html += `<div class="lan-host-row" style="margin-top:12px">` +

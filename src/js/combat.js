@@ -1,8 +1,8 @@
 // combat.js — Shell ballistics, hit detection
 
 import * as THREE from 'three';
-import { CONFIG }      from './config.js?v=57';
-import { getAltitude } from './terrain.js?v=57';
+import { CONFIG }      from './config.js?v=58';
+import { getAltitude } from './terrain.js?v=58';
 
 const SHELL_SPEED    = 80;    // world units / second
 const SHELL_LIFE     = 5.0;   // max seconds before despawn

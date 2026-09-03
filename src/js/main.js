@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js?v=57';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=57';
-import { Input }          from './input.js?v=57';
-import { Tank }           from './tank.js?v=57';
-import { buildAuthenticModel } from './models.js?v=57';
-import { CombatManager, ballisticElevation }  from './combat.js?v=57';
-import { ParticleSystem } from './particles.js?v=57';
-import { AIController, WingmanController } from './ai.js?v=57';
-import { LanBotController } from './lan-ai.js?v=57';
-import { GameManager, STATES } from './game.js?v=57';
+import { CONFIG }         from './config.js?v=58';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=58';
+import { Input }          from './input.js?v=58';
+import { Tank }           from './tank.js?v=58';
+import { buildAuthenticModel } from './models.js?v=58';
+import { CombatManager, ballisticElevation }  from './combat.js?v=58';
+import { ParticleSystem } from './particles.js?v=58';
+import { AIController, WingmanController } from './ai.js?v=58';
+import { LanBotController } from './lan-ai.js?v=58';
+import { GameManager, STATES } from './game.js?v=58';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js?v=57';
-import { AudioManager }        from './audio.js?v=57';
-import { DIFFICULTY }          from './config.js?v=57';
-import { WeatherManager } from './weather.js?v=57';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=57';
-import { Net, LAN_SNAP_HZ }   from './net.js?v=57';
+} from './modes.js?v=58';
+import { AudioManager }        from './audio.js?v=58';
+import { DIFFICULTY }          from './config.js?v=58';
+import { WeatherManager } from './weather.js?v=58';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=58';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=58';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js?v=57';
+} from './ui.js?v=58';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -2001,7 +2001,7 @@ const _discoverUrl = location.protocol === 'https:'
 
 async function startLanHost() {
   _lanTankKey    = ALL_TANKS[_selIdx];
-  _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
+  _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || 'Player').slice(0, 16);
   _lanMyTeam     = parseInt(overlayControls.querySelector('#lan-team-sel')?.value ?? '0') || 0;
   _ctfMode       = overlayControls.querySelector('#lan-game-type')?.value === 'ctf';
   _lanRoomCode   = _genRoomCode();
@@ -2091,7 +2091,7 @@ function _removeLanAI(id) {
 
 async function startLanClient(roomCode) {
   _lanTankKey    = ALL_TANKS[_selIdx];
-  _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || '').slice(0, 16);
+  _lanPlayerName = (overlayControls.querySelector('#lan-name-input')?.value.trim() || 'Player').slice(0, 16);
   _lanMyTeam     = parseInt(overlayControls.querySelector('#lan-team-sel')?.value ?? '0') || 0;
   _lanRoomCode   = roomCode.toUpperCase().trim();
   _lanMode       = true;
@@ -2216,7 +2216,7 @@ function _snapshotLanStats() {
   const out = {};
   for (const [id, s] of _lanStats) {
     const entry = _lanRoster.get(id);
-    out[id] = { name: entry?.name ?? id, team: entry?.team ?? 0, kills: s.kills, killedBy: s.killedBy };
+    out[id] = { name: entry?.name || id, team: entry?.team ?? 0, kills: s.kills, killedBy: s.killedBy };
   }
   return out;
 }
@@ -4012,6 +4012,9 @@ if (overlayControls) {
       const cs = _getMercObliteratorStats();
       cs.customName = e.target.value.trim();
       _saveObliteratorStats();
+    } else if (e.target.id === 'lan-name-input') {
+      // Keep in sync live so a re-render never loses what's been typed so far
+      _lanPlayerName = e.target.value.trim().slice(0, 16);
     }
   });
 }
