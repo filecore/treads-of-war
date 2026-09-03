@@ -190,10 +190,10 @@ wss.on('connection', ws => {
         room.clients.set(id, ws);
         ws._room = code;
         ws._id   = id;
-        const total = room.clients.size + 1; // host + clients
-        if (total > room.peakPlayers) room.peakPlayers = total;
-        console.log(`[relay] Client joined room=${code}  id=${id}  total=${total}`);
-        relayEvent('relay-player-joined', { room: code, player_count: total });
+        const newTotal = room.clients.size + 1; // host + clients
+        if (newTotal > room.peakPlayers) room.peakPlayers = newTotal;
+        console.log(`[relay] Client joined room=${code}  id=${id}  total=${newTotal}`);
+        relayEvent('relay-player-joined', { room: code, player_count: newTotal });
 
         // Tell the new joiner their ID + list of existing peers
         const existingPeers = ['h', ...room.clients.keys()].filter(k => k !== id);
