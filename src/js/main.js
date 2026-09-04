@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js?v=65';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=65';
-import { Input }          from './input.js?v=65';
-import { Tank }           from './tank.js?v=65';
-import { buildAuthenticModel } from './models.js?v=65';
-import { CombatManager, ballisticElevation }  from './combat.js?v=65';
-import { ParticleSystem } from './particles.js?v=65';
-import { AIController, WingmanController } from './ai.js?v=65';
-import { LanBotController } from './lan-ai.js?v=65';
-import { GameManager, STATES } from './game.js?v=65';
+import { CONFIG }         from './config.js?v=66';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=66';
+import { Input }          from './input.js?v=66';
+import { Tank }           from './tank.js?v=66';
+import { buildAuthenticModel } from './models.js?v=66';
+import { CombatManager, ballisticElevation }  from './combat.js?v=66';
+import { ParticleSystem } from './particles.js?v=66';
+import { AIController, WingmanController } from './ai.js?v=66';
+import { LanBotController } from './lan-ai.js?v=66';
+import { GameManager, STATES } from './game.js?v=66';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js?v=65';
-import { AudioManager }        from './audio.js?v=65';
-import { DIFFICULTY }          from './config.js?v=65';
-import { WeatherManager } from './weather.js?v=65';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=65';
-import { Net, LAN_SNAP_HZ }   from './net.js?v=65';
+} from './modes.js?v=66';
+import { AudioManager }        from './audio.js?v=66';
+import { DIFFICULTY }          from './config.js?v=66';
+import { WeatherManager } from './weather.js?v=66';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=66';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=66';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js?v=65';
+} from './ui.js?v=66';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -2211,6 +2211,35 @@ function _lanSpawnFor(id, rosterMap) {
   return { x, z, heading };
 }
 
+// Vs-mode mid-match respawn point: near the current fight rather than the fixed
+// quadrant used for the initial spawn. Quadrant spawns are fine at match start
+// (everyone's together), but after a death the enemy has often wandered far
+// from that fixed point on a large map — respawning there again can leave you
+// unable to find them at all. Aim for the centroid of living enemy tanks,
+// offset a safe distance so you don't materialise on top of one.
+function _lanRespawnPoint(team) {
+  const enemyPositions = [];
+  if (player.alive && _lanOwnTeam() !== team) enemyPositions.push(player.position);
+  for (const [, peer] of _lanPeers) {
+    if (peer.tank && peer.tank.alive && (peer.team ?? 0) !== team) enemyPositions.push(peer.tank.position);
+  }
+
+  let cx = 0, cz = 0;
+  if (enemyPositions.length > 0) {
+    for (const p of enemyPositions) { cx += p.x; cz += p.z; }
+    cx /= enemyPositions.length;
+    cz /= enemyPositions.length;
+  }
+
+  const RESPAWN_DIST = 60;   // close enough to see the fight, far enough not to spawn-camp
+  const angle = Math.random() * Math.PI * 2;
+  const half  = CONFIG.MAP_HALF - 10;
+  const x = Math.max(-half, Math.min(half, cx + Math.sin(angle) * RESPAWN_DIST));
+  const z = Math.max(-half, Math.min(half, cz + Math.cos(angle) * RESPAWN_DIST));
+  const heading = Math.atan2(cx - x, cz - z);   // face back toward the fight
+  return { x, z, heading };
+}
+
 // Revive a LAN tank at (x,z) facing heading. setDestroyed() hides the turret and
 // applies a random crash-lean rotation to the hull — neither is undone by simply
 // setting alive=true, so a naive respawn leaves a turretless, tilted tank. Used
@@ -2826,7 +2855,7 @@ function _runLanFrame(dt, now) {
         if (r.timer > 0) continue;
         _lanRespawns.delete(id);
         _lanDeathInfo.delete(id);
-        const spawn = _lanSpawnFor(id, _lanRoster);
+        const spawn = _lanRespawnPoint(r.team);
         if (id === _lanNet.id) {
           _reviveLanTank(player, spawn.x, spawn.z, spawn.heading);
         } else {
