@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js?v=60';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=60';
-import { Input }          from './input.js?v=60';
-import { Tank }           from './tank.js?v=60';
-import { buildAuthenticModel } from './models.js?v=60';
-import { CombatManager, ballisticElevation }  from './combat.js?v=60';
-import { ParticleSystem } from './particles.js?v=60';
-import { AIController, WingmanController } from './ai.js?v=60';
-import { LanBotController } from './lan-ai.js?v=60';
-import { GameManager, STATES } from './game.js?v=60';
+import { CONFIG }         from './config.js?v=61';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=61';
+import { Input }          from './input.js?v=61';
+import { Tank }           from './tank.js?v=61';
+import { buildAuthenticModel } from './models.js?v=61';
+import { CombatManager, ballisticElevation }  from './combat.js?v=61';
+import { ParticleSystem } from './particles.js?v=61';
+import { AIController, WingmanController } from './ai.js?v=61';
+import { LanBotController } from './lan-ai.js?v=61';
+import { GameManager, STATES } from './game.js?v=61';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js?v=60';
-import { AudioManager }        from './audio.js?v=60';
-import { DIFFICULTY }          from './config.js?v=60';
-import { WeatherManager } from './weather.js?v=60';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=60';
-import { Net, LAN_SNAP_HZ }   from './net.js?v=60';
+} from './modes.js?v=61';
+import { AudioManager }        from './audio.js?v=61';
+import { DIFFICULTY }          from './config.js?v=61';
+import { WeatherManager } from './weather.js?v=61';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=61';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=61';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js?v=60';
+} from './ui.js?v=61';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
