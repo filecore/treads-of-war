@@ -1,8 +1,8 @@
 // combat.js — Shell ballistics, hit detection
 
 import * as THREE from 'three';
-import { CONFIG }      from './config.js?v=59';
-import { getAltitude } from './terrain.js?v=59';
+import { CONFIG }      from './config.js?v=60';
+import { getAltitude } from './terrain.js?v=60';
 
 const SHELL_SPEED    = 80;    // world units / second
 const SHELL_LIFE     = 5.0;   // max seconds before despawn
@@ -140,6 +140,9 @@ export class CombatManager {
         if (!t.alive) continue;
         if (t === shell.firedBy) continue;                               // no self-hit
         if (!this.friendlyFire && t.def.faction === shell.firedBy.def.faction) continue;
+        // Online team battles: team kills always disabled, regardless of the
+        // singleplayer friendly-fire setting above. Only LAN tanks carry .team.
+        if (t.team !== undefined && shell.firedBy.team !== undefined && t.team === shell.firedBy.team) continue;
         const dx = t.position.x - shell.px;
         const dy = t.position.y - shell.py + t.hitRadius * 0.5;  // rough centre
         const dz = t.position.z - shell.pz;

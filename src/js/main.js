@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js?v=59';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=59';
-import { Input }          from './input.js?v=59';
-import { Tank }           from './tank.js?v=59';
-import { buildAuthenticModel } from './models.js?v=59';
-import { CombatManager, ballisticElevation }  from './combat.js?v=59';
-import { ParticleSystem } from './particles.js?v=59';
-import { AIController, WingmanController } from './ai.js?v=59';
-import { LanBotController } from './lan-ai.js?v=59';
-import { GameManager, STATES } from './game.js?v=59';
+import { CONFIG }         from './config.js?v=60';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=60';
+import { Input }          from './input.js?v=60';
+import { Tank }           from './tank.js?v=60';
+import { buildAuthenticModel } from './models.js?v=60';
+import { CombatManager, ballisticElevation }  from './combat.js?v=60';
+import { ParticleSystem } from './particles.js?v=60';
+import { AIController, WingmanController } from './ai.js?v=60';
+import { LanBotController } from './lan-ai.js?v=60';
+import { GameManager, STATES } from './game.js?v=60';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js?v=59';
-import { AudioManager }        from './audio.js?v=59';
-import { DIFFICULTY }          from './config.js?v=59';
-import { WeatherManager } from './weather.js?v=59';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=59';
-import { Net, LAN_SNAP_HZ }   from './net.js?v=59';
+} from './modes.js?v=60';
+import { AudioManager }        from './audio.js?v=60';
+import { DIFFICULTY }          from './config.js?v=60';
+import { WeatherManager } from './weather.js?v=60';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=60';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=60';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js?v=59';
+} from './ui.js?v=60';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -2246,6 +2246,7 @@ function _initLanGame(rosterMap) {
   // Place player (local tank) — apply own team colour so model matches nametag
   const _myColor = LAN_TEAM_COLORS[myEntry?.team ?? _lanMyTeam ?? 0] ?? null;
   reinitPlayer(myEntry?.tankKey ?? _lanTankKey, _myColor);
+  player.team = myEntry?.team ?? _lanMyTeam ?? 0;   // used by combat.js to block team kills
   // Spawn position: own team's quadrant, halfway to the map edge, facing centre
   const mySpawn = _lanSpawnFor(myId, rosterMap);
   player.position.set(mySpawn.x, getAltitude(mySpawn.x, mySpawn.z) + 0.1, mySpawn.z);
@@ -2265,6 +2266,7 @@ function _initLanGame(rosterMap) {
     const isEnemy = true;
     const color = LAN_TEAM_COLORS[entry.team ?? 0] ?? null;
     const tank  = new Tank(scene, entry.tankKey ?? 'sherman', isEnemy, color);
+    tank.team = entry.team ?? 0;   // used by combat.js to block team kills
     tank.position.set(spawn.x, getAltitude(spawn.x, spawn.z) + 0.1, spawn.z);
     tank.heading = spawn.heading;
 
