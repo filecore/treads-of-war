@@ -2,8 +2,8 @@
 // All exported functions are stateless: they take a state snapshot (st)
 // and return an HTML string.  No DOM manipulation here.
 
-import { CONFIG, DIFFICULTY } from './config.js?v=61';
-import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=61';
+import { CONFIG, DIFFICULTY } from './config.js?v=62';
+import { TANK_COSTS, FACTION_ROSTERS } from './modes.js?v=62';
 
 // ── Faction display label ─────────────────────────────────────────────────────
 export function factionLabel(f, plural = false) {
@@ -405,7 +405,7 @@ export function lanEndScreenHtml(st) {
 
   if (st.lanNet && st.lanNet.isHost()) {
     html += '<div style="display:flex;margin-top:12px;">';
-    html += `<button id="lan-rematch-btn" class="lan-btn" style="flex:1">Play Again</button>`;
+    html += `<button id="lan-rematch-btn" class="lan-btn lan-btn-highlight" style="flex:1">Play Again</button>`;
     html += '</div>';
   }
   html += `<div style="display:flex;gap:10px;margin-top:${st.lanNet && st.lanNet.isHost() ? '10px' : '12px'};">`;

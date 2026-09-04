@@ -316,6 +316,7 @@ location = /relay/discover {
       <!-- ── Changelog pane ── -->
       <div class="sp-pane" id="sp-changelog">
         <div class="cl-body">
+          <div class="cl-entry"><span class="cl-tag">v4.11</span> NEW: Team lives in Online Vs mode — each player (human or AI) gets 3 lives; a destroyed tank respawns after 5s at its team's spawn point if any remain, and a team is out only once every member is down to 0. NEW: Team kills disabled — shells never damage a teammate, independent of the singleplayer friendly-fire setting. IMPROVED: Play Again is now full-width on its own row and coloured yellow to stand out from Main Menu/Online Lobby.</div>
           <div class="cl-entry"><span class="cl-tag">v4.10</span> NEW: AI opponents/teammates in Online mode — host can add AI-controlled bots to any team from the lobby (before Start), letting a solo player fight a full team battle against or alongside AI. Bots use the same flanking/engage AI as singleplayer enemies, are simulated by the host, and appear to all players exactly like any other online player (nametag, team colour, snapshot-synced movement).</div>
           <div class="cl-entry"><span class="cl-tag">v4.9</span> NEW: Ricochet system — shells at shallow angles bounce off armour with a distinct spark and sound; sloped-armour tanks (T-34, Panther, King Tiger) get a mechanical bonus. NEW: Tank recovery — destroyed friendly tanks may leave recoverable wrecks in Attrition/Strategy; park nearby for 12s to field-repair to 25% HP. NEW: Dynamic weather — Rain, Fog, and Dust Storm conditions affect visibility, movement speed, and AI behaviour; weather can change mid-battle. NEW: Supply crate symbols — HP (cross), Smoke (cloud), Artillery (ballistic arc) markings on crate faces. NEW: Game renamed to &quot;Treads of War&quot; with new logo and favicon. IMPROVED: Difficulty levels rebalanced with clearer progression from Easy to Hard. IMPROVED: Dense fog forces extremely close engagement ranges. FIXED: Arcade life tank icons now face the correct direction.</div>
           <div class="cl-entry"><span class="cl-tag">v4.8</span> Landing page redesigned: wider layout, improved section headings and card borders, screenshot labels styled as chapter headings. Smoke, artillery, and spotter plane restricted to Strategy mode. Spotter plane (X key) reveals enemy positions on minimap for 25 seconds. Enemy tanks hidden from minimap in Strategy until spotted. Objective capture point redesigned as a transparent cylindrical wall rising from the ring boundary.</div>
@@ -477,7 +478,7 @@ location = /relay/discover {
     }
   }
   </script>
-  <script type="module" src="./js/main.js?v=61"></script>
+  <script type="module" src="./js/main.js?v=63"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});

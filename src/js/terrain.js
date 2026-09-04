@@ -2,7 +2,7 @@
 // Reference: https://lander.bbcelite.com/
 
 import * as THREE from 'three';
-import { CONFIG } from './config.js?v=61';
+import { CONFIG } from './config.js?v=62';
 
 // ─── Water visibility flag ─────────────────────────────────────────────────────
 export let terrainWaterEnabled = true;

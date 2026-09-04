@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js?v=61';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=61';
-import { Input }          from './input.js?v=61';
-import { Tank }           from './tank.js?v=61';
-import { buildAuthenticModel } from './models.js?v=61';
-import { CombatManager, ballisticElevation }  from './combat.js?v=61';
-import { ParticleSystem } from './particles.js?v=61';
-import { AIController, WingmanController } from './ai.js?v=61';
-import { LanBotController } from './lan-ai.js?v=61';
-import { GameManager, STATES } from './game.js?v=61';
+import { CONFIG }         from './config.js?v=62';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=62';
+import { Input }          from './input.js?v=62';
+import { Tank }           from './tank.js?v=62';
+import { buildAuthenticModel } from './models.js?v=62';
+import { CombatManager, ballisticElevation }  from './combat.js?v=62';
+import { ParticleSystem } from './particles.js?v=62';
+import { AIController, WingmanController } from './ai.js?v=62';
+import { LanBotController } from './lan-ai.js?v=62';
+import { GameManager, STATES } from './game.js?v=62';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js?v=61';
-import { AudioManager }        from './audio.js?v=61';
-import { DIFFICULTY }          from './config.js?v=61';
-import { WeatherManager } from './weather.js?v=61';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=61';
-import { Net, LAN_SNAP_HZ }   from './net.js?v=61';
+} from './modes.js?v=62';
+import { AudioManager }        from './audio.js?v=62';
+import { DIFFICULTY }          from './config.js?v=62';
+import { WeatherManager } from './weather.js?v=62';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=62';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=62';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js?v=61';
+} from './ui.js?v=62';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -2211,6 +2211,25 @@ function _lanSpawnFor(id, rosterMap) {
   return { x, z, heading };
 }
 
+// Revive a LAN tank at (x,z) facing heading. setDestroyed() hides the turret and
+// applies a random crash-lean rotation to the hull — neither is undone by simply
+// setting alive=true, so a naive respawn leaves a turretless, tilted tank. Used
+// by both the Vs-mode lives/respawn system and CTF respawns.
+function _reviveLanTank(tank, x, z, heading) {
+  tank.alive        = true;
+  tank.hp           = tank.maxHp;
+  tank.turretYaw    = 0;
+  tank.gunElevation = 0;
+  tank.leftSpeed    = 0;
+  tank.rightSpeed   = 0;
+  tank.turretGroup.visible = true;
+  tank.mesh.rotation.set(0, 0, 0);
+  tank.heading = heading;
+  tank.position.set(x, getAltitude(x, z) + 0.1, z);
+  tank._orient();
+  tank.mesh.position.copy(tank.position);
+}
+
 // Host-only: bake current kills/killedBy + name/team into a plain object for broadcast.
 function _snapshotLanStats() {
   const out = {};
@@ -2310,6 +2329,9 @@ function _initLanGame(rosterMap) {
   _lanEndStats    = null;
   _lanStats.clear();
   for (const id of rosterMap.keys()) _lanStats.set(id, { kills: 0, killedBy: null });
+  _lanLives.clear();
+  _lanRespawns.clear();
+  for (const id of rosterMap.keys()) _lanLives.set(id, LAN_LIVES_START);
   _specActive     = false;
   _demoActive     = false;
   _demoAI         = null;
@@ -2452,23 +2474,10 @@ function _processCtfEvent(ev) {
     // Respawn the tank at their base
     const basePos = _ctf.getBasePos(ev.team);
     if (ev.id === _lanNet?.id) {
-      // Own respawn
-      player.alive = true;
-      player.hp    = player.maxHp;
-      player.position.set(basePos.x, basePos.y + 0.1, basePos.z);
-      player.mesh.position.copy(player.position);
-      player.mesh.visible = true;
-      player.leftSpeed = player.rightSpeed = 0;
+      _reviveLanTank(player, basePos.x, basePos.z, player.heading);
     } else {
       const peer = _lanPeers.get(ev.id);
-      if (peer?.tank) {
-        peer.tank.alive = true;
-        peer.tank.hp    = peer.tank.maxHp;
-        peer.tank.position.set(basePos.x, basePos.y + 0.1, basePos.z);
-        peer.tank.mesh.position.copy(peer.tank.position);
-        peer.tank.mesh.visible = true;
-        peer.tank.leftSpeed = peer.tank.rightSpeed = 0;
-      }
+      if (peer?.tank) _reviveLanTank(peer.tank, basePos.x, basePos.z, peer.tank.heading);
     }
   }
 }
@@ -2747,6 +2756,34 @@ function _runLanFrame(dt, now) {
             }
           }
           if (deadId) _ctf.queueRespawn(deadId, deadTeam, deadKey);
+        } else if (victimId && _lanLives.has(victimId)) {
+          // Vs mode: three lives per player — respawn if any remain, else stay down
+          const livesLeft = _lanLives.get(victimId) - 1;
+          _lanLives.set(victimId, livesLeft);
+          if (livesLeft > 0) {
+            const entry = _lanRoster.get(victimId);
+            _lanRespawns.set(victimId, {
+              timer: LAN_RESPAWN_SECS,
+              team: entry?.team ?? 0,
+              tankKey: entry?.tankKey ?? 'sherman',
+            });
+          }
+        }
+      }
+    }
+
+    // Vs mode: tick pending respawns and revive anyone whose timer elapsed
+    if (!_ctfMode && _lanRespawns.size > 0) {
+      for (const [id, r] of _lanRespawns) {
+        r.timer -= dt;
+        if (r.timer > 0) continue;
+        _lanRespawns.delete(id);
+        const spawn = _lanSpawnFor(id, _lanRoster);
+        if (id === _lanNet.id) {
+          _reviveLanTank(player, spawn.x, spawn.z, spawn.heading);
+        } else {
+          const peer = _lanPeers.get(id);
+          if (peer?.tank) _reviveLanTank(peer.tank, spawn.x, spawn.z, spawn.heading);
         }
       }
     }
@@ -2796,15 +2833,19 @@ function _runLanFrame(dt, now) {
       });
     }
 
-    // End condition — deathmatch (not CTF): only one team has living tanks left
+    // End condition — deathmatch (not CTF): only one team has anyone left with
+    // lives remaining (someone on 0 lives still counts while their last tank
+    // is alive — they're only truly out once that final life ends).
     if (_lanGameResult === null && !_ctfMode) {
-      const aliveTeams = new Set();
-      if (player.alive) aliveTeams.add(_lanOwnTeam());
-      for (const [, peer] of _lanPeers) {
-        if (peer.tank && peer.tank.alive) aliveTeams.add(peer.team ?? 0);
+      const remainingTeams = new Set();
+      for (const [id, entry] of _lanRoster) {
+        const team = entry.team ?? 0;
+        if ((_lanLives.get(id) ?? 0) > 0) { remainingTeams.add(team); continue; }
+        const tank = id === _lanNet.id ? player : _lanPeers.get(id)?.tank;
+        if (tank && tank.alive) remainingTeams.add(team);
       }
-      if (aliveTeams.size <= 1) {
-        _endLanGame(aliveTeams.size === 1 ? [...aliveTeams][0] : -1);
+      if (remainingTeams.size <= 1) {
+        _endLanGame(remainingTeams.size === 1 ? [...remainingTeams][0] : -1);
       }
     }
 
@@ -3408,6 +3449,12 @@ let _lanStats       = new Map();
 // Frozen snapshot of the above (+ name/team baked in) once the match ends — sent to
 // clients once via the wind-down broadcast, and what the end screen renders from.
 let _lanEndStats    = null;
+// Vs-mode (non-CTF) lives — host-only. LAN_LIVES_START total tank-lives per
+// roster id; a team is eliminated once every member is dead with 0 left.
+const LAN_LIVES_START  = 3;
+const LAN_RESPAWN_SECS = 5;
+let _lanLives       = new Map();  // id → lives remaining
+let _lanRespawns    = new Map();  // id → { timer, team, tankKey } — pending respawn
 let _lanRtt         = 0;      // round-trip time in ms (from host measurement)
 let _lanLastSnapTs  = 0;      // client: ts of last received snapshot (echoed to host)
 let _lanPlayerName  = '';     // this player's chosen name

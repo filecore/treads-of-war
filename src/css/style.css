@@ -1280,6 +1280,12 @@ html, body {
   color: rgba(255, 175, 165, 0.90);
 }
 .lan-btn-danger:hover { background: rgba(150, 40, 35, 0.80); }
+.lan-btn-highlight {
+  background: rgba(120, 95, 15, 0.75);
+  border-color: rgba(255, 210, 60, 0.55);
+  color: rgba(255, 225, 140, 0.95);
+}
+.lan-btn-highlight:hover { background: rgba(150, 120, 20, 0.85); }
 .lan-online-col { min-width: 200px; gap: 0; }
 .lan-divider {
   text-align: center;
