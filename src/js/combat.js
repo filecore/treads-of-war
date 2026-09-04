@@ -1,8 +1,8 @@
 // combat.js — Shell ballistics, hit detection
 
 import * as THREE from 'three';
-import { CONFIG }      from './config.js?v=64';
-import { getAltitude } from './terrain.js?v=64';
+import { CONFIG }      from './config.js?v=65';
+import { getAltitude } from './terrain.js?v=65';
 
 const SHELL_SPEED    = 80;    // world units / second
 const SHELL_LIFE     = 5.0;   // max seconds before despawn
@@ -139,10 +139,15 @@ export class CombatManager {
       for (const t of tanks) {
         if (!t.alive) continue;
         if (t === shell.firedBy) continue;                               // no self-hit
-        if (!this.friendlyFire && t.def.faction === shell.firedBy.def.faction) continue;
-        // Online team battles: team kills always disabled, regardless of the
-        // singleplayer friendly-fire setting above. Only LAN tanks carry .team.
-        if (t.team !== undefined && shell.firedBy.team !== undefined && t.team === shell.firedBy.team) continue;
+        // Online team battles: team membership is the sole authority on friendly
+        // fire — two different teams can share a faction (e.g. both pick German
+        // tanks), so the faction-based check below must not apply to them; it's
+        // for singleplayer wingmen only, where no tank carries .team.
+        if (t.team !== undefined && shell.firedBy.team !== undefined) {
+          if (t.team === shell.firedBy.team) continue;   // team kills always disabled
+        } else if (!this.friendlyFire && t.def.faction === shell.firedBy.def.faction) {
+          continue;
+        }
         const dx = t.position.x - shell.px;
         const dy = t.position.y - shell.py + t.hitRadius * 0.5;  // rough centre
         const dz = t.position.z - shell.pz;
