@@ -1,31 +1,31 @@
 // main.js — Phase 5: Game states (menu / playing / paused / game-over / victory)
 
 import * as THREE from 'three';
-import { CONFIG }         from './config.js?v=62';
-import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=62';
-import { Input }          from './input.js?v=62';
-import { Tank }           from './tank.js?v=62';
-import { buildAuthenticModel } from './models.js?v=62';
-import { CombatManager, ballisticElevation }  from './combat.js?v=62';
-import { ParticleSystem } from './particles.js?v=62';
-import { AIController, WingmanController } from './ai.js?v=62';
-import { LanBotController } from './lan-ai.js?v=62';
-import { GameManager, STATES } from './game.js?v=62';
+import { CONFIG }         from './config.js?v=64';
+import { ChunkManager, getAltitude, setTerrainOffset, setTerrainWaterEnabled } from './terrain.js?v=64';
+import { Input }          from './input.js?v=64';
+import { Tank }           from './tank.js?v=64';
+import { buildAuthenticModel } from './models.js?v=64';
+import { CombatManager, ballisticElevation }  from './combat.js?v=64';
+import { ParticleSystem } from './particles.js?v=64';
+import { AIController, WingmanController } from './ai.js?v=64';
+import { LanBotController } from './lan-ai.js?v=64';
+import { GameManager, STATES } from './game.js?v=64';
 import {
   MODES, KILLS_TO_UPGRADE, ARCADE_CLASSES,
   ATTRITION_PLAYER_SQUADS, ATTRITION_ENEMY_SQUADS,
   STRATEGY_BUDGETS, TANK_COSTS, FACTION_ROSTERS,
   OBJECTIVE_HOLD_REQ, OBJECTIVE_RADIUS, OBJECTIVE_CONTEST_R,
-} from './modes.js?v=62';
-import { AudioManager }        from './audio.js?v=62';
-import { DIFFICULTY }          from './config.js?v=62';
-import { WeatherManager } from './weather.js?v=62';
-import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=62';
-import { Net, LAN_SNAP_HZ }   from './net.js?v=62';
+} from './modes.js?v=64';
+import { AudioManager }        from './audio.js?v=64';
+import { DIFFICULTY }          from './config.js?v=64';
+import { WeatherManager } from './weather.js?v=64';
+import { CTFManager, CTF_CARRIER_SPEED, CTF_RESPAWN_SECS, FLAG_COLORS, FLAG_NAMES } from './ctf.js?v=64';
+import { Net, LAN_SNAP_HZ }   from './net.js?v=64';
 import {
   factionLabel,
   mercEditorHtml, menuScreenHtml, purchaseHtml, lanLobbyHtml, lanEndScreenHtml,
-} from './ui.js?v=62';
+} from './ui.js?v=64';
 
 // ─── Gameplay constants ───────────────────────────────────────────────────────
 const COLL_DAMP          = 0.55; // speed multiplier applied to both tanks on collision
@@ -2240,6 +2240,19 @@ function _snapshotLanStats() {
   return out;
 }
 
+// Host-only, Vs mode: per-tick payload for whoever is currently dead, so each
+// client can render its own "You were killed by..." banner. Small set (only
+// currently-dead ids), safe to send every tick alongside the regular snapshot.
+function _buildLanDeathInfoPayload() {
+  if (_lanDeathInfo.size === 0) return null;
+  const out = {};
+  for (const [id, info] of _lanDeathInfo) {
+    const r = _lanRespawns.get(id);
+    out[id] = { killerName: info.killerName, lives: info.lives, timer: r ? Math.max(0, r.timer) : null };
+  }
+  return out;
+}
+
 function _initLanGame(rosterMap) {
   // Rebuild the map with a fixed seed so all players get the same terrain,
   // roads, buildings, and water regardless of what single-player maps were loaded.
@@ -2331,6 +2344,8 @@ function _initLanGame(rosterMap) {
   for (const id of rosterMap.keys()) _lanStats.set(id, { kills: 0, killedBy: null });
   _lanLives.clear();
   _lanRespawns.clear();
+  _lanDeathInfo.clear();
+  _updateLanRespawnBanner(null);
   for (const id of rosterMap.keys()) _lanLives.set(id, LAN_LIVES_START);
   _specActive     = false;
   _demoActive     = false;
@@ -2532,6 +2547,36 @@ const _ctfHud = (() => {
   return { scoreEl, flagEl, carrierEl, respawnEl, announceEl };
 })();
 let _ctfAnnounceTimer = 0;
+
+// Vs-mode (non-CTF) lives/respawn banner — "You were killed by X: respawning
+// in Ns, L lives remaining" while dead, shown in place of CTF's simpler one.
+const _lanRespawnBannerEl = (() => {
+  const el = document.createElement('div');
+  Object.assign(el.style, {
+    position: 'absolute', top: '45%', left: '50%', transform: 'translateX(-50%)',
+    font: 'bold 16px "Courier New",monospace', color: 'rgba(255,140,120,0.95)',
+    textShadow: '0 0 8px rgba(0,0,0,0.9)', pointerEvents: 'none',
+    display: 'none', textAlign: 'center', whiteSpace: 'nowrap',
+  });
+  document.getElementById('hud').appendChild(el);
+  return el;
+})();
+
+// banner: { killerName, lives, timer } | null — timer is null once no respawn
+// is scheduled (out of lives). Called every LAN frame from both host and client.
+function _updateLanRespawnBanner(banner) {
+  if (!banner) { _lanRespawnBannerEl.style.display = 'none'; return; }
+  const by = banner.killerName ? ` by ${banner.killerName}` : '';
+  const respawnPart = banner.timer !== null
+    ? `respawning in ${Math.max(1, Math.ceil(banner.timer))}s`
+    : 'no lives remaining';
+  const livesPart = banner.timer !== null
+    ? `${banner.lives} ${banner.lives === 1 ? 'life' : 'lives'} remaining`
+    : '';
+  _lanRespawnBannerEl.textContent = `You were killed${by}: ${respawnPart}` +
+    (livesPart ? `, ${livesPart}` : '');
+  _lanRespawnBannerEl.style.display = '';
+}
 
 function _showCtfAnnouncement(msg, color = 'rgba(255,255,255,0.95)') {
   _ctfHud.announceEl.textContent = msg;
@@ -2760,6 +2805,7 @@ function _runLanFrame(dt, now) {
           // Vs mode: three lives per player — respawn if any remain, else stay down
           const livesLeft = _lanLives.get(victimId) - 1;
           _lanLives.set(victimId, livesLeft);
+          const killerName = killerId ? (_lanRoster.get(killerId)?.name || killerId) : null;
           if (livesLeft > 0) {
             const entry = _lanRoster.get(victimId);
             _lanRespawns.set(victimId, {
@@ -2768,6 +2814,7 @@ function _runLanFrame(dt, now) {
               tankKey: entry?.tankKey ?? 'sherman',
             });
           }
+          _lanDeathInfo.set(victimId, { killerName, lives: livesLeft, hasRespawn: livesLeft > 0 });
         }
       }
     }
@@ -2778,6 +2825,7 @@ function _runLanFrame(dt, now) {
         r.timer -= dt;
         if (r.timer > 0) continue;
         _lanRespawns.delete(id);
+        _lanDeathInfo.delete(id);
         const spawn = _lanSpawnFor(id, _lanRoster);
         if (id === _lanNet.id) {
           _reviveLanTank(player, spawn.x, spawn.z, spawn.heading);
@@ -2786,6 +2834,14 @@ function _runLanFrame(dt, now) {
           if (peer?.tank) _reviveLanTank(peer.tank, spawn.x, spawn.z, spawn.heading);
         }
       }
+    }
+
+    // Host's own respawn banner (clients get theirs from the snapshot below)
+    if (!_ctfMode) {
+      const own = _lanDeathInfo.get(_lanNet.id);
+      _updateLanRespawnBanner(own
+        ? { killerName: own.killerName, lives: own.lives, timer: _lanRespawns.get(_lanNet.id)?.timer ?? null }
+        : null);
     }
 
     // Shell-vs-building: destroy any building a surviving shell hits this frame
@@ -2827,6 +2883,7 @@ function _runLanFrame(dt, now) {
         ev:  _lanEvents.splice(0),
         res: _lanGameResult,
         stats: _lanGameResult !== null ? _lanEndStats : null,
+        deaths: !_ctfMode ? _buildLanDeathInfoPayload() : null,
         rtt: _lanRtt,
         ts:  Date.now(),
         ctf: _ctfMode ? _ctf.getState() : null,
@@ -2919,6 +2976,9 @@ function _runLanFrame(dt, now) {
 
       // Apply ghost shell positions from snapshot
       _applyGhostShells(snap.shells ?? []);
+
+      // Own respawn banner, if the host says we're currently dead in Vs mode
+      if (!_ctfMode) _updateLanRespawnBanner(snap.deaths?.[_lanNet.id] ?? null);
 
       // End condition: host authoritative via res field (winning team index, or -1 for a draw)
       if (snap.res !== null && snap.res !== undefined) {
@@ -3455,6 +3515,9 @@ const LAN_LIVES_START  = 3;
 const LAN_RESPAWN_SECS = 5;
 let _lanLives       = new Map();  // id → lives remaining
 let _lanRespawns    = new Map();  // id → { timer, team, tankKey } — pending respawn
+// id → { killerName, lives, hasRespawn } — set on every Vs-mode death, cleared
+// on respawn. Feeds the "You were killed by..." banner for whoever it's about.
+let _lanDeathInfo   = new Map();
 let _lanRtt         = 0;      // round-trip time in ms (from host measurement)
 let _lanLastSnapTs  = 0;      // client: ts of last received snapshot (echoed to host)
 let _lanPlayerName  = '';     // this player's chosen name
